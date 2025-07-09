@@ -7,7 +7,7 @@ PLACE_TYPES = [
     "shopping_mall",       # 쇼핑
 ]
 
-** 지금 API 사용량 문제 때문에 가능하면 
+** 지금 API 사용량 문제 때문에 가능하면 PIP만 깔고! <- 안깔면 실행 안될겁니다.
 import json
 with open("all_places.json", "r", encoding="utf-8") as f:
     all_places = json.load(f)
