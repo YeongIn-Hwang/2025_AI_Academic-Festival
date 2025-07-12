@@ -1,0 +1,28 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/nav_home"
+        android:icon="@drawable/ic_home"
+        android:title="HOME" />
+
+    <item
+        android:id="@+id/nav_map"
+        android:icon="@drawable/ic_map"
+        android:title="MAP" />
+
+    <item
+        android:id="@+id/nav_journey"
+        android:icon="@drawable/ic_journey"
+        android:title="JOURNEY" />
+
+    <item
+        android:id="@+id/nav_diary"
+        android:icon="@drawable/ic_diary"
+        android:title="DIARY" />
+
+    <item
+        android:id="@+id/nav_profile"
+        android:icon="@drawable/ic_profile"
+        android:title="PROFILE" />
+
+</menu>
