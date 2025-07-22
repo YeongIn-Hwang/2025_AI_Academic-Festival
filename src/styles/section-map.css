@@ -1,0 +1,46 @@
+.map-section-wrapper {
+    min-height: 100vh;
+    background-color: white;
+    display: flex;
+    justify-content: left;
+    padding-left: 100px;
+    align-items: center;
+}
+
+.map-section-container {
+    max-width: 600px;
+    text-align: left;
+}
+
+/* 파란 소제목 */
+.map-section-label {
+    color: #3884ff;
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+/* 메인 제목 */
+.map-section-title {
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.6;
+    margin-bottom: 24px;
+    color: #000;
+}
+
+/* 중간 강조 텍스트 */
+.map-section-subheading {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: #000;
+}
+
+/* 회색 설명 문장 */
+.map-section-description {
+    font-size: 15px;
+    color: #7F7C7C;
+    line-height: 1.6;
+    margin-bottom: 20px;
+}

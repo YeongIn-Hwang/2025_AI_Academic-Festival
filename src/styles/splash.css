@@ -1,0 +1,51 @@
+/* 배경 비디오 */
+.background-video {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    object-fit: cover; /* 화면에 꽉 채우기 */
+    z-index: -1;
+}
+
+/* 섹션이 비디오 위에 보이도록 */
+.splash-container {
+    position: relative;
+    z-index: 0;
+    color: white;
+}
+
+.splash-section {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+    text-align: center;
+    background: rgba(136, 135, 135, 0.4); /* 반투명 배경으로 가독성 향상 */
+    backdrop-filter: blur(2px);
+}
+
+.logoName{
+    font-size: 100px;
+    font-weight: bold;
+}
+
+.description{
+    font-size:40px;
+    font-weight: bold;
+}
+
+.startButton{
+    width: 350px;
+    height: 60px;
+    border-radius: 20px;
+    border: none;
+    margin-top: 150px;
+    background: rgba(11, 10, 10, 0.4);
+    font-size: 20px;
+    font-weight: bold;
+    color: white;
+}
