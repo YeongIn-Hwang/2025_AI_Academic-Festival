@@ -12,6 +12,10 @@
     text-align: left;
 }
 
+.map-blank-space {
+    height: 100vh;
+}
+
 /* 파란 소제목 */
 .map-section-label {
     color: #3884ff;

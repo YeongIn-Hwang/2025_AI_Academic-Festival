@@ -22,6 +22,7 @@ function SectionMap() {
                     나만의 여행 일지를 기록해보세요.
                 </p>
             </div>
+            <div className="map-blank-space" />
         </section>
     );
 }

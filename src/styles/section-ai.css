@@ -3,15 +3,32 @@
     padding: 10px 20px;
     background-color: white;
     display: flex;
-    justify-content: center;
+    justify-content: left;
     align-items: center;
     border-top-left-radius: 35px;
     border-top-right-radius: 35px;
+    padding-left: 100px;
 }
 
 .ai-section-container {
     max-width: 600px;
     text-align: left;
+}
+
+.ai-map-container {
+    flex: 1;
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+}
+
+.sticky-map-image {
+    position: sticky;
+    top: 0;
+    height: 300vh; /* 지도 전체가 2개 섹션에 걸쳐 보이도록 */
+    object-fit: cover;
+    width: 100%;
+    z-index: 1;
 }
 
 /* 파란 소제목 */

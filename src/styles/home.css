@@ -58,7 +58,7 @@ html, body, #root, .home-page {
 
 .main-title {
     position: absolute;
-    top: 400px;
+    top: 410px;
     right: 250px;
     font-size: 70px;
     font-weight: bold;
@@ -81,8 +81,8 @@ html, body, #root, .home-page {
 .side-tab {
     position: fixed;
     top: 0;
-    right: -300px;
-    width: 310px;
+    right: -400px;
+    width: 370px;
     height: 100vh;
     background-color: white;
     color: black;
