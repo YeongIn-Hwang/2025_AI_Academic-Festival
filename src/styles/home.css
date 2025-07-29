@@ -4,15 +4,14 @@
     box-sizing: border-box;
 }
 
-html, body, #root, .home-page {
-    width: 100%;
-    height: 100%;
-    overflow-x: hidden;
-    background-image: url("/Users/idayoung/WebstormProjects/gaboja-go/public/images/background.png");
+
+.home-page {
+    background-image: url('../../public/images/background.png');
     background-size: cover;
     background-repeat: no-repeat;
     background-attachment: fixed;
 }
+
 
 @keyframes fadeUp {
     from {

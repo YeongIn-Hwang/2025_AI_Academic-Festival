@@ -1,0 +1,82 @@
+/* 캘린더 전체 컨테이너 */
+.calendar-container {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    width: 580px;
+    margin: 0 auto;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    font-family: 'Inter', sans-serif;
+}
+
+/* 네비게이션 버튼 */
+.nav-btn {
+    background: #f3f4f6;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.nav-btn:hover {
+    background: #e5e7eb;
+}
+
+/* 요일 헤더 */
+.calendar-grid-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    margin-bottom: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #6b7280;
+}
+
+/* 날짜 버튼 그리드 */
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+}
+
+/* 기본 날짜 */
+.calendar-cell {
+    width: 100%;
+    height: 36px;
+    font-size: 13px;
+    border-radius: 8px;
+    background: #fafafa;
+    border: none;
+    color: #374151;
+    transition: background 0.2s, transform 0.1s;
+}
+.calendar-cell.hoverable:hover {
+    background: #f0f9ff;
+    transform: scale(1.03);
+}
+
+/* 범위 날짜 */
+.calendar-cell.in-range {
+    background: #dbeafe;
+    color: #1e3a8a;
+}
+
+/* 시작/종료 날짜 */
+.calendar-cell.start-date,
+.calendar-cell.end-date {
+    background: #2563eb;
+    color: white;
+    font-weight: 600;
+}
+
+/* 다른 월 */
+.calendar-cell.other-month {
+    color: #cbd5e1;
+    background: #f9fafb;
+}
+
+/* 비활성 */
+.calendar-cell.disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
