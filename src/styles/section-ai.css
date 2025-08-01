@@ -1,12 +1,12 @@
 .ai-section-wrapper {
-    min-height: 70vh;
+    min-height: 80vh;
     display: flex;
     justify-content: left;
     align-items: center;
     background: white;
     border-top-left-radius: 35px;
     border-top-right-radius: 35px;
-    padding-left: 100px;
+    padding-left: 130px;
 
 }
 
@@ -91,7 +91,8 @@
     border-radius: 999px;
     cursor: pointer;
     transition: background-color 0.3s ease;
-    width: 100%;
+    width: 70%;
+    margin-top: 50px;
 }
 
 .ai-section-button:hover {

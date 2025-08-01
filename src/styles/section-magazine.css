@@ -1,15 +1,12 @@
 .section-magazine-container {
-    min-height: 100vh;
+    min-height: 80vh;
     background-color: white;
     display: flex;
     justify-content: left;
-    padding-left: 100px;
-    align-items: center;;
-}
-
-.section-magazine-content {
-    max-width: 800px;
-    text-align: left;
+    padding-left: 130px;
+    padding-bottom: 100px;
+    align-items: center;
+    overflow: hidden;
 }
 
 .section-magazine-label {
@@ -54,7 +51,7 @@
     cursor: pointer;
     transition: background-color 0.3s ease;
     width: 100%;
-    margin-top: 40px;
+    margin-top: 100px;
 }
 
 .magazine-section-button:hover {

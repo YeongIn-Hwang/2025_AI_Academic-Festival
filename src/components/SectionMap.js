@@ -9,6 +9,7 @@ function SectionMap() {
     };
 
     return (
+        <>
         <section className="map-section-wrapper">
             <div className="map-section-container">
                 <p className="map-section-label">여행 정보 기록</p>
@@ -31,14 +32,15 @@ function SectionMap() {
 
             <div className="ai-icon-box-2">
                 <img src="/images/section-image2.png" alt="아이콘" className="ai-icon-2" />
-                <div className="map-description">
-                    <img src="/images/map-description.png" alt="일기보기" className="map-description-img" />
-                </div>
+                <img src="/images/map-description.png" alt="지도 설명" className="map-description-overlay" />
             </div>
-
         </section>
-
+            <div className="map-section-container">
+    <img src="/images/map-ex-margin-end.png" alt="지도 예시" className="map-example-img" />
+            </div>
+        </>
     );
+
 }
 
 export default SectionMap;
