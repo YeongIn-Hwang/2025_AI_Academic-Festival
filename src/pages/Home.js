@@ -55,10 +55,11 @@ function Home() {
 
             {/* 각 설명 섹션 */}
             <div className="main-content">
-            <SectionAI />
-            <SectionMap />
-            <SectionMagazine />
+                    <SectionAI />
+                    <SectionMap />
+                    <SectionMagazine />
             </div>
+
 
             {/* 사이드 메뉴 */}
             <div className={`side-tab ${isMenuOpen ? "open" : ""}`}>

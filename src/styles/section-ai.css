@@ -1,34 +1,50 @@
 .ai-section-wrapper {
     min-height: 70vh;
-    padding: 10px 20px;
-    background-color: white;
     display: flex;
     justify-content: left;
     align-items: center;
+    background: white;
     border-top-left-radius: 35px;
     border-top-right-radius: 35px;
     padding-left: 100px;
+
 }
 
 .ai-section-container {
+    flex:1;
+    justify-content: space-between;
+    align-items: center;
+    width: 150%;
     max-width: 600px;
-    text-align: left;
 }
 
-.ai-map-container {
-    flex: 1;
-    height: 100vh;
-    overflow: hidden;
-    position: relative;
+.ai-text {
+    flex: 1;                     /* 왼쪽 영역 차지 */
+    display: flex;
+    flex-direction: column;      /* 세로 배치 */
+    justify-content: center;     /* 수직 가운데 */
+    padding: 40px 20px;          /* 여백 */
+    z-index: 2;                  /* 지도 이미지보다 위에 표시 */
+    max-width: 1000px;            /* 가독성 위해 너비 제한 */
 }
 
-.sticky-map-image {
-    position: sticky;
-    top: 0;
-    height: 300vh; /* 지도 전체가 2개 섹션에 걸쳐 보이도록 */
-    object-fit: cover;
-    width: 100%;
-    z-index: 1;
+/* 지도 이미지 스타일 */
+.ai-icon {
+    width: 100%;                   /*  더 크게 확대 */
+    height: auto;
+    transform: scale(1) translate(10%, 0%);
+    /*  scale(1.4) → 40% 확대
+       translate(20%, 5%) → 오른쪽 20%, 아래쪽 5% 이동 */
+    object-fit: cover;             /* 비율 유지 */
+    opacity: 0.5;                  /* 살짝 투명 */
+    -webkit-mask-image: -webkit-linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 30%);
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-size: 100% 100%;
+
+    /* ✅ 표준 속성 (지원되는 브라우저만) */
+    mask-image: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 70%);
+    mask-repeat: no-repeat;
+    mask-size: 100% 100%;
 }
 
 /* 파란 소제목 */

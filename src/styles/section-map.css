@@ -8,12 +8,49 @@
 }
 
 .map-section-container {
+    position: relative;
+    flex:1;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
     max-width: 600px;
-    text-align: left;
 }
 
 .map-blank-space {
     height: 100vh;
+}
+
+.ai-icon-2{
+    width: 100%;                   /*  더 크게 확대 */
+    height: auto;
+    transform: scale(1) translate(10%, -26%);;
+    /*  scale(1.4) → 40% 확대
+       translate(20%, 5%) → 오른쪽 20%, 아래쪽 5% 이동 */
+    object-fit: cover;             /* 비율 유지 */
+    opacity: 0.5;                  /* 살짝 투명 */
+}
+
+/* 컨테이너 (오른쪽 정렬) */
+.map-description {
+    position: absolute;
+    display: flex;
+    z-index: 10;
+    flex-direction: column;
+    justify-content: flex-end;   /* ✅ 왼쪽 정렬 */
+    align-items: flex-start;       /* ✅ 위쪽 정렬 */
+    padding-left: 430px;
+    margin-top: -200px;
+}
+
+/* 이미지 자체 크기 */
+.map-description-img {
+    width: 300px;
+    height: auto;
+    transition: transform 0.3s ease;
+    cursor: pointer;
+    margin-top: 10px;
+    margin-right: 10px;
+    opacity: 0.6;
 }
 
 /* 파란 소제목 */
@@ -47,4 +84,23 @@
     color: #7F7C7C;
     line-height: 1.6;
     margin-bottom: 20px;
+}
+
+/* 파란 버튼 */
+.dairy-section-button {
+    background-color: #3884ff;
+    color: white;
+    font-size: 17px;
+    font-weight: 600;
+    padding: 18px 30px;
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    width: 100%;
+    margin-top: 40px;
+}
+
+.dairy-section-button:hover {
+    background-color: #2a6edb;
 }
