@@ -1,31 +1,139 @@
-.map-page-container {
-    background: white;
-    background-image: none;
+/* ✅ 전체 컨테이너 (좌우 2분할) */
+.map-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 100%;
     min-height: 100vh;
-    padding: 20px;
-    text-align: center;
+    background: #ffffff;
+    padding: 40px 80px;
+    gap: 50px;
 }
 
-.map-image-wrapper img {
+/* ✅ SVG 지도 */
+.svg-map {
     width: 100%;
-    max-width: 400px;
-    margin: 20px 0;
+    height: auto;
+    transform: scale(1.1);
     cursor: pointer;
 }
 
+.region-popup {
+    position: fixed !important;    /* ✅ 부모 레이아웃 영향 제거 */
+    background: white;
+    border: 2px solid #2E86FF;
+    border-radius: 12px;
+    padding: 10px 14px;
+    display: inline-flex;          /* ✅ 내용만큼만 크기 */
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    width: fit-content !important;
+    height: auto !important;
+    white-space: nowrap;
+
+    box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+    z-index: 9999;
+
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+    transition: all 0.25s ease;
+}
+
+.popup-animated { opacity: 1; transform: translateY(0) scale(1); }
+.popup-closing  { opacity: 0; transform: translateY(5px) scale(0.95); }
+
+.region-popup h3 { font-size: 15px; font-weight: 700; margin: 2px 0; }
+.view-diary-btn { background: #2E86FF; color: #fff; border: none; border-radius: 14px; padding: 4px 10px; font-size: 15px; margin-top: 4px; cursor: pointer; }
+.view-diary-btn:hover { background: #1c65cc; }
+
+/* ✅ 왼쪽 설명 영역 */
+.map-left {
+    flex: 0.9;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 25px;
+}
+
+/* ✅ 제목 */
+.map-left h2 {
+    font-size: 38px;
+    font-weight: 800;
+    color: #2E86FF;
+    margin: 0;
+}
+
+/* ✅ 설명 문구 */
+.map-subtext {
+    font-size: 20px;
+    font-weight: 500;
+    color: #333;
+    line-height: 1.7;
+}
+
+/* ✅ 검색 박스 */
 .region-search-box {
-    margin: 20px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    max-width: 450px;
+    background: #f9f9f9;
+    padding: 20px 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
 }
 
 .region-search-box input {
-    padding: 8px;
-    font-size: 14px;
-    width: 200px;
+    flex: 1;
+    padding: 15px 20px;
+    font-size: 17px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    outline: none;
+}
+.region-search-box input:focus {
+    border-color: #2E86FF;
 }
 
 .region-search-box button {
-    padding: 8px 12px;
-    margin-left: 10px;
-    font-size: 14px;
+    background: #2E86FF;
+    color: white;
+    font-weight: 700;
+    font-size: 16px;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
     cursor: pointer;
+    transition: background 0.3s ease, transform 0.1s ease-in-out;
+}
+.region-search-box button:hover {
+    background: #1f6de0;
+    transform: scale(1.05);
+}
+
+/* ✅ 방문 지역 카운트 */
+.visited-count {
+    font-size: 20px;
+    font-weight: 700;
+    color: #2E86FF;
+    padding: 12px 120px;
+    border: 2px solid #2E86FF;
+    border-radius: 30px;
+    background: white;
+    display: block;
+    margin: auto;
+    box-shadow: 0 2px 6px rgba(46, 134, 255, 0.1);
+    margin-top: auto;
+}
+
+/* ✅ 오른쪽 지도 영역 */
+.map-right {
+    flex: 1.8;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }

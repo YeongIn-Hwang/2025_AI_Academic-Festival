@@ -6,7 +6,9 @@ import SignUp from "../pages/SignUp";
 import SplashIntro from "../pages/SplashIntro";
 import News from "../pages/News";
 import Map from "../pages/Map";
-import Diary from "../pages/Diary"; // ✅ 반드시 필요!
+import Calendar from "../pages/Calendar";  // ✅ 추가
+import Diary from "../pages/Diary";
+import DiaryView from "../pages/DiaryView";       // ✅ 그대로 유지
 
 function AppRouter() {
     return (
@@ -18,7 +20,9 @@ function AppRouter() {
                 <Route path="/signup" element={<SignUp />} />
                 <Route path="/news" element={<News />} />
                 <Route path="/map" element={<Map />} />
-                <Route path="/diary/:region" element={<Diary />} />  {/* OK */}
+                <Route path="/calendar/:region" element={<Calendar />} /> {/* ✅ Calendar 추가 */}
+                <Route path="/diary/:region" element={<Diary />} />
+                <Route path="/diaryview/:region" element={<DiaryView />} />
             </Routes>
         </BrowserRouter>
     );

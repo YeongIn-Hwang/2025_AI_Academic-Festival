@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";  // ✅ 포탈 추가
 import { auth, db } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -8,109 +9,63 @@ import "../styles/map.css";
 export default function Map() {
     const [visitedCities, setVisitedCities] = useState([]);
     const [searchRegion, setSearchRegion] = useState("");
+    const [selectedCity, setSelectedCity] = useState(null);
+    const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
+    const [isPopupClosing, setIsPopupClosing] = useState(false);
+    const popupRef = useRef(null);
     const navigate = useNavigate();
     const location = useLocation();
 
     const searchParams = new URLSearchParams(location.search);
     const newlyVisited = searchParams.get("region");
 
-    // ✅ 한글 디코딩 (\uXXXX → UTF-8)
     const decodeId = (raw) => {
         if (!raw) return "";
-        try {
-            return JSON.parse(`"${raw}"`);
-        } catch {
-            return raw;
-        }
+        try { return JSON.parse(`"${raw}"`); } catch { return raw; }
     };
 
-    // ✅ 지역명 정규화 (시/군/구 제거)
     const normalize = (name) => (name || "").trim().replace(/(시|군|구)$/, "");
 
-    // ✅ 구 단위 클릭 시 시 단위로 변환
-    const getCityForDiary = (name) => {
-        // 예: "포항시 북구" → "포항시"
-        // 예: "수원시 장안구" → "수원시"
-        return name.replace(/\s.*구$/, "").trim();
-    };
-
-    // ✅ Firestore에서 방문 도시 가져오기
+    // ✅ Firestore에서 방문 도시 불러오기
     useEffect(() => {
         const fetchVisitedCities = async () => {
             const user = auth.currentUser;
-            if (!user) {
-                navigate("/login");
-                return;
-            }
-
+            if (!user) { navigate("/login"); return; }
             const userRef = doc(db, "users", user.uid);
             const docSnap = await getDoc(userRef);
-
-            let updatedVisitedCities = [];
-            if (docSnap.exists()) {
-                updatedVisitedCities = docSnap.data().visitedCities || [];
-            }
-
-            if (newlyVisited && !updatedVisitedCities.includes(newlyVisited)) {
-                updatedVisitedCities.push(newlyVisited);
-            }
-
-            console.log("🔥 Firestore에서 가져온 visitedCities:", updatedVisitedCities);
-            setVisitedCities(updatedVisitedCities);
+            let updated = docSnap.exists() ? docSnap.data().visitedCities || [] : [];
+            if (newlyVisited && !updated.includes(newlyVisited)) updated.push(newlyVisited);
+            setVisitedCities(updated);
         };
-
         fetchVisitedCities();
     }, [location.search, navigate, newlyVisited]);
 
-    // ✅ SVG 색칠 및 클릭 기능 (구 단위 통합 적용)
+    // ✅ SVG path 클릭 이벤트
     useEffect(() => {
         if (visitedCities.length === 0 && !newlyVisited) return;
 
         const timer = setTimeout(() => {
-            const allPaths = document.querySelectorAll("svg path");
-            console.log("➡️ SVG path 개수:", allPaths.length);
-
-            // 디코딩된 ID 확인
-            const decodedIdList = Array.from(allPaths).map((el) =>
-                decodeId(el.id || el.getAttribute("id") || "")
-            );
-            console.log("🟢 디코딩된 SVG ID 목록:", decodedIdList);
-
-            // 1️⃣ 기본 스타일 초기화 및 이벤트 제거
-            allPaths.forEach((el) => {
-                el.style.fill = "#ffffff";
-                el.style.stroke = "#3884FF";
-                el.style.strokeWidth = "0.5";
+            document.querySelectorAll("svg path").forEach((el) => {
                 el.style.cursor = "pointer";
-                const newEl = el.cloneNode(true);
-                el.parentNode.replaceChild(newEl, el);
-            });
-
-            // 2️⃣ 이벤트 재등록
-            const paths = document.querySelectorAll("svg path");
-            paths.forEach((el) => {
                 const rawId = el.id || el.getAttribute("id") || "";
                 const decodedId = decodeId(rawId);
                 const cleanedId = normalize(decodedId);
 
-                // ✅ 방문 도시 색칠
                 visitedCities.forEach((city) => {
-                    const cleanedCity = normalize(city);
-                    if (
-                        cleanedId === cleanedCity ||
-                        decodedId === city ||
-                        decodedId.includes(cleanedCity) ||
-                        cleanedCity.includes(cleanedId)
-                    ) {
-                        el.style.fill = "#007bff";
+                    if (normalize(city) === cleanedId || decodedId.includes(normalize(city))) {
+                        el.style.fill = "#2E86FF";
                     }
                 });
 
-                // ✅ 클릭 시 Diary 페이지 이동 (구 단위 → 시 단위 변환)
                 el.addEventListener("click", () => {
-                    const cityForDiary = getCityForDiary(decodedId);
-                    console.log(`🟢 [CLICK] ${decodedId} → Diary 이동: ${cityForDiary}`);
-                    navigate(`/diary/${encodeURIComponent(cityForDiary)}`);
+                    if (visitedCities.some((v) => decodedId.includes(normalize(v)))) {
+                        const rect = el.getBoundingClientRect();
+                        setPopupPosition({ x: rect.right + 10, y: rect.top });
+                        setIsPopupClosing(false);
+                        setSelectedCity(decodedId);
+                    } else {
+                        navigate(`/calendar/${encodeURIComponent(decodedId)}`);
+                    }
                 });
             });
         }, 500);
@@ -118,33 +73,55 @@ export default function Map() {
         return () => clearTimeout(timer);
     }, [visitedCities, newlyVisited, navigate]);
 
-    // ✅ 검색 기능
+    // ✅ 외부 클릭 시 팝업 닫기
+    useEffect(() => {
+        const handleOutsideClick = (e) => {
+            if (popupRef.current && !popupRef.current.contains(e.target)) {
+                setIsPopupClosing(true);
+                setTimeout(() => setSelectedCity(null), 250);
+            }
+        };
+        document.addEventListener("mousedown", handleOutsideClick);
+        return () => document.removeEventListener("mousedown", handleOutsideClick);
+    }, []);
+
     const handleSearch = () => {
-        const trimmed = searchRegion.trim();
-        if (!trimmed) return;
-        navigate(`/diary/${encodeURIComponent(trimmed)}`);
+        if (!searchRegion.trim()) return;
+        navigate(`/calendar/${encodeURIComponent(searchRegion.trim())}`);
     };
 
     return (
-        <div className="map-page-container">
-            <h2>나의 지도</h2>
+        <div className="map-container">
+            <div className="map-left">
+                <h2>🌍 나만의 여행 발자취</h2>
+                <p className="map-subtext">"떠난 만큼, 기억은 선명해진다."<br />방문한 도시를 기록하고 새로운 추억을 남겨보세요.</p>
 
-            <div className="region-search-box">
-                <input
-                    type="text"
-                    placeholder="지역명을 입력하세요 (예: 포항)"
-                    value={searchRegion}
-                    onChange={(e) => setSearchRegion(e.target.value)}
-                />
-                <button onClick={handleSearch}>추억 작성</button>
+                <div className="region-search-box">
+                    <input type="text" placeholder="지역명을 입력하세요 (예: 포항)"
+                           value={searchRegion} onChange={(e) => setSearchRegion(e.target.value)} />
+                    <button onClick={handleSearch}>추억 작성</button>
+                </div>
+                <p className="visited-count">방문한 지역: {visitedCities.length}곳</p>
             </div>
 
-            <div className="map-image-wrapper">
+            <div className="map-right">
                 <KoreaMap className="svg-map" />
             </div>
 
-            <p>방문한 지역: {visitedCities.length}곳</p>
-            <p style={{ fontSize: "14px" }}>지도를 클릭하면 시 단위로 여행 일기로 이동합니다!</p>
+            {/* ✅ 팝업은 이제 body에 렌더링 → 길쭉 현상 100% 해결 */}
+            {selectedCity &&
+                createPortal(
+                    <div ref={popupRef}
+                         className={`region-popup ${isPopupClosing ? "popup-closing" : "popup-animated"}`}
+                         style={{ top: popupPosition.y, left: popupPosition.x }}>
+                        <h3>{selectedCity}</h3>
+                        <button className="view-diary-btn" onClick={() => navigate(`/diaryview/${selectedCity}`)}>
+                            일기 확인하기
+                        </button>
+                    </div>,
+                    document.body
+                )
+            }
         </div>
     );
 }
