@@ -4,14 +4,15 @@
     box-sizing: border-box;
 }
 
-
 .home-page {
-    background-image: url('../../public/images/background.png');
+    width: 100%;
+    height: 100%;
+    overflow-x: hidden;
+    background-image: url("/Users/idayoung/WebstormProjects/gaboja-go/public/images/background.png");
     background-size: cover;
     background-repeat: no-repeat;
     background-attachment: fixed;
 }
-
 
 @keyframes fadeUp {
     from {
@@ -143,7 +144,7 @@
 }
 
 .logout-button button {
-    width: 270px;
+    width: 330px;
     margin-left: 20px;
     padding: 15px;
     background-color: white;

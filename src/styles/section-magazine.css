@@ -1,15 +1,12 @@
 .section-magazine-container {
-    min-height: 100vh;
+    min-height: 80vh;
     background-color: white;
     display: flex;
     justify-content: left;
-    padding-left: 100px;
-    align-items: center;;
-}
-
-.section-magazine-content {
-    max-width: 800px;
-    text-align: left;
+    padding-left: 130px;
+    padding-bottom: 100px;
+    align-items: center;
+    overflow: hidden;
 }
 
 .section-magazine-label {
@@ -42,3 +39,22 @@
     color: #7F7C7C;
     line-height: 1.6;
 }
+
+.magazine-section-button{
+    background-color: #3884ff;
+    color: white;
+    font-size: 17px;
+    font-weight: 600;
+    padding: 18px 30px;
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    width: 100%;
+    margin-top: 100px;
+}
+
+.magazine-section-button:hover {
+    background-color: #2a6edb;
+}
+

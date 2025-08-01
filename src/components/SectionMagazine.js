@@ -1,7 +1,14 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import "../styles/section-magazine.css";
 
 function SectionMagazine() {
+    const navigate = useNavigate();
+
+    const goToNews = () => {
+        navigate("/news");
+    };
+
     return (
         <section className="section-magazine-container">
             <div className="section-magazine-content">
@@ -18,6 +25,11 @@ function SectionMagazine() {
                     해외 트렌드부터 지역 축제 소식까지,<br />
                     여행에 영감을 주는 뉴스를 Boyage에서 한눈에 확인해보세요.
                 </p>
+                <button
+                    className="magazine-section-button"
+                    onClick={goToNews}>
+                    여행 뉴스 보러가기
+                </button>
             </div>
         </section>
     );
