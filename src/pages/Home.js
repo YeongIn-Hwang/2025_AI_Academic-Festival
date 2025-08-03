@@ -7,6 +7,9 @@ import { IoCloseOutline } from "react-icons/io5";
 import { auth } from "../firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 
+// ✅ background 이미지 import
+import backgroundImg from "../assets/background.png";
+
 // 섹션 컴포넌트 import
 import SectionAI from "../components/SectionAI";
 import SectionMap from "../components/SectionMap";
@@ -39,15 +42,23 @@ function Home() {
         return () => unsubscribe();
     }, []);
 
-
-
     return (
-        <div className="home-page">
+        <div
+            className="home-page"
+            style={{
+                backgroundImage: `url(${backgroundImg})`,
+                backgroundSize: "cover",
+                backgroundRepeat: "no-repeat",
+                backgroundAttachment: "fixed"
+            }}
+        >
             {/* Hero 화면 */}
             <section className="hero">
                 <div className="logo">Boyage</div>
                 <div className="sub-title">추천 경로부터 기록까지, 여행이 더 즐거워지는</div>
-                <div className="main-title">나의 여정의 모든 것<br />Boyage</div>
+                <div className="main-title">
+                    나의 여정의 모든 것<br />Boyage
+                </div>
                 <button className="menu-button" onClick={toggleMenu}>
                     <FaBars />
                 </button>
@@ -55,11 +66,10 @@ function Home() {
 
             {/* 각 설명 섹션 */}
             <div className="main-content">
-                    <SectionAI />
-                    <SectionMap />
-                    <SectionMagazine />
+                <SectionAI />
+                <SectionMap />
+                <SectionMagazine />
             </div>
-
 
             {/* 사이드 메뉴 */}
             <div className={`side-tab ${isMenuOpen ? "open" : ""}`}>
