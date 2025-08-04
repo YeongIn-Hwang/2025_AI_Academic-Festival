@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { db, auth, storage } from "../firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import "../styles/diary.css";
@@ -11,6 +12,7 @@ export default function Diary() {
     const startDate = query.get("start");
     const endDate = query.get("end");
 
+    const [user, setUser] = useState(null);   // ✅ 로그인된 사용자 상태
     const [photo, setPhoto] = useState(null);
     const [photoPreview, setPhotoPreview] = useState(null);
     const [review, setReview] = useState("");
@@ -22,10 +24,22 @@ export default function Diary() {
 
     const inputRef = useRef(null);
 
+    // ✅ 로그인 상태 감지 (Firebase 권장 방식)
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+            if (!currentUser) {
+                alert("로그인이 필요합니다.");
+                window.location.href = "/login";
+            } else {
+                setUser(currentUser);
+            }
+        });
+        return () => unsubscribe();
+    }, []);
+
     // ✅ 기존 장소 불러오기
     useEffect(() => {
         const loadPlaces = async () => {
-            const user = auth.currentUser;
             if (!user) return;
             const userRef = doc(db, "users", user.uid);
             const snap = await getDoc(userRef);
@@ -38,7 +52,7 @@ export default function Diary() {
             }
         };
         loadPlaces();
-    }, [region, startDate, endDate]);
+    }, [user, region, startDate, endDate]);
 
     // ✅ Google Places API 자동완성
     const fetchPlaces = async (query) => {
@@ -53,7 +67,6 @@ export default function Diary() {
                 },
                 body: JSON.stringify({ input: query, languageCode: "ko" })
             });
-
             if (!res.ok) return [];
             const data = await res.json();
             return data.suggestions || [];
@@ -63,7 +76,6 @@ export default function Diary() {
         }
     };
 
-    // ✅ 장소 상세 정보
     const fetchPlaceDetails = async (placeId, fallbackName) => {
         try {
             const res = await fetch(
@@ -101,12 +113,10 @@ export default function Diary() {
     // ✅ 장소 저장
     const handleAddPlace = async () => {
         if (!photo || !selectedPlace) return alert("사진과 장소를 모두 선택하세요.");
+        if (!user) return;  // 로그인 확인
+
         setLoading(true);
-
         try {
-            const user = auth.currentUser;
-            if (!user) return alert("로그인이 필요합니다.");
-
             const storageRef = ref(storage, `places/${user.uid}/${Date.now()}_${photo.name}`);
             await uploadBytes(storageRef, photo);
             const photoURL = await getDownloadURL(storageRef);
@@ -123,7 +133,6 @@ export default function Diary() {
             if (tripIndex !== -1) trips[tripIndex].places.push(newPlace);
             else trips.push({ city: region, startDate, endDate, places: [newPlace] });
 
-            // ✅ 문서가 없으면 생성하고 있으면 병합
             await setDoc(userRef, { trips }, { merge: true });
 
             setPlaces((prev) => [...prev, newPlace]);
@@ -140,12 +149,10 @@ export default function Diary() {
         }
     };
 
-    // ✅ 일기 작성 완료 → visitedCities에 추가
+    // ✅ 일기 작성 완료 → visitedCities 업데이트 후 /map 이동
     const handleCompleteDiary = async () => {
+        if (!user) return; // onAuthStateChanged에서 이미 처리됨
         try {
-            const user = auth.currentUser;
-            if (!user) return alert("로그인이 필요합니다.");
-
             const userRef = doc(db, "users", user.uid);
             const snap = await getDoc(userRef);
             let visitedCities = snap.exists() ? snap.data().visitedCities || [] : [];
@@ -155,8 +162,8 @@ export default function Diary() {
                 await setDoc(userRef, { visitedCities }, { merge: true });
             }
 
-            alert("✅ 일기가 저장되고 방문 도시가 기록되었습니다!");
-            window.location.href = "/map";
+            alert("✅ 일기가 저장되었습니다! 지도에서 방문 도시를 확인하세요.");
+            window.location.assign("/map");
         } catch (err) {
             console.error("🔥 일기 완료 처리 오류:", err);
         }

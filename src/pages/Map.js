@@ -42,7 +42,7 @@ export default function Map() {
 
     // ✅ SVG path 클릭 이벤트
     useEffect(() => {
-        if (visitedCities.length === 0 && !newlyVisited) return;
+
 
         const timer = setTimeout(() => {
             document.querySelectorAll("svg path").forEach((el) => {
