@@ -3,8 +3,6 @@
         "w_dist": 0.5,
         "w_cluster": 0.4,
         "w_trust": 0.4,
-        "w_nonhope": 0.3,
-        "beta_penalty": 0.2,
-        "negative_vector": null
+        "w_nonhope": 0.3
     }
 }
