@@ -4,13 +4,13 @@
     padding: 30px 40px;
     background: #fff;
     border-radius: 20px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(117, 116, 116, 0.4);
     font-family: 'Noto Sans KR', sans-serif;
 }
 
 /* 제목 */
 .diary-container h2 {
-    font-size: 28px;
+    font-size: 35px;
     font-weight: 700;
     margin-bottom: 5px;
     display: flex;
@@ -24,8 +24,10 @@
     margin-bottom: 25px;
 }
 
-/* 📷 이미지 선택 버튼 */
+/* 이미지 선택 버튼 */
 .upload-btn {
+    top: 150px;           /* ✅ 하단에서 100px 위 */
+    transform: translateX(-50%);
     display: inline-block;
     background: #2E86FF;
     color: #fff;
@@ -33,15 +35,17 @@
     padding: 8px 18px;
     border-radius: 25px;
     cursor: pointer;
-    margin-bottom: 10px;
     transition: 0.2s;
+    margin-top: 8px;
+    margin-left: 60px;
 }
+
 .upload-btn:hover { background: #1c65cc; }
 
 /* 이미지 미리보기 */
 .diary-container img {
     border-radius: 12px;
-    margin: 10px 0;
+    margin-top: 10px;
     max-width: 220px;
     box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
 }
@@ -55,6 +59,7 @@
     font-size: 15px;
     margin-bottom: 12px;
     transition: 0.2s;
+    margin-top: 30px;
 }
 .diary-container input[type="text"]:focus {
     border-color: #2E86FF;
@@ -90,35 +95,35 @@
 }
 
 /* 저장 버튼 */
-.diary-container button {
+button {
     background: #2E86FF;
     color: #fff;
-    font-size: 16px;
     font-weight: 600;
-    padding: 10px 20px;
-    border: none;
+    padding: 8px 28px;
     border-radius: 25px;
     cursor: pointer;
-    margin-top: 15px;
-    margin-right: 10px;
-    transition: background 0.2s;
+    transition: 0.2s;
+    border: none;
+    font-size: 16px;
+    margin-top: 25px;
+    margin-bottom: 15px;
 }
 .diary-container button:hover { background: #1c65cc; }
 
 /* ✅ 일기 작성 완료 버튼 - 화면 가운데 하단 고정 */
 .complete-btn {
-    background: #28a745;
+    background: #2E86FF;
     position: fixed;
     bottom: 30px;           /* 화면 하단에서 30px 위 */
     left: 50%;              /* 화면 가로의 중앙 기준 */
     transform: translateX(-50%); /* 버튼을 정확히 가운데로 이동 */
-    padding: 60px 90px;
     border-radius: 30px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
     z-index: 1000;
+    width: 53%;
+    padding: 13px 40px;
 }
 .complete-btn:hover {
-    background: #1c7c31;
+    background: #1c65cc;
 }
 
 /* ✅ 장소 카드 제목 색상 */
@@ -162,3 +167,4 @@
     font-size: 14px;
     color: #333;
 }
+

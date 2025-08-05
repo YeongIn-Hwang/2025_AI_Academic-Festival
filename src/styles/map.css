@@ -14,8 +14,9 @@
 .svg-map {
     width: 100%;
     height: auto;
-    transform: scale(1.1);
+    transform: scale(0.9);
     cursor: pointer;
+    margin-top: 35px;
 }
 
 .region-popup {
@@ -58,19 +59,23 @@
 }
 
 /* ✅ 제목 */
-.map-left h2 {
-    font-size: 38px;
+.map-left h1 {
+    font-size: 48px;
     font-weight: 800;
-    color: #2E86FF;
-    margin: 0;
+    color: #1f2023;
+    padding-top: 100px;
+    padding-left: 50px;
+
 }
 
-/* ✅ 설명 문구 */
-.map-subtext {
-    font-size: 20px;
-    font-weight: 500;
-    color: #333;
-    line-height: 1.7;
+.map-left h3{
+    padding-left: 50px;
+    font-weight: 800;
+    font-size: 23px;
+}
+
+.map-left-p{
+    padding-left: 50px;
 }
 
 /* ✅ 검색 박스 */
@@ -81,10 +86,9 @@
     gap: 12px;
     width: 100%;
     max-width: 450px;
-    background: #f9f9f9;
-    padding: 20px 20px;
     border-radius: 12px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    margin-top: 10px;
+    margin-left: 50px;
 }
 
 .region-search-box input {
@@ -105,29 +109,29 @@
     font-weight: 700;
     font-size: 16px;
     padding: 12px 20px;
+    height: 51px;
+    margin-bottom: 25px;
     border: none;
     border-radius: 8px;
     cursor: pointer;
     transition: background 0.3s ease, transform 0.1s ease-in-out;
 }
+
 .region-search-box button:hover {
     background: #1f6de0;
     transform: scale(1.05);
 }
 
 /* ✅ 방문 지역 카운트 */
-.visited-count {
-    font-size: 20px;
-    font-weight: 700;
-    color: #2E86FF;
-    padding: 12px 120px;
+.visited-box {
+    display: block;
+    width: 450px;
+    text-align: center;
+    padding: 12px 60px;
     border: 2px solid #2E86FF;
     border-radius: 30px;
-    background: white;
-    display: block;
-    margin: auto;
-    box-shadow: 0 2px 6px rgba(46, 134, 255, 0.1);
-    margin-top: auto;
+    margin-left: 50px;
+    margin-top: 380px;
 }
 
 /* ✅ 오른쪽 지도 영역 */
@@ -137,3 +141,9 @@
     justify-content: center;
     align-items: center;
 }
+
+.visited-box p {
+    font-size: 20px;
+    font-weight: 600;
+}
+

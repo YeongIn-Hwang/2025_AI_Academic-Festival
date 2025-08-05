@@ -9,6 +9,10 @@
     overflow: hidden;
 }
 
+.section-magazine-content{
+    width:520px;
+}
+
 .section-magazine-label {
     font-size: 14px;
     font-weight: bold;
@@ -58,3 +62,9 @@
     background-color: #2a6edb;
 }
 
+.section-magazine-image {
+    width: 100%;
+    max-width: none;  /* ✅ 이미지 크기 제한 */
+    border-radius: 15px;  /* ✅ 살짝 둥근 모서리 */
+    margin-left: 200px;
+}

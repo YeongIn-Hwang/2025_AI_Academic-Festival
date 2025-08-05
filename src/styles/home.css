@@ -70,8 +70,8 @@
 
 .menu-button {
     position: absolute;
-    top: 40px;
-    right: 60px;
+    top: 20px;
+    right: 40px;
     background: none;
     border: none;
     color: white;
@@ -107,7 +107,7 @@
     font-size: 30px;
     align-self: flex-start;
     cursor: pointer;
-    margin: 20px 0 50px 10px;
+    margin: 20px 0 20px 0px;
 }
 
 .side-tab ul {
@@ -132,7 +132,7 @@
 }
 
 .user-info {
-    margin: 0 0 20px 20px;
+    margin: 0 0 40px 30px;
     font-size: 30px;
 }
 
@@ -142,7 +142,7 @@
 }
 
 .logout-button {
-    margin: 40px 20px 10px auto;
+    margin: 20px 20px 10px auto;
 }
 
 .logout-button button {

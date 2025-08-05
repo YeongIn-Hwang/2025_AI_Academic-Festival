@@ -171,28 +171,34 @@ export default function Diary() {
 
     return (
         <div className="diary-container">
-            <h2>📍 {region}</h2>
-            <p>📅 {startDate} ~ {endDate}</p>
+            <h2> {region}</h2>
+            <p>{startDate} ~ {endDate}</p>
+            {/* ✅ 이미지 선택 버튼 → 이미지 선택 시 사라짐 */}
+            {!photoPreview && (
+                <label className="upload-btn">
+                    이미지 선택
+                    <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setPhoto(file);
+                            setPhotoPreview(URL.createObjectURL(file));
+                        }}
+                        hidden
+                    />
+                </label>
+            )}
 
-            {/* ✅ 이미지 선택 */}
-            <label className="upload-btn">
-                📷 이미지 선택
-                <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        setPhoto(file);
-                        setPhotoPreview(URL.createObjectURL(file));
-                    }}
-                    hidden
-                />
-            </label>
-            {photoPreview && <img src={photoPreview} alt="미리보기" width="200" />}
+            {/* ✅ 이미지 미리보기 */}
+            {photoPreview && (
+                <img src={photoPreview} alt="미리보기" width="200" className="photo-preview" />
+            )}
+
 
             {/* ✅ 장소 검색 */}
-            <input
+            <input className={"textarea-place"}
                 ref={inputRef}
                 type="text"
                 value={searchTerm}
@@ -212,14 +218,14 @@ export default function Diary() {
 
             {selectedPlace && <p>✅ 선택된 장소: <strong>📍 {selectedPlace.name}</strong></p>}
 
-            <textarea
+            <textarea className={"textarea-record"}
                 placeholder="여행을 간단히 기록해보세요!"
                 value={review}
                 onChange={(e) => setReview(e.target.value)}
             />
 
-            <button onClick={handleAddPlace} disabled={loading}>
-                {loading ? "저장 중..." : "➕ 장소 저장"}
+            <button onClick={handleAddPlace} disabled={loading} className="button">
+                {loading ? "저장 중..." : "장소 저장"}
             </button>
 
             <button className="complete-btn" onClick={handleCompleteDiary}>
