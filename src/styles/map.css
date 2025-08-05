@@ -24,7 +24,7 @@
     background: white;
     border: 2px solid #2E86FF;
     border-radius: 12px;
-    padding: 10px 14px;
+    padding: 5px 14px;
     display: inline-flex;          /* ✅ 내용만큼만 크기 */
     flex-direction: column;
     align-items: center;
@@ -42,12 +42,31 @@
     transition: all 0.25s ease;
 }
 
-.popup-animated { opacity: 1; transform: translateY(0) scale(1); }
-.popup-closing  { opacity: 0; transform: translateY(5px) scale(0.95); }
+.popup-animated {
+    opacity: 1;
+    transform: translateY(0) scale(1); }
+.popup-closing  {
+    opacity: 0;
+    transform: translateY(5px) scale(0.95); }
 
-.region-popup h3 { font-size: 15px; font-weight: 700; margin: 2px 0; }
-.view-diary-btn { background: #2E86FF; color: #fff; border: none; border-radius: 14px; padding: 4px 10px; font-size: 15px; margin-top: 4px; cursor: pointer; }
-.view-diary-btn:hover { background: #1c65cc; }
+.region-popup h3 {
+    font-size: 15px;
+    font-weight: 700;
+    padding-top: 7px;
+padding-bottom: 3px;}
+
+.view-diary-btn {
+    background: #2E86FF;
+    color: #fff;
+    border: none;
+    border-radius: 14px;
+    padding: 4px 10px;
+    font-size: 15px;
+    margin-top: 4px;
+    cursor: pointer; }
+
+.view-diary-btn:hover {
+    background: #1c65cc; }
 
 /* ✅ 왼쪽 설명 영역 */
 .map-left {

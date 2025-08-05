@@ -1,0 +1,52 @@
+.profile-header {
+    width: 100%;
+    height: 80vh;           /* 화면 절반 높이 */
+    position: relative;     /* 동영상 및 텍스트 배치를 위해 relative */
+    overflow: hidden;       /* 동영상 넘침 방지 */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+}
+
+.background-video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;      /* 동영상을 배경처럼 꽉 채움 */
+    z-index: 0;
+}
+
+.profile-logo,
+.welcome-text {
+    z-index: 1;
+    position: relative;
+    color: white;
+    text-shadow: none;
+    text-align: left;
+    align-self: flex-start;
+    margin-left: 60px;
+}
+
+.profile-logo {
+    font-size: 55px;        /* ✅ Boyage 로고 크기 조금 키움 */
+    font-weight: bold;
+}
+
+.welcome-text {
+    font-size: 25px;        /* ✅ 환영 문구 크기 업 */
+    font-weight: 600;
+    margin-top: 15px;
+}
+
+.menu-item{
+    padding-top: 30px;
+    font-size: 25px;
+    font-weight: bold;
+    margin-left: 50px;
+    margin-top: 15px;
+    color: #525252;
+}
