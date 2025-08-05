@@ -27,7 +27,7 @@
                 "lat": 37.49805560000001,
                 "lng": 126.9219444
               },
-              "rating": null
+              "rating": 3.0
             },
             {
               "title": "파스쿠찌 보라매공원점",
@@ -38,7 +38,7 @@
                 "lat": 37.4972922,
                 "lng": 126.9165608
               },
-              "rating": null
+              "rating": 4.0
             },
             {
               "title": "막내회센타",
@@ -49,7 +49,7 @@
                 "lat": 37.511906,
                 "lng": 126.9144109
               },
-              "rating": null
+              "rating": 3.0
             },
             {
               "title": "국립중앙박물관",
@@ -60,7 +60,7 @@
                 "lat": 37.5238506,
                 "lng": 126.9804702
               },
-              "rating": null
+              "rating": 4.0
             },
             {
               "title": "N서울타워",
@@ -71,7 +71,7 @@
                 "lat": 37.5511694,
                 "lng": 126.9882266
               },
-              "rating": null
+              "rating": 5.0
             },
             {
               "title": "광화문광장",
@@ -82,7 +82,7 @@
                 "lat": 37.572389,
                 "lng": 126.9769117
               },
-              "rating": null
+              "rating": 4.0
             },
             {
               "title": "라마다 서울 신도림 호텔",
@@ -121,7 +121,7 @@
                 "lat": 37.48193200000001,
                 "lng": 126.881509
               },
-              "rating": null
+              "rating": 4.0
             },
             {
               "title": "부천원미공원",
@@ -132,7 +132,7 @@
                 "lat": 37.498023,
                 "lng": 126.798905
               },
-              "rating": null
+              "rating": 3.0
             },
             {
               "title": "도당근린공원 백만송이장미원",
@@ -143,7 +143,7 @@
                 "lat": 37.5163496,
                 "lng": 126.7923319
               },
-              "rating": null
+              "rating": 3.0
             },
             {
               "title": "삿뽀로 목동점",
@@ -154,7 +154,7 @@
                 "lat": 37.5227242,
                 "lng": 126.8704562
               },
-              "rating": null
+              "rating": 4.0
             },
             {
               "title": "계남제1근린공원",
@@ -165,7 +165,7 @@
                 "lat": 37.5145097,
                 "lng": 126.8476403
               },
-              "rating": null
+              "rating": 2.0
             },
             {
               "title": "뚜레쥬르 양천캐슬점(신월4동)",
@@ -176,7 +176,7 @@
                 "lat": 37.5238154,
                 "lng": 126.8400398
               },
-              "rating": null
+              "rating": 4.0
             },
             {
               "title": "체육공원",
@@ -187,7 +187,7 @@
                 "lat": 37.5135652,
                 "lng": 126.7622699
               },
-              "rating": null
+              "rating": 3.0
             },
             {
               "title": "라마다 서울 신도림 호텔",
@@ -226,7 +226,7 @@
                 "lat": 37.5099498,
                 "lng": 126.9246002
               },
-              "rating": null
+              "rating": 4.0
             },
             {
               "title": "전쟁기념관",
@@ -237,7 +237,7 @@
                 "lat": 37.5366059,
                 "lng": 126.9771397
               },
-              "rating": null
+              "rating": 4.0
             },
             {
               "title": "명동대성당",
@@ -248,7 +248,7 @@
                 "lat": 37.5633851,
                 "lng": 126.987436
               },
-              "rating": null
+              "rating": 4.0
             },
             {
               "title": "한일관 타임스퀘어점",
@@ -259,7 +259,7 @@
                 "lat": 37.517007,
                 "lng": 126.9041419
               },
-              "rating": null
+              "rating": 3.0
             },
             {
               "title": "커피빈 홍대역점",
@@ -270,7 +270,7 @@
                 "lat": 37.5554709,
                 "lng": 126.9232603
               },
-              "rating": null
+              "rating": 4.0
             },
             {
               "title": "덕수궁",
@@ -281,7 +281,7 @@
                 "lat": 37.5658862,
                 "lng": 126.9749017
               },
-              "rating": null
+              "rating": 4.0
             },
             {
               "title": "신도림역",
@@ -298,6 +298,305 @@
         }
       },
       "rating": 3
+    },
+    {
+      "title": "신도림여행",
+      "table": {
+        "2025-08-01": {
+          "start_location": "신도림역",
+          "end_location": "라마다 서울 신도림 호텔",
+          "schedule": [
+            {
+              "title": "신도림역",
+              "start": "09:00",
+              "end": "10:00",
+              "type": "start",
+              "location_info": {
+                "lat": 37.5088099,
+                "lng": 126.8912061
+              },
+              "rating": null
+            },
+            {
+              "title": "파리바게뜨 목동파라곤",
+              "start": "10:00",
+              "end": "12:00",
+              "type": "bakery",
+              "location_info": {
+                "lat": 37.5294264,
+                "lng": 126.8751473
+              },
+              "rating": 4.0
+            },
+            {
+              "title": "서울월드컵경기장",
+              "start": "12:00",
+              "end": "14:00",
+              "type": "tourist_attraction",
+              "location_info": {
+                "lat": 37.5682859,
+                "lng": 126.8972585
+              },
+              "rating": 4.0
+            },
+            {
+              "title": "투썸플레이스 우리금융상암센터점",
+              "start": "14:00",
+              "end": "16:00",
+              "type": "cafe",
+              "location_info": {
+                "lat": 37.5831321,
+                "lng": 126.8857779
+              },
+              "rating": 4.0
+            },
+            {
+              "title": "처갓집양념통닭",
+              "start": "16:00",
+              "end": "18:00",
+              "type": "restaurant",
+              "location_info": {
+                "lat": 37.507946,
+                "lng": 126.8800086
+              },
+              "rating": 4.0
+            },
+            {
+              "title": "참새어린이공원",
+              "start": "18:00",
+              "end": "20:00",
+              "type": "tourist_attraction",
+              "location_info": {
+                "lat": 37.49805560000001,
+                "lng": 126.9219444
+              },
+              "rating": 3.0
+            },
+            {
+              "title": "노량진할머니파전",
+              "start": "20:00",
+              "end": "22:00",
+              "type": "bar",
+              "location_info": {
+                "lat": 37.511437,
+                "lng": 126.9444472
+              },
+              "rating": 4.0
+            },
+            {
+              "title": "라마다 서울 신도림 호텔",
+              "start": "22:00",
+              "end": "23:00",
+              "type": "accommodation",
+              "location_info": {
+                "lat": 37.5064312,
+                "lng": 126.885321
+              },
+              "rating": null
+            }
+          ]
+        },
+        "2025-08-02": {
+          "start_location": "라마다 서울 신도림 호텔",
+          "end_location": "라마다 서울 신도림 호텔",
+          "schedule": [
+            {
+              "title": "라마다 서울 신도림 호텔",
+              "start": "08:00",
+              "end": "09:00",
+              "type": "accommodation",
+              "location_info": {
+                "lat": 37.5064312,
+                "lng": 126.885321
+              },
+              "rating": null
+            },
+            {
+              "title": "뚜레쥬르 대방역점",
+              "start": "09:00",
+              "end": "11:00",
+              "type": "bakery",
+              "location_info": {
+                "lat": 37.5099498,
+                "lng": 126.9246002
+              },
+              "rating": 4.0
+            },
+            {
+              "title": "전쟁기념관",
+              "start": "11:00",
+              "end": "13:00",
+              "type": "tourist_attraction",
+              "location_info": {
+                "lat": 37.5366059,
+                "lng": 126.9771397
+              },
+              "rating": 5.0
+            },
+            {
+              "title": "파리바게트",
+              "start": "13:00",
+              "end": "15:00",
+              "type": "bakery",
+              "location_info": {
+                "lat": 37.5262476,
+                "lng": 127.0007187
+              },
+              "rating": 4.0
+            },
+            {
+              "title": "부어치킨",
+              "start": "15:00",
+              "end": "17:00",
+              "type": "restaurant",
+              "location_info": {
+                "lat": 37.5073121,
+                "lng": 126.9129723
+              },
+              "rating": 4.0
+            },
+            {
+              "title": "국립중앙박물관",
+              "start": "17:00",
+              "end": "19:00",
+              "type": "tourist_attraction",
+              "location_info": {
+                "lat": 37.5238506,
+                "lng": 126.9804702
+              },
+              "rating": 4.0
+            },
+            {
+              "title": "맘마키키",
+              "start": "19:00",
+              "end": "21:00",
+              "type": "bar",
+              "location_info": {
+                "lat": 37.4995278,
+                "lng": 126.9988566
+              },
+              "rating": 3.0
+            },
+            {
+              "title": "스마일포차",
+              "start": "21:00",
+              "end": "23:00",
+              "type": "bar",
+              "location_info": {
+                "lat": 37.4959261,
+                "lng": 126.9855324
+              },
+              "rating": 4.0
+            },
+            {
+              "title": "라마다 서울 신도림 호텔",
+              "start": "23:00",
+              "end": "00:00",
+              "type": "accommodation",
+              "location_info": {
+                "lat": 37.5064312,
+                "lng": 126.885321
+              },
+              "rating": null
+            }
+          ]
+        },
+        "2025-08-03": {
+          "start_location": "라마다 서울 신도림 호텔",
+          "end_location": "신도림역",
+          "schedule": [
+            {
+              "title": "라마다 서울 신도림 호텔",
+              "start": "08:00",
+              "end": "09:00",
+              "type": "accommodation",
+              "location_info": {
+                "lat": 37.5064312,
+                "lng": 126.885321
+              },
+              "rating": null
+            },
+            {
+              "title": "파리바게뜨 염창점",
+              "start": "09:00",
+              "end": "11:00",
+              "type": "bakery",
+              "location_info": {
+                "lat": 37.5503592,
+                "lng": 126.8731659
+              },
+              "rating": 4.0
+            },
+            {
+              "title": "스타노래연습장",
+              "start": "11:00",
+              "end": "13:00",
+              "type": "bar",
+              "location_info": {
+                "lat": 37.5203154,
+                "lng": 126.930352
+              },
+              "rating": 4.0
+            },
+            {
+              "title": "N서울타워",
+              "start": "13:00",
+              "end": "15:00",
+              "type": "tourist_attraction",
+              "location_info": {
+                "lat": 37.5511694,
+                "lng": 126.9882266
+              },
+              "rating": 5.0
+            },
+            {
+              "title": "원할머니보쌈(신길점)",
+              "start": "15:00",
+              "end": "17:00",
+              "type": "restaurant",
+              "location_info": {
+                "lat": 37.5064021,
+                "lng": 126.9112555
+              },
+              "rating": 4.0
+            },
+            {
+              "title": "투썸플레이스 서여의도점",
+              "start": "17:00",
+              "end": "19:00",
+              "type": "cafe",
+              "location_info": {
+                "lat": 37.5296225,
+                "lng": 126.9203828
+              },
+              "rating": 4.0
+            },
+            {
+              "title": "덕수궁",
+              "start": "19:00",
+              "end": "21:00",
+              "type": "tourist_attraction",
+              "location_info": {
+                "lat": 37.5658862,
+                "lng": 126.9749017
+              },
+              "rating": 5.0
+            },
+            {
+              "title": "신도림역",
+              "start": "21:00",
+              "end": "22:00",
+              "type": "end",
+              "location_info": {
+                "lat": 37.5088099,
+                "lng": 126.8912061
+              },
+              "rating": null
+            }
+          ]
+        }
+      },
+      "rating": 4
     }
   ]
 }
