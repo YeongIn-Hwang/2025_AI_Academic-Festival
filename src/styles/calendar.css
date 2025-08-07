@@ -2,7 +2,7 @@
 .p-4.rounded-xl.shadow-md.bg-white.w-\[650px\].mx-auto.flex.flex-col {
     background: #ffffff;
     border-radius: 16px;
-    padding: 20px;
+    padding: 10px;
     transition: transform 0.2s ease-in-out;
 }
 
@@ -22,7 +22,7 @@
     font-size: 35px;
     font-weight: 700;
     color: #333;
-    margin-top: 10px;
+    margin-top: 0px;
 }
 
 .calendar-title2 {
@@ -33,9 +33,9 @@
     margin-bottom: 30px;
 }
 
-
 .nav-btn {
-    border: none;
+   border: none;
+    color: black;
     background-color: transparent;
     padding: 1px 18px;
     border-radius: 6px;
@@ -65,18 +65,19 @@
     margin-right: 20px;
 }
 
-/* ✅ 날짜 셀 (기본) */
 .calendar-cell {
-    padding: 7px 0;
+    padding: 3px 0;
     border-radius: 10px;
     text-align: center;
-    font-size: 14px;
+    font-size: 15px;
+    font-weight: 600;
     background: #ffffff;
-    border: none;
+    color: #222;
     transition: all 0.2s ease-in-out;
-    margin-top: 70px;
-
+    margin-top: 60px;
+    opacity: 1;                   /* ✅ 완전 불투명 */
 }
+
 
 .calendar-cell.hoverable:hover {
     background: #f0f7ff;
@@ -86,7 +87,7 @@
 
 /* ✅ 다른 달 날짜 */
 .calendar-cell.other-month {
-    opacity: 0.3;
+    opacity: 0.5;
 }
 
 /* ✅ 선택된 출발일 */

@@ -28,12 +28,15 @@ export default function Profile() {
     return (
         <div className="profile-container">
             <header className="profile-header">
-                <video className="background-video" autoPlay loop muted playsInline>
-                    <source src="/videos/profile-background.mp4" type="video/mp4" />
-                </video>
+                <img
+                    className="background-image"
+                    src="/images/profile-background.png"
+                    alt="Profile Background"
+                />
                 <h2 className="profile-logo">Boyage</h2>
                 <h1 className="welcome-text">{displayName} 님, 환영합니다!</h1>
             </header>
+
 
             <main className="profile-content">
                 <div className="profile-menu">
