@@ -66,7 +66,7 @@ export default function Calendar() {
         const monthAllDates = getCalendarDates(monthToRender);
         return (
             <div className="flex-1 p-2">
-                <div className="calendar-title">{format(monthToRender, "M월")}</div>
+                <div className="calendar-title2">{format(monthToRender, "M월")}</div>
                 <div className="calendar-grid-header">
                     {weekDays.map((day, idx) => (
                         <div key={idx}>{day}</div>
@@ -113,30 +113,29 @@ export default function Calendar() {
 
     return (
         <div style={{ padding: "20px", textAlign: "center" }}>
-            <h2>{region} 여행 날짜 선택</h2>
 
             {/* ✅ 네비게이션 UI */}
             <div className="calendar-nav">
                 <button className="nav-btn" onClick={() => setCurrentMonth(prev => addMonths(prev, -1))}>◀</button>
-                <span className="calendar-title">{format(currentMonth, "yyyy년 M월")}</span>
+                <span className="calendar-title1">{format(currentMonth, "yyyy년 M월")}</span>
                 <button className="nav-btn" onClick={() => setCurrentMonth(prev => addMonths(prev, 1))}>▶</button>
             </div>
 
-            {/* ✅ 달력 UI (현재월 + 다음월) */}
+            {/* ✅ 달력 UI (현재월)*/}
             <div className="p-4 rounded-xl shadow-md bg-white w-[650px] mx-auto flex flex-col">
                 <div className="flex justify-between gap-4">
                     {renderMonthGrid(currentMonth)}
-                    {renderMonthGrid(addMonths(currentMonth, 1))}
                 </div>
-                <div className="mt-4 text-base text-left px-4">
-                    {startDate && !endDate && <p>출발일: {format(startDate, "yyyy-MM-dd")}</p>}
-                    {startDate && endDate && <p>선택 기간: {format(startDate, "yyyy-MM-dd")} ~ {format(endDate, "yyyy-MM-dd")}</p>}
-                </div>
+            </div>
+
+            <div className="calendar-date-info">
+                {startDate && !endDate && <p>출발일: {format(startDate, "yyyy-MM-dd")}</p>}
+                {startDate && endDate && <p>선택 기간: {format(startDate, "yyyy-MM-dd")} ~ {format(endDate, "yyyy-MM-dd")}</p>}
             </div>
 
             {/* ✅ 예쁜 Pill 버튼 */}
             <button className="calendar-next-btn" onClick={handleNext}>
-                다음으로 다이어리 작성
+                다이어리 작성하기
             </button>
         </div>
     );

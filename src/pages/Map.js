@@ -93,22 +93,26 @@ export default function Map() {
     return (
         <div className="map-container">
             <div className="map-left">
-                <h2>🌍 나만의 여행 발자취</h2>
-                <p className="map-subtext">"떠난 만큼, 기억은 선명해진다."<br />방문한 도시를 기록하고 새로운 추억을 남겨보세요.</p>
+                <h1>나만의 여행 발자취</h1>
+                <h3>"떠난 만큼, 기억은 선명해진다."</h3>
+                <p className={"map-left-p"}>방문한 도시를 기록하고 새로운 추억을 남겨보세요.</p>
+
+                <div className={"visited-box"}>
+                    <p>방문한 지역: {visitedCities.length}곳</p>
+                </div>
 
                 <div className="region-search-box">
                     <input type="text" placeholder="지역명을 입력하세요 (예: 포항)"
                            value={searchRegion} onChange={(e) => setSearchRegion(e.target.value)} />
                     <button onClick={handleSearch}>추억 작성</button>
                 </div>
-                <p className="visited-count">방문한 지역: {visitedCities.length}곳</p>
+
             </div>
 
             <div className="map-right">
                 <KoreaMap className="svg-map" />
             </div>
 
-            {/* ✅ 팝업은 이제 body에 렌더링 → 길쭉 현상 100% 해결 */}
             {selectedCity &&
                 createPortal(
                     <div ref={popupRef}

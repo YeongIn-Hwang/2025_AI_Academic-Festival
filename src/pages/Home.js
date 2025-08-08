@@ -74,9 +74,9 @@ function Home() {
             {/* 사이드 메뉴 */}
             <div className={`side-tab ${isMenuOpen ? "open" : ""}`}>
                 <button className="close-button" onClick={toggleMenu}><IoCloseOutline /></button>
-                {isMenuOpen && user && (
+                {isMenuOpen && (
                     <div className="user-info">
-                        <span>{user.displayName || user.email}님</span>
+                        {user && <span>{user.displayName || user.email}님</span>}
                         <p className="description-sidebar">Boyage에 오신 것을 환영합니다!</p>
                     </div>
                 )}

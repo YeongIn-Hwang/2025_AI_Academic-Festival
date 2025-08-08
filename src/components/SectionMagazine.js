@@ -31,6 +31,13 @@ function SectionMagazine() {
                     여행 뉴스 보러가기
                 </button>
             </div>
+            <div className="section-magazine-image-wrapper">
+                <img
+                    src="/images/news-image.png"
+                    alt="여행 뉴스 이미지"
+                    className="section-magazine-image"
+                />
+            </div>
         </section>
     );
 }

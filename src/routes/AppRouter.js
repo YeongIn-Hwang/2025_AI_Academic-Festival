@@ -6,10 +6,11 @@ import SignUp from "../pages/SignUp";
 import SplashIntro from "../pages/SplashIntro";
 import News from "../pages/News";
 import Map from "../pages/Map";
-import Calendar from "../pages/Calendar";    // ✅ 유지
-import Journey from "../pages/Journey";      // ✅ 협업자 코드 반영
+import Calendar from "../pages/Calendar";
+import Journey from "../pages/Journey";
 import Diary from "../pages/Diary";
-import DiaryView from "../pages/DiaryView";  // ✅ 유지
+import DiaryView from "../pages/DiaryView";
+import Profile from "../pages/Profile";
 
 function AppRouter() {
     return (
@@ -21,10 +22,11 @@ function AppRouter() {
                 <Route path="/signup" element={<SignUp />} />
                 <Route path="/news" element={<News />} />
                 <Route path="/map" element={<Map />} />
-                <Route path="/calendar/:region" element={<Calendar />} />    {/* ✅ Calendar 추가 */}
-                <Route path="/journey" element={<Journey />} />             {/* ✅ Journey도 추가 */}
+                <Route path="/calendar/:region" element={<Calendar />} />
+                <Route path="/journey" element={<Journey />} />
                 <Route path="/diary/:region" element={<Diary />} />
                 <Route path="/diaryview/:region" element={<DiaryView />} />
+                <Route path="/profile" element={<Profile />} />
             </Routes>
         </BrowserRouter>
     );
