@@ -12,7 +12,7 @@ export default function Diary() {
     const startDate = query.get("start");
     const endDate = query.get("end");
 
-    const [user, setUser] = useState(null);   // ✅ 로그인된 사용자 상태
+    const [user, setUser] = useState(null);
     const [photo, setPhoto] = useState(null);
     const [photoPreview, setPhotoPreview] = useState(null);
     const [review, setReview] = useState("");
@@ -23,8 +23,9 @@ export default function Diary() {
     const [loading, setLoading] = useState(false);
 
     const inputRef = useRef(null);
+    const GOOGLE_API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
 
-    // ✅ 로그인 상태 감지 (Firebase 권장 방식)
+    // ✅ 로그인 상태 감지
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
             if (!currentUser) {
@@ -37,7 +38,7 @@ export default function Diary() {
         return () => unsubscribe();
     }, []);
 
-    // ✅ 기존 장소 불러오기
+    // ✅ 기존 저장된 장소 불러오기
     useEffect(() => {
         const loadPlaces = async () => {
             if (!user) return;
@@ -56,32 +57,51 @@ export default function Diary() {
 
     // ✅ Google Places API 자동완성
     const fetchPlaces = async (query) => {
-        if (!query.trim()) return [];
+        if (!query.trim() || !GOOGLE_API_KEY) {
+            console.error("❌ Google API Key가 없거나 검색어가 비어 있습니다.");
+            return [];
+        }
         try {
             const res = await fetch("https://places.googleapis.com/v1/places:autocomplete", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "X-Goog-Api-Key": process.env.REACT_APP_GOOGLE_API_KEY,
+                    "X-Goog-Api-Key": GOOGLE_API_KEY,
                     "X-Goog-FieldMask": "suggestions.placePrediction.placeId,suggestions.placePrediction.text.text"
                 },
                 body: JSON.stringify({ input: query, languageCode: "ko" })
             });
-            if (!res.ok) return [];
+
+            if (!res.ok) {
+                console.error(`🔥 Places API 요청 실패: ${res.status} ${res.statusText}`);
+                return [];
+            }
+
             const data = await res.json();
             return data.suggestions || [];
         } catch (err) {
-            console.error("🔥 자동완성 오류:", err);
+            console.error("🔥 자동완성 요청 오류:", err);
             return [];
         }
     };
 
+    // ✅ 장소 상세 정보 가져오기
     const fetchPlaceDetails = async (placeId, fallbackName) => {
+        if (!GOOGLE_API_KEY) {
+            console.error("❌ Google API Key가 설정되지 않아 상세 정보를 불러올 수 없습니다.");
+            return null;
+        }
         try {
             const res = await fetch(
                 `https://places.googleapis.com/v1/places/${placeId}?fields=displayName,googleMapsUri`,
-                { headers: { "X-Goog-Api-Key": process.env.REACT_APP_GOOGLE_API_KEY } }
+                { headers: { "X-Goog-Api-Key": GOOGLE_API_KEY } }
             );
+
+            if (!res.ok) {
+                console.error(`🔥 장소 상세 API 실패: ${res.status}`);
+                return null;
+            }
+
             const details = await res.json();
             return {
                 name: details.displayName?.text || fallbackName,
@@ -94,6 +114,7 @@ export default function Diary() {
         }
     };
 
+    // ✅ 입력 시 자동완성 호출
     const handleSearchChange = async (e) => {
         const value = e.target.value;
         setSearchTerm(value);
@@ -101,6 +122,7 @@ export default function Diary() {
         setSuggestions(await fetchPlaces(value));
     };
 
+    // ✅ 장소 선택 시 상세 정보 호출
     const handleSelectPlace = async (prediction) => {
         const details = await fetchPlaceDetails(prediction.placeId, prediction.text.text);
         if (details) {
@@ -113,7 +135,7 @@ export default function Diary() {
     // ✅ 장소 저장
     const handleAddPlace = async () => {
         if (!photo || !selectedPlace) return alert("사진과 장소를 모두 선택하세요.");
-        if (!user) return;  // 로그인 확인
+        if (!user) return;
 
         setLoading(true);
         try {
@@ -149,9 +171,9 @@ export default function Diary() {
         }
     };
 
-    // ✅ 일기 작성 완료 → visitedCities 업데이트 후 /map 이동
+    // ✅ 일기 작성 완료 → 방문 도시 Firestore에 추가 후 /map 이동
     const handleCompleteDiary = async () => {
-        if (!user) return; // onAuthStateChanged에서 이미 처리됨
+        if (!user) return;
         try {
             const userRef = doc(db, "users", user.uid);
             const snap = await getDoc(userRef);
@@ -174,7 +196,7 @@ export default function Diary() {
             <h2>📍 {region}</h2>
             <p>📅 {startDate} ~ {endDate}</p>
 
-            {/* ✅ 이미지 선택 */}
+            {/* ✅ 이미지 업로드 */}
             <label className="upload-btn">
                 📷 이미지 선택
                 <input
@@ -200,6 +222,7 @@ export default function Diary() {
                 placeholder="다녀온 여행지를 입력해보세요"
             />
 
+            {/* ✅ 자동완성 리스트 */}
             {suggestions.length > 0 && (
                 <ul className="suggestions">
                     {suggestions.map((s, i) => (
