@@ -1,0 +1,70 @@
+.section-magazine-container {
+    min-height: 80vh;
+    background-color: white;
+    display: flex;
+    justify-content: left;
+    padding-left: 130px;
+    padding-bottom: 100px;
+    align-items: center;
+    overflow: hidden;
+}
+
+.section-magazine-content{
+    width:520px;
+}
+
+.section-magazine-label {
+    font-size: 14px;
+    font-weight: bold;
+    color: #2f80ed;
+    margin-bottom: 24px;
+    display: inline-block;
+}
+
+.section-magazine-title {
+    font-size: 28px;
+    font-weight: 800;
+    color: #111111;
+    margin-bottom: 30px;
+    line-height: 1.4;
+}
+
+.section-magazine-sub {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111111;
+    margin-bottom: 24px;
+    line-height: 1.6;
+}
+
+.section-magazine-description {
+    font-size: 15px;
+    font-weight: 400;
+    color: #7F7C7C;
+    line-height: 1.6;
+}
+
+.magazine-section-button{
+    background-color: #3884ff;
+    color: white;
+    font-size: 17px;
+    font-weight: 600;
+    padding: 18px 30px;
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    width: 100%;
+    margin-top: 100px;
+}
+
+.magazine-section-button:hover {
+    background-color: #2a6edb;
+}
+
+.section-magazine-image {
+    width: 100%;
+    max-width: none;  /* ✅ 이미지 크기 제한 */
+    border-radius: 15px;  /* ✅ 살짝 둥근 모서리 */
+    margin-left: 200px;
+}

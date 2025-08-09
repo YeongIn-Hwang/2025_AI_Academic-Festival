@@ -1,0 +1,100 @@
+.ai-section-wrapper {
+    min-height: 80vh;
+    display: flex;
+    justify-content: left;
+    align-items: center;
+    background: white;
+    border-top-left-radius: 35px;
+    border-top-right-radius: 35px;
+    padding-left: 130px;
+
+}
+
+.ai-section-container {
+    flex:1;
+    justify-content: space-between;
+    align-items: center;
+    width: 150%;
+    max-width: 600px;
+}
+
+.ai-text {
+    flex: 1;                     /* 왼쪽 영역 차지 */
+    display: flex;
+    flex-direction: column;      /* 세로 배치 */
+    justify-content: center;     /* 수직 가운데 */
+    padding: 40px 20px;          /* 여백 */
+    z-index: 2;                  /* 지도 이미지보다 위에 표시 */
+    max-width: 1000px;            /* 가독성 위해 너비 제한 */
+}
+
+/* 지도 이미지 스타일 */
+.ai-icon {
+    width: 100%;                   /*  더 크게 확대 */
+    height: auto;
+    transform: scale(1) translate(10%, 0%);
+    /*  scale(1.4) → 40% 확대
+       translate(20%, 5%) → 오른쪽 20%, 아래쪽 5% 이동 */
+    object-fit: cover;             /* 비율 유지 */
+    opacity: 0.5;                  /* 살짝 투명 */
+    -webkit-mask-image: -webkit-linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 30%);
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-size: 100% 100%;
+
+    /* ✅ 표준 속성 (지원되는 브라우저만) */
+    mask-image: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 70%);
+    mask-repeat: no-repeat;
+    mask-size: 100% 100%;
+}
+
+/* 파란 소제목 */
+.ai-section-label {
+    color: #3884ff;
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+/* 메인 제목 */
+.ai-section-heading {
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.5;
+    margin-bottom: 24px;
+    color: #000;
+}
+
+/* 중간 강조 텍스트 */
+.ai-section-subheading {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: #000;
+}
+
+/* 회색 설명 문장 */
+.ai-section-description {
+    font-size: 15px;
+    color: #7F7C7C;
+    line-height: 1.6;
+    margin-bottom: 60px;
+}
+
+/* 파란 버튼 */
+.ai-section-button {
+    background-color: #3884ff;
+    color: white;
+    font-size: 17px;
+    font-weight: 600;
+    padding: 18px 30px;
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    width: 70%;
+    margin-top: 50px;
+}
+
+.ai-section-button:hover {
+    background-color: #2a6edb;
+}

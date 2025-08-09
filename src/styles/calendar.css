@@ -1,0 +1,167 @@
+/* ✅ 캘린더 전체 컨테이너 */
+.p-4.rounded-xl.shadow-md.bg-white.w-\[650px\].mx-auto.flex.flex-col {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 10px;
+    transition: transform 0.2s ease-in-out;
+}
+
+.p-4.rounded-xl.shadow-md.bg-white.w-\[650px\].mx-auto.flex.flex-col:hover {
+    transform: translateY(-2px);
+}
+
+/* ✅ 네비게이션 (연/월 + 버튼) */
+.calendar-nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+.calendar-title1 {
+    font-size: 35px;
+    font-weight: 700;
+    color: #333;
+    margin-top: 0px;
+}
+
+.calendar-title2 {
+    font-size: 35px;
+    font-weight: 700;
+    color: #333;
+    margin-top: 5px;
+    margin-bottom: 30px;
+}
+
+.nav-btn {
+   border: none;
+    color: black;
+    background-color: transparent;
+    padding: 1px 18px;
+    border-radius: 6px;
+    font-size: 18px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: background 0.2s ease;
+}
+
+/* ✅ 요일 헤더 */
+.calendar-grid-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 8px;
+    color: #666;
+    font-size: 14px;
+}
+
+/* ✅ 날짜 그리드 */
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    margin-left: 20px;
+    margin-right: 20px;
+}
+
+.calendar-cell {
+    padding: 3px 0;
+    border-radius: 10px;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 600;
+    background: #ffffff;
+    color: #222;
+    transition: all 0.2s ease-in-out;
+    margin-top: 60px;
+    opacity: 1;                   /* ✅ 완전 불투명 */
+}
+
+
+.calendar-cell.hoverable:hover {
+    background: #f0f7ff;
+    border: 1px solid #cce1ff;
+    cursor: pointer;
+}
+
+/* ✅ 다른 달 날짜 */
+.calendar-cell.other-month {
+    opacity: 0.5;
+}
+
+/* ✅ 선택된 출발일 */
+.calendar-cell.start-date {
+    background: #2E86FF;
+    color: white;
+    font-weight: bold;
+    border: none;
+}
+
+/* ✅ 선택된 종료일 */
+.calendar-cell.end-date {
+    background: #2E86FF;
+    color: white;
+    font-weight: bold;
+    border: none;
+}
+
+/* ✅ 선택된 기간 */
+.calendar-cell.in-range {
+    background: #d8e8ff;
+    border: 1px solid #bcd4ff;
+}
+
+/* ✅ 비활성화된 날짜 */
+.calendar-cell.disabled {
+    background: #ffffff;
+    color: #cccccc;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.calendar-next-btn {
+    position: fixed;        /* ✅ 화면에 고정 */
+    bottom: 20px;           /* ✅ 화면 하단에서 20px 위 */
+    left: 50%;              /* ✅ 수평 중앙 기준 */
+    transform: translateX(-50%); /* ✅ 버튼을 정확히 중앙에 배치 */
+    width: 80%;
+    max-width: 500px;
+    background: #2E86FF;
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+    padding: 14px 20px;
+    margin-bottom: 10px;
+    border: none;
+    border-radius: 999px;
+    text-align: center;
+    cursor: pointer;
+    transition: background 0.3s ease-in-out, transform 0.1s ease-in-out;
+    z-index: 1000;          /* ✅ 다른 요소에 가려지지 않도록 */
+}
+
+
+.calendar-next-btn:hover {
+    background: #1f6de0;
+}
+
+.calendar-date-info {
+    position: fixed;        /* ✅ 화면에 고정 */
+    bottom: 80px;           /* ✅ 화면 하단에서 20px 위 */
+    left: 50%;              /* ✅ 수평 중앙 기준 */
+    transform: translateX(-50%); /* ✅ 버튼을 정확히 중앙에 배치 */
+    width: 80%;
+    max-width: 500px;
+    font-size: 18px;
+    font-weight: bold;
+    padding: 14px 20px;
+    margin-bottom: 10px;
+    border: none;
+    border-radius: 999px;
+    text-align: center;
+}
+
+
+
+
