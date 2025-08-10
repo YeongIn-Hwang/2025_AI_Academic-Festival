@@ -11,6 +11,7 @@ import Journey from "../pages/Journey";
 import Diary from "../pages/Diary";
 import DiaryView from "../pages/DiaryView";
 import Profile from "../pages/Profile";
+import SetPreferences from "../pages/SetPreferences"; ////////////////////////////////////////////////////추가
 
 function AppRouter() {
     return (
@@ -27,6 +28,11 @@ function AppRouter() {
                 <Route path="/diary/:region" element={<Diary />} />
                 <Route path="/diaryview/:region" element={<DiaryView />} />
                 <Route path="/profile" element={<Profile />} />
+
+
+                <Route path="/set-preferences" element={<SetPreferences />} />
+
+
             </Routes>
         </BrowserRouter>
     );
