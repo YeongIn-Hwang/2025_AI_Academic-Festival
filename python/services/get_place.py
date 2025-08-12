@@ -76,7 +76,8 @@ def search_places_basic(lat, lng, radius, place_type, api_key):
                 "trust_score": compute_trust_score(rating, user_ratings_total),
                 "type": place_type,
                 "lat": location.get("lat"),
-                "lng": location.get("lng")
+                "lng": location.get("lng"),
+                "weekday_text": place.get("weekday_text", []),  
             })
         token = res.get("next_page_token")
         if not token:

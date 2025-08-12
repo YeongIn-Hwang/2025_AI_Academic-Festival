@@ -7,17 +7,28 @@ import numpy as np
 
 def convert_place_for_json(place: dict) -> dict:
     p = place.copy()
-    # 무거운 필드/불필요 필드 제거(용량/비용 절감)
+    # 무거운 필드만 제거
     p.pop("review_vector", None)
     p.pop("name_vector", None)
     p.pop("reviews", None)
-    p.pop("weekday_text", None)
+
+    # weekday_text 정리(있으면 최대 7줄만, 문자열화)
+    wt = p.get("weekday_text", [])
+    if wt is None:
+        wt = []
+    if isinstance(wt, list):
+        p["weekday_text"] = [str(x) for x in wt[:7]]
+    else:
+        p["weekday_text"] = [str(wt)]
+
     # 숫자 필드 소수 줄이기
     for k in ("rating", "trust_score", "hope_score", "nonhope_score"):
         if k in p and isinstance(p[k], (int, float)):
             p[k] = round(float(p[k]), 4)
+
     if "cluster_scores" in p and isinstance(p["cluster_scores"], list):
         p["cluster_scores"] = [round(float(x), 4) for x in p["cluster_scores"]]
+
     return p
 
 def _normalize_base_title(title: str) -> str:
