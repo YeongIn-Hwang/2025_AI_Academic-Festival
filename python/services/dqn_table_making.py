@@ -347,3 +347,19 @@ def dqn_fill_schedule(user_id, title, tables, base_mode="명소 중심"):
 
     print(f"[DQN 완료] 총 소요 시간: {_tmod.time() - t0:.2f}초")
     return tables
+
+def clear_deleted_slots(tables, deletions):
+    for d in deletions:
+        date = d["date"]
+        start = d["start"]
+        end = d["end"]
+        if date not in tables:
+            continue
+        for slot in tables[date]["schedule"]:
+            s = slot.start.strftime("%H:%M") if not isinstance(slot.start, str) else slot.start
+            e = slot.end.strftime("%H:%M") if not isinstance(slot.end, str) else slot.end
+            if s == start and e == end:
+                if slot.place_type not in ["start", "end", "accommodation"]:
+                    slot.title = None
+                    slot.place_type = None
+                    slot.location_info = None
