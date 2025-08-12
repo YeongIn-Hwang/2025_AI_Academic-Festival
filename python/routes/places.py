@@ -1,28 +1,29 @@
-# routes/places.py (중복 제목 자동 분기 + 후보 상한 + 디버그 로그)
+# routes/places.py (중복 제목 스킵 + 후보 상한 + 디버그 로그 + fetch kill-switch)
 import os
 import time
 import logging
 from typing import List, Tuple
 import numpy as np
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sentence_transformers import SentenceTransformer
 
 # ① 장소 수집 단계
-from services.get_place import fetch_trusted_places
+from services.get_place import fetch_trusted_places  # ← 필요 시 주석처리만 하면 즉시 fetch 중지
 
 # ② 임베딩/점수 단계
 from services.review_embedding import (
     clean_reviews_in_places,
     add_review_vectors_to_places,
-    add_name_vectors,          # 이름 임베딩 캐싱 (필요 시 services.review_embedding에 구현)
+    add_name_vectors,  # 이름 임베딩 캐싱
 )
 from services.keyword_cal import (
     add_hope_scores_to_places,
     add_nonhope_scores_to_places,
 )
 
-# ③ 저장 단계 (Firestore) - 최종 제목 반환 버전 사용
+# ③ 저장 단계 (Firestore)
 from services.save_embedding_place import save_places_to_firestore
 
 # 유저 벡터 로드용
@@ -42,6 +43,11 @@ PLACE_TYPES: List[str] = [
 
 # 수집 후 전체 후보 상한 (속도/용량 보호)
 MAX_TOTAL_PLACES = 120
+
+# 🔒 전체 fetch kill-switch (환경변수로 제어: 1이면 fetch 전면 금지)
+DISABLE_PLACES_FETCH = os.getenv("DISABLE_PLACES_FETCH", "0") == "1" #######################################################################################################################33
+###############################################################################################################################################################################################
+################################################################# 이거 0으로 바꾸면 다시 제대로 하는거임
 
 class BuildIn(BaseModel):
     uid: str
@@ -88,8 +94,34 @@ def _log_step(tag: str, start_ts: float, **extra):
     else:
         logger.info(f"[places] {tag} - {elapsed:.1f} ms")
 
+def _trip_doc(uid: str, title: str):
+    return db.collection("user_trips").document(uid).collection("trips").document(title.strip())
+
+def _trip_exists(uid: str, title: str) -> bool:
+    """trips/{title} 문서 존재 여부"""
+    try:
+        return _trip_doc(uid, title).get().exists
+    except Exception as e:
+        logger.warning(f"[places] _trip_exists error: {e}")
+        return False
+
+def _trip_has_places(uid: str, title: str) -> bool:
+    """trips/{title}/places 서브컬렉션에 1개 이상 있는지 (이미 수집/저장 여부)"""
+    try:
+        col = _trip_doc(uid, title).collection("places")
+        for _ in col.limit(1).stream():
+            return True
+        return False
+    except Exception as e:
+        logger.warning(f"[places] _trip_has_places error: {e}")
+        return False
+
 @router.post("/places_fetch_only")
 def places_fetch_only(payload: FetchOnlyIn, request: Request):
+    # 🔒 전면 금지 모드면 바로 스킵
+    if DISABLE_PLACES_FETCH:
+        return JSONResponse({"ok": True, "skipped": True, "reason": "fetch disabled by env"}, status_code=202)
+
     _, gmaps_key = _require_model_and_key(request)
 
     q = (payload.query or "").strip()
@@ -98,7 +130,7 @@ def places_fetch_only(payload: FetchOnlyIn, request: Request):
         raise HTTPException(400, "query는 필수입니다.")
 
     ts = _t()
-    places = fetch_trusted_places(q, m, gmaps_key, PLACE_TYPES)
+    places = fetch_trusted_places(q, m, gmaps_key, PLACE_TYPES)  # ← 필요 시 import 줄만 주석처리
     _log_step("fetch_only:fetch_trusted_places", ts, count=len(places), query=q, method=m)
 
     # 상한 적용(옵션)
@@ -124,9 +156,38 @@ def places_build_save(payload: BuildIn, request: Request):
 
     logger.info(f"[places] build_start uid={uid} title={title} query={query} method={method}")
 
+    # 🔒 (A) 전면 금지 모드: fetch/가공 전부 스킵 (발표/데모용)
+    if DISABLE_PLACES_FETCH:
+        logger.info("[places] fetch disabled by env -> skip fetch & use stored data")
+        # 저장된 데이터 사용 가정으로 반환만
+        return JSONResponse(
+            {
+                "ok": True,
+                "skipped": True,
+                "reason": "fetch disabled by env",
+                "saved": {"uid": uid, "title": title, "query": query, "method": method},
+            },
+            status_code=202,
+        )
+
+    # 🔒 (B) 동일 title에 기존 places가 있으면 fetch/가공 스킵
+    if _trip_exists(uid, title) and _trip_has_places(uid, title):
+        logger.info("[places] existing title with places -> skip fetch & reuse stored data")
+        return JSONResponse(
+            {
+                "ok": True,
+                "skipped": True,
+                "reason": "title exists with stored places",
+                "saved": {"uid": uid, "title": title, "query": query, "method": method},
+            },
+            status_code=202,
+        )
+
+    # ──────────────────────────────────────────────────────────────
+    # ↓↓↓ 필요 시 여기 블록 전체를 주석처리하면 fetch 완전 비활성화 ↓↓↓
     # 1) 장소 수집
     ts = _t()
-    all_places = fetch_trusted_places(query, method, gmaps_key, PLACE_TYPES)
+    all_places = fetch_trusted_places(query, method, gmaps_key, PLACE_TYPES)  # ← 이 줄 주석처리만 해도 중단 가능
     _log_step("fetch_trusted_places", ts, fetched=len(all_places))
 
     if not all_places:
@@ -194,3 +255,5 @@ def places_build_save(payload: BuildIn, request: Request):
             "method": method
         }
     }
+    # ↑↑↑ 필요 시 여기 블록 전체를 주석처리하면 fetch 완전 비활성화 ↑↑↑
+    # ──────────────────────────────────────────────────────────────
