@@ -1,5 +1,3 @@
-
-
 import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth, db } from "../firebase";
@@ -26,14 +24,17 @@ export default function Journey() {
   const [focusType, setFocusType] = useState("attraction");
 
   const [submitting, setSubmitting] = useState(false);
-  const [preparing, setPreparing] = useState(false);   // basic 생성 단계
-  const [optimizing, setOptimizing] = useState(false); // DQN 단계
+  const [preparing, setPreparing] = useState(false);
+  const [optimizing, setOptimizing] = useState(false);
 
-  // 타임라인
+  // 타임라인 & 편집 상태
   const [timelineDays, setTimelineDays] = useState([]);
-  const [editMode, setEditMode] = useState(false);
-  // 삭제 예정 슬롯: [{date, start, end}]
-  const [deletions, setDeletions] = useState([]);
+  const [editMode, setEditMode] = useState(false);   // 삭제 모드
+  const [splitMode, setSplitMode] = useState(false); // 분할 모드
+
+  // 서버에 보낼 변경 누적
+  const [deletions, setDeletions] = useState([]); // [{date,start,end}]
+  const [splits, setSplits] = useState([]);       // [{date,start,end,mid?}]
 
   const API_BASE =
     (import.meta?.env?.VITE_API_URL) ||
@@ -119,9 +120,8 @@ export default function Journey() {
       setSubmitting(true);
       const payload = { ...basePayload, uid: user.uid };
 
-      // 동일 title 있으면 수집 스킵
+      // 1) 장소 수집 (동일 제목 존재시 스킵)
       const alreadyExists = await checkTripExists(user.uid, title);
-
       if (!alreadyExists) {
         const res = await fetch(`${API_BASE}/places_build_save`, {
           method: "POST",
@@ -140,11 +140,9 @@ export default function Journey() {
           return;
         }
         await res.text().catch(() => "");
-      } else {
-        console.log("[Journey] 동일 title 존재 → places_build_save 스킵");
       }
 
-      // 2) 기본 테이블 생성
+      // 2) basic
       setPreparing(true);
       const prepBasic = await fetch(`${API_BASE}/routes/prepare_basic`, {
         method: "POST",
@@ -158,10 +156,9 @@ export default function Journey() {
         return;
       }
       const basicData = await prepBasic.json();
-      const basicDays = asTimeline(basicData);
-      setTimelineDays(basicDays);
+      setTimelineDays(asTimeline(basicData));
 
-      // 3) DQN
+      // 3) dqn
       setOptimizing(true);
       const prepDqn = await fetch(`${API_BASE}/routes/prepare_dqn`, {
         method: "POST",
@@ -186,81 +183,136 @@ export default function Journey() {
     }
   };
 
-  // —— 삭제 모드 토글
-  const toggleEdit = () => setEditMode((v) => {
-  const next = !v;
-  if (!next) setDeletions([]); // 종료 시 초기화
-  return next;
-  });
+  // —— 모드 토글
+  const toggleEdit = () =>
+    setEditMode((v) => {
+      const next = !v;
+      if (next) setSplitMode(false);
+      if (!next) setDeletions([]);
+      return next;
+    });
+  const toggleSplit = () =>
+    setSplitMode((v) => {
+      const next = !v;
+      if (next) setEditMode(false);
+      if (!next) setSplits([]);
+      return next;
+    });
 
-  // —— 슬롯 삭제(프런트 미리 제거 + deletions에 기록)
+  // —— 프런트 유틸
+  const toMin = (hm) => {
+    const [h, m] = hm.split(":").map(Number);
+    return h * 60 + m;
+  };
+  const toHHMM = (mins) => {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  };
+  const roundTo = (mins, base = 15) => Math.round(mins / base) * base;
+
+  // —— 삭제
   const handleDeleteSlot = (date, ev) => {
-    // 보호: start/end/accommodation 삭제 금지
+  // 보호: start/end/accommodation 삭제 금지
+  if (["start", "end", "accommodation"].includes(ev.type)) {
+    return alert("시작/종료/숙소 블록은 삭제할 수 없어요.");
+  }
+
+  // 이미 빈칸이면 굳이 또 처리하지 않음
+  if (!ev.title) {
+    return; // 이미 비어있는 슬롯
+  }
+
+  // UI에서 "빈칸"으로 전환 (시간대 유지)
+  setTimelineDays((prev) =>
+    prev.map((d) => {
+      if (d.date !== date) return d;
+      return {
+        ...d,
+        events: d.events.map((e) =>
+          e.start === ev.start && e.end === ev.end
+            ? { ...e, title: null, type: "etc" } // <-- 핵심: 제거 말고 빈칸으로
+            : e
+        ),
+      };
+    })
+  );
+
+  // 서버 반영용으로 기록(중복 방지)
+  setDeletions((prev) => {
+    const key = `${date}|${ev.start}|${ev.end}`;
+    if (prev.find((x) => `${x.date}|${x.start}|${x.end}` === key)) return prev;
+    return [...prev, { date, start: ev.start, end: ev.end }];
+  });
+};
+
+  // —— 분할
+  const handleSplitSlot = (date, ev) => {
     if (["start", "end", "accommodation"].includes(ev.type)) {
-      return alert("시작/종료/숙소 블록은 삭제할 수 없어요.");
+      return alert("시작/종료/숙소 블록은 분할할 수 없어요.");
     }
-    // UI에서 즉시 제거
+    if (ev.title) {
+      return alert("채워진 슬롯은 분할 전에 삭제해 주세요.");
+    }
+    const s = toMin(ev.start);
+    const e = toMin(ev.end);
+    if (e - s < 60) return alert("분할하려면 최소 60분 이상이어야 해요.");
+
+    let mid = roundTo((s + e) / 2, 15);
+    const leftMin = s + 30;
+    const rightMin = e - 30;
+    mid = Math.max(leftMin, Math.min(rightMin, mid));
+
+    // 프런트 즉시 반영
     setTimelineDays((prev) =>
-      prev.map((d) =>
-        d.date === date
-          ? { ...d, events: d.events.filter((e) => !(e.start === ev.start && e.end === ev.end)) }
-          : d
-      )
+      prev.map((d) => {
+        if (d.date !== date) return d;
+        const events = [];
+        d.events.forEach((x) => {
+          if (x.start === ev.start && x.end === ev.end) {
+            events.push({ title: null, start: ev.start, end: toHHMM(mid), type: "etc" });
+            events.push({ title: null, start: toHHMM(mid), end: ev.end, type: "etc" });
+          } else {
+            events.push(x);
+          }
+        });
+        return { ...d, events };
+      })
     );
-    // 서버 반영용으로 기록(중복 방지)
-    setDeletions((prev) => {
-      const key = `${date}|${ev.start}|${ev.end}`;
-      if (prev.find((x) => `${x.date}|${x.start}|${x.end}` === key)) return prev;
-      return [...prev, { date, start: ev.start, end: ev.end }];
+
+    // 서버 전송용 기록
+    setSplits((prev) => {
+      const key = `${date}|${ev.start}|${ev.end}|${toHHMM(mid)}`;
+      if (prev.find((x) => `${x.date}|${x.start}|${x.end}|${x.mid || ""}` === key)) return prev;
+      return [...prev, { date, start: ev.start, end: ev.end, mid: toHHMM(mid) }];
     });
   };
 
-  // —— ‘경로 다시 생성’ (삭제 반영 + DQN 재실행)
+  // —— 재생성 (삭제/분할 반영)
   const handleRegenerate = async () => {
     const user = auth.currentUser;
     if (!user) return alert("로그인이 필요합니다.");
     if (!basePayload) return;
 
-    if (deletions.length === 0) {
-      // 삭제 없으면 그냥 DQN만
-      try {
-        setOptimizing(true);
-        const res = await fetch(`${API_BASE}/routes/prepare_dqn`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(basePayload),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const days = asTimeline(data);
-          if (days.length > 0) setTimelineDays(days);
-        } else {
-          const msg = await res.text().catch(() => "");
-          alert("DQN 실패: " + msg);
-        }
-      } finally {
-        setOptimizing(false);
-      }
-      return;
-    }
+    const hasOps = deletions.length > 0 || splits.length > 0;
 
-    // 삭제 반영 + DQN (백엔드가 deletions 받아서 해당 슬롯 title=None 처리한다고 가정)
     try {
       setOptimizing(true);
       const res = await fetch(`${API_BASE}/routes/prepare_dqn`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...basePayload,
-          deletions, // <- [{date, start, end}]
-        }),
+        body: JSON.stringify(
+          hasOps ? { ...basePayload, deletions, splits } : { ...basePayload }
+        ),
       });
       if (res.ok) {
         const data = await res.json();
         const days = asTimeline(data);
         if (days.length > 0) setTimelineDays(days);
-        setDeletions([]); // 반영 끝났으니 초기화
+        setDeletions([]);
+        setSplits([]);
         setEditMode(false);
+        setSplitMode(false);
       } else {
         const msg = await res.text().catch(() => "");
         alert("경로 재생성 실패: " + msg);
@@ -423,9 +475,7 @@ export default function Journey() {
         <div style={styles.headerRow}>
           <div>
             <div style={{ fontSize: 24, fontWeight: 700 }}>AI 경로 추천</div>
-            <div style={{ color: "#666" }}>
-              저장이 끝나면 우측에 막대형 타임라인으로 일정이 표시됩니다.
-            </div>
+            <div style={{ color: "#666" }}>저장이 끝나면 우측에 막대형 타임라인으로 일정이 표시됩니다.</div>
           </div>
 
           {/* 편집/재생성 컨트롤 */}
@@ -434,16 +484,25 @@ export default function Journey() {
               onClick={toggleEdit}
               disabled={preparing || optimizing || timelineDays.length === 0}
               style={{ ...styles.primaryBtn, background: editMode ? "#0a7" : "#111" }}
+              title="빈칸을 삭제(유지)하기 위한 모드"
             >
               {editMode ? "삭제 모드 종료" : "삭제 모드"}
+            </button>
+            <button
+              onClick={toggleSplit}
+              disabled={preparing || optimizing || timelineDays.length === 0}
+              style={{ ...styles.primaryBtn, background: splitMode ? "#8b5cf6" : "#4b5563" }}
+              title="빈칸 슬롯을 둘로 쪼개기"
+            >
+              {splitMode ? "분할 모드 종료" : "분할 모드"}
             </button>
             <button
               onClick={handleRegenerate}
               disabled={optimizing || timelineDays.length === 0}
               style={{ ...styles.primaryBtn, background: "#2563eb" }}
-              title="삭제(빈칸)된 슬롯만 자동으로 다시 채웁니다"
+              title="삭제/분할 반영된 빈칸만 자동으로 다시 채웁니다"
             >
-              {optimizing ? "DQN 재생성 중..." : `경로 다시 생성${deletions.length ? ` (${deletions.length})` : ""}`}
+              {optimizing ? "DQN 재생성 중..." : `경로 다시 생성${(deletions.length || splits.length) ? ` (${deletions.length + splits.length})` : ""}`}
             </button>
           </div>
         </div>
@@ -456,14 +515,14 @@ export default function Journey() {
           {optimizing && <div style={{ marginBottom: 12 }}>DQN 최적화 중...</div>}
 
           {timelineDays.length === 0 ? (
-            <div style={styles.placeholder}>
-              <div>아직 생성된 일정이 없습니다.</div>
-            </div>
+            <div style={styles.placeholder}><div>아직 생성된 일정이 없습니다.</div></div>
           ) : (
             <Timeline
               days={timelineDays}
               editable={editMode}
+              splitable={splitMode}
               onDelete={handleDeleteSlot}
+              onSplit={handleSplitSlot}
             />
           )}
         </section>
@@ -476,9 +535,7 @@ export default function Journey() {
 function Field({ label, children }) {
   return (
     <div>
-      <label style={{ display: "block", marginBottom: 6, fontSize: 13, color: "#444" }}>
-        {label}
-      </label>
+      <label style={{ display: "block", marginBottom: 6, fontSize: 13, color: "#444" }}>{label}</label>
       {children}
     </div>
   );
@@ -500,8 +557,8 @@ function Radio({ label, name, value, checked, onChange, disabled }) {
   );
 }
 
-/* ---------- 타임라인 (삭제 가능) ---------- */
-function Timeline({ days, editable = false, onDelete }) {
+/* ---------- 타임라인 (삭제/분할) ---------- */
+function Timeline({ days, editable = false, splitable = false, onDelete, onSplit }) {
   const toMin = (hm) => {
     const [h, m] = hm.split(":").map(Number);
     return h * 60 + m;
@@ -542,10 +599,14 @@ function Timeline({ days, editable = false, onDelete }) {
                   const width = ((toMin(e.end) - toMin(e.start)) / total) * 100;
                   const lock = ["start", "end", "accommodation"].includes(e.type);
 
+                  const isEmpty = !e.title;
+                  const showDelete = editable && !lock;
+                  const showSplit = splitable && !lock && isEmpty;
+
                   return (
                     <div
                       key={`${e.start}-${e.end}-${idx}`}
-                      title={`${e.title} (${e.start}~${e.end})`}
+                      title={`${e.title || "(빈칸)"} (${e.start}~${e.end})`}
                       style={{
                         position: "absolute",
                         left: `${left}%`,
@@ -561,12 +622,24 @@ function Timeline({ days, editable = false, onDelete }) {
                         alignItems: "center",
                         gap: 6,
                         ...barStyleByType(e.type),
+                        opacity: isEmpty ? 0.85 : 1,
+                        borderStyle: isEmpty ? "dashed" : "solid",
                       }}
                     >
                       <strong style={{ marginRight: 6 }}>{e.start}</strong>
-                      <span style={{ flex: 1, minWidth: 0 }}>{e.title}</span>
+                      <span style={{ flex: 1, minWidth: 0 }}>{e.title || "빈 슬롯"}</span>
 
-                      {editable && !lock && (
+                      {showSplit && (
+                        <button
+                          onClick={() => onSplit?.(day.date, e)}
+                          style={btnSplit}
+                          title="이 빈 슬롯을 두 개로 분할"
+                        >
+                          분할
+                        </button>
+                      )}
+
+                      {showDelete && (
                         <button
                           onClick={() => onDelete?.(day.date, e)}
                           style={btnDelete}
@@ -746,6 +819,16 @@ const btnDelete = {
   border: "1px solid #ef4444",
   background: "#fee2e2",
   color: "#991b1b",
+  borderRadius: 6,
+  padding: "2px 6px",
+  cursor: "pointer",
+};
+
+const btnSplit = {
+  fontSize: 11,
+  border: "1px solid #7c3aed",
+  background: "#ede9fe",
+  color: "#5b21b6",
   borderRadius: 6,
   padding: "2px 6px",
   cursor: "pointer",

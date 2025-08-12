@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 import os, traceback
-from datetime import time as dtime
+from datetime import time as dtime, datetime
 
 from services.making_table import (
     create_empty_daily_tables,
@@ -13,11 +13,17 @@ from services.dqn_table_making import dqn_fill_schedule
 
 router = APIRouter()
 
-# ---- 입력 스키마 ----
+# ---------- 입력 스키마 ----------
 class DeletionItem(BaseModel):
     date: str   # "YYYY-MM-DD"
     start: str  # "HH:MM"
     end: str    # "HH:MM"
+
+class SplitItem(BaseModel):
+    date: str   # "YYYY-MM-DD"
+    start: str  # "HH:MM"  # 분할 대상 슬롯 시작
+    end: str    # "HH:MM"  # 분할 대상 슬롯 끝
+    mid: Optional[str] = None  # "HH:MM" (없으면 중앙으로 자동 분할)
 
 class PreparePayload(BaseModel):
     uid: str
@@ -32,10 +38,12 @@ class PreparePayload(BaseModel):
     lodging: Optional[str] = None
     end_location: str
     focus_type: str  # "attraction"|"food"|"cafe"|"shopping"
-    deletions: Optional[List[DeletionItem]] = None  # 🔹추가: 삭제 슬롯 리스트
+    deletions: Optional[List[DeletionItem]] = None
+    splits: Optional[List[SplitItem]] = None
 
 def _log(*args): print("[/routes/prepare]", *args, flush=True)
 
+# ---------- 공통 유틸 ----------
 def _hhmm(s: str) -> dtime:
     h, m = s.split(":")
     return dtime(int(h), int(m))
@@ -101,7 +109,7 @@ def _build_base_tables(req: PreparePayload):
         raise ValueError("생성된 일정 테이블이 비어 있습니다. 날짜/시간을 확인하세요.")
     return tables
 
-# ---- 삭제 반영 유틸 ----
+# ---------- 삭제 반영 ----------
 def _time_to_hhmm(t) -> str:
     if t is None:
         return ""
@@ -113,7 +121,6 @@ def _clear_slots_by_deletions(tables: dict, deletions: Optional[List[DeletionIte
     if not deletions:
         return
 
-    # date별로 묶기
     by_date = {}
     for d in deletions:
         by_date.setdefault(d.date, set()).add((d.start, d.end))
@@ -128,17 +135,105 @@ def _clear_slots_by_deletions(tables: dict, deletions: Optional[List[DeletionIte
             s = _time_to_hhmm(getattr(slot, "start", None))
             e = _time_to_hhmm(getattr(slot, "end", None))
             if (s, e) in targets:
-                # 보호: 시작/종료/숙소 블록은 비우지 않음
                 if getattr(slot, "place_type", None) in ("start", "end", "accommodation"):
                     continue
-                # 슬롯 비우기
                 slot.title = None
                 slot.place_type = None
                 slot.location_info = None
                 cleared += 1
     _log(f"dqn deletions applied. cleared_slots={cleared}")
 
-# ---- 라우터 ----
+# ---------- 분할 반영 ----------
+MIN_SLOT_MINUTES = 30
+ROUND_TO_MINUTES = 15
+
+def _parse_hhmm(s: str) -> dtime:
+    h, m = s.split(":")
+    return dtime(int(h), int(m))
+
+def _to_minutes(t: dtime) -> int:
+    return t.hour * 60 + t.minute
+
+def _to_time(mins: int) -> dtime:
+    mins = max(0, min(24 * 60 - 1, mins))
+    return dtime(mins // 60, mins % 60)
+
+def _round_to(mins: int, base: int) -> int:
+    return round(mins / base) * base
+
+def _apply_splits(tables: dict, splits: Optional[List[SplitItem]]):
+    if not splits:
+        return
+    applied = 0
+
+    by_date = {}
+    for s in splits:
+        by_date.setdefault(s.date, []).append(s)
+
+    for date_str, info in tables.items():
+        reqs = by_date.get(date_str)
+        if not reqs:
+            continue
+        schedule = info.get("schedule", [])
+
+        for sp in reqs:
+            target_start, target_end = sp.start, sp.end
+
+            hit_idx = None
+            for i, slot in enumerate(schedule):
+                s = slot.start.strftime("%H:%M") if not isinstance(slot.start, str) else slot.start
+                e = slot.end.strftime("%H:%M")   if not isinstance(slot.end, str)   else slot.end
+                if s == target_start and e == target_end:
+                    hit_idx = i
+                    break
+            if hit_idx is None:
+                continue
+
+            slot = schedule[hit_idx]
+            if getattr(slot, "place_type", None) in ("start", "end", "accommodation"):
+                continue
+            if slot.title not in (None, ""):
+                # 이미 채워진 슬롯은 프런트에서 삭제 후 분할하도록 유도
+                continue
+
+            st = _parse_hhmm(target_start)
+            en = _parse_hhmm(target_end)
+            st_m, en_m = _to_minutes(st), _to_minutes(en)
+            if en_m - st_m < MIN_SLOT_MINUTES * 2:
+                continue
+
+            if sp.mid:
+                mid_m = _to_minutes(_parse_hhmm(sp.mid))
+            else:
+                mid_m = (st_m + en_m) // 2
+
+            mid_m = _round_to(mid_m, ROUND_TO_MINUTES)
+            left_min  = st_m + MIN_SLOT_MINUTES
+            right_min = en_m - MIN_SLOT_MINUTES
+            mid_m = max(left_min, min(right_min, mid_m))
+            if not (st_m < mid_m < en_m):
+                continue
+
+            def _new_empty_slot(start_m, end_m):
+                ns = type(slot)()
+                ns.start = _to_time(start_m)
+                ns.end   = _to_time(end_m)
+                ns.title = None
+                ns.place_type = None
+                ns.location_info = None
+                return ns
+
+            left  = _new_empty_slot(st_m, mid_m)
+            right = _new_empty_slot(mid_m, en_m)
+
+            schedule.pop(hit_idx)
+            schedule.insert(hit_idx, right)
+            schedule.insert(hit_idx, left)
+            applied += 1
+
+    _log(f"splits applied: {applied}")
+
+# ---------- 라우터 ----------
 @router.post("/routes/prepare_basic")
 def prepare_basic(req: PreparePayload):
     phase = "start"
@@ -163,13 +258,17 @@ def prepare_dqn(req: PreparePayload):
         phase = "build"
         tables = _build_base_tables(req)
 
-        # 🔹(옵션) 삭제된 슬롯 비워두기 → DQN이 빈칸만 다시 채움
+        # 1) 삭제 반영 (슬롯을 None으로)
         _clear_slots_by_deletions(tables, req.deletions)
+        # 2) 분할 반영 (빈칸 슬롯만 둘로 쪼개기)
+        _apply_splits(tables, req.splits)
 
+        # 3) DQN으로 빈칸만 채우기
         phase = "dqn"
         base_mode = _focus_to_mode(req.focus_type)
         tables = dqn_fill_schedule(req.uid, req.title, tables, base_mode=base_mode)
 
+        # 4) 응답
         phase = "serialize"
         tables_json = _serialize_tables(tables)
         timeline = _to_timeline(tables_json)
