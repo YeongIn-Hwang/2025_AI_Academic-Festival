@@ -1,6 +1,6 @@
 # routes/prepare.py
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 import os, traceback
 from datetime import time as dtime, datetime
@@ -25,6 +25,40 @@ class SplitItem(BaseModel):
     end: str    # "HH:MM"  # 분할 대상 슬롯 끝
     mid: Optional[str] = None  # "HH:MM" (없으면 중앙으로 자동 분할)
 
+# ---- 프런트에서 보내는 현재 타임라인 / 고정 슬롯 ----
+class ClientEvent(BaseModel):
+    start: str
+    end: str
+    title: Optional[str] = None
+    type: Optional[str] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+
+class ClientDay(BaseModel):
+    date: str
+    weekday: Optional[str] = ""
+    events: List[ClientEvent] = Field(default_factory=list)
+
+class FixedPlace(BaseModel):
+    name: str
+    type: Optional[str] = None
+    place_id: Optional[str] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+
+class MergeItem(BaseModel):
+    date: str                           # "YYYY-MM-DD"
+    winner: dict                        # {"start":"HH:MM","end":"HH:MM"}
+    loser: dict                         # {"start":"HH:MM","end":"HH:MM"}
+
+
+class FixedSlot(BaseModel):
+    date: str
+    start: str
+    end: str
+    place: FixedPlace
+
+
 class PreparePayload(BaseModel):
     uid: str
     title: str
@@ -40,6 +74,9 @@ class PreparePayload(BaseModel):
     focus_type: str  # "attraction"|"food"|"cafe"|"shopping"
     deletions: Optional[List[DeletionItem]] = None
     splits: Optional[List[SplitItem]] = None
+    client_timeline: Optional[List[ClientDay]] = None
+    fixed_slots: Optional[List[FixedSlot]] = None
+    merges: Optional[List[MergeItem]] = None
 
 def _log(*args): print("[/routes/prepare]", *args, flush=True)
 
@@ -146,6 +183,7 @@ def _clear_slots_by_deletions(tables: dict, deletions: Optional[List[DeletionIte
 # ---------- 분할 반영 ----------
 MIN_SLOT_MINUTES = 30
 ROUND_TO_MINUTES = 15
+PROTECTED_TYPES = {"start", "end", "accommodation"}
 
 def _parse_hhmm(s: str) -> dtime:
     h, m = s.split(":")
@@ -160,6 +198,132 @@ def _to_time(mins: int) -> dtime:
 
 def _round_to(mins: int, base: int) -> int:
     return round(mins / base) * base
+# ---------- 병합 -----------------------------
+
+def _find_slot_index_by_se(schedule, start_hhmm: str, end_hhmm: str):
+    for i, slot in enumerate(schedule):
+        s = _time_to_hhmm(getattr(slot, "start", None))
+        e = _time_to_hhmm(getattr(slot, "end", None))
+        if s == start_hhmm and e == end_hhmm:
+            return i
+    return None
+
+def _apply_merges(tables: dict, merges: Optional[List["MergeItem"]]):
+    """프런트에서 선택한 두 인접 슬롯을 하나로 합친다.
+    - 첫 클릭(=winner)의 콘텐츠/타입을 유지
+    - 시간은 두 슬롯의 min(start) ~ max(end)로 확장
+    - 보호 슬롯(start/end/accommodation) 포함 시 skip
+    """
+    if not merges:
+        return
+    applied = 0
+    for m in merges:
+        info = tables.get(m.date)
+        if not info:
+            continue
+        schedule = info.get("schedule", [])
+        wi = _find_slot_index_by_se(schedule, m.winner["start"], m.winner["end"])
+        li = _find_slot_index_by_se(schedule, m.loser["start"],  m.loser["end"])
+        if wi is None or li is None:
+            continue
+        i, j = sorted([wi, li])
+        a = schedule[i]
+        b = schedule[j]
+        # 보호 슬롯 방어
+        if (getattr(a, "place_type", None) in PROTECTED_TYPES or
+            getattr(b, "place_type", None) in PROTECTED_TYPES):
+            continue
+
+        # 시간 병합 범위
+        a_s = _parse_hhmm(_time_to_hhmm(a.start))
+        a_e = _parse_hhmm(_time_to_hhmm(a.end))
+        b_s = _parse_hhmm(_time_to_hhmm(b.start))
+        b_e = _parse_hhmm(_time_to_hhmm(b.end))
+        new_start = min(a_s, b_s)
+        new_end   = max(a_e, b_e)
+
+        # 승자(winner) 정보 유지
+        winner_is_a = (wi == i)  # winner 인덱스가 더 앞이면 a
+        winner_slot = a if winner_is_a else b
+
+        # slot 타입은 같은 클래스 인스턴스로 생성
+        NewCls = type(a)
+        merged = NewCls(
+            title = getattr(winner_slot, "title", None),
+            start = new_start,
+            end   = new_end,
+            place_type = getattr(winner_slot, "place_type", None),
+            location_info = getattr(winner_slot, "location_info", None),
+        )
+
+        # 두 칸을 하나로 치환
+        schedule.pop(j)
+        schedule.pop(i)
+        schedule.insert(i, merged)
+        applied += 1
+    _log(f"merges applied: {applied}")
+
+
+# ---------- 클라이언트 타임라인 오버레이 ----------
+def _overlay_client_timeline(tables: dict, client_days: Optional[List[ClientDay]]):
+    if not client_days:
+        return
+    by_date = {d.date: d for d in client_days}
+    applied_fill = applied_clear = 0
+    for date_str, info in tables.items():
+        day = by_date.get(date_str)
+        if not day:
+            continue
+        ev_by_time = {(ev.start, ev.end): ev for ev in (day.events or [])}
+        schedule = info.get("schedule", [])
+        for slot in schedule:
+            s = _time_to_hhmm(getattr(slot, "start", None))
+            e = _time_to_hhmm(getattr(slot, "end", None))
+            ev = ev_by_time.get((s, e))
+            if not ev:
+                continue
+            # 보호 슬롯은 건너뜀
+            if getattr(slot, "place_type", None) in ("start", "end", "accommodation"):
+                continue
+            if ev.title:
+                slot.title = ev.title
+                slot.place_type = ev.type or slot.place_type
+                if ev.lat is not None and ev.lng is not None:
+                    slot.location_info = {"name": ev.title, "lat": ev.lat, "lng": ev.lng}
+                applied_fill += 1
+            else:
+                # 프런트가 빈칸으로 표시한 슬롯은 명시적으로 비움
+                slot.title = None
+                slot.place_type = None
+                slot.location_info = None
+                applied_clear += 1
+    _log(f"overlay client timeline: filled={applied_fill}, cleared={applied_clear}")
+
+# ---------- 고정 슬롯 적용 (pins) ----------
+def _apply_fixed_slots(tables: dict, fixed_slots: Optional[List[FixedSlot]]):
+    if not fixed_slots:
+        return
+    applied = 0
+    for fs in fixed_slots:
+        info = tables.get(fs.date)
+        if not info:
+            continue
+        for slot in info.get("schedule", []):
+            s = _time_to_hhmm(getattr(slot, "start", None))
+            e = _time_to_hhmm(getattr(slot, "end", None))
+            if s == fs.start and e == fs.end:
+                if getattr(slot, "place_type", None) in ("start", "end", "accommodation"):
+                    break
+                p = fs.place
+                slot.title = p.name
+                slot.place_type = p.type or "etc"
+                if p.lat is not None and p.lng is not None:
+                    slot.location_info = {"name": p.name, "lat": p.lat, "lng": p.lng}
+                else:
+                    slot.location_info = {"name": p.name}
+                applied += 1
+                break
+    _log(f"fixed_slots applied: {applied}")
 
 def _apply_splits(tables: dict, splits: Optional[List[SplitItem]]):
     if not splits:
@@ -215,13 +379,13 @@ def _apply_splits(tables: dict, splits: Optional[List[SplitItem]]):
                 continue
 
             def _new_empty_slot(start_m, end_m):
-                ns = type(slot)()
-                ns.start = _to_time(start_m)
-                ns.end   = _to_time(end_m)
-                ns.title = None
-                ns.place_type = None
-                ns.location_info = None
-                return ns
+                return type(slot)(
+                    title=None,
+                    start=_to_time(start_m),
+                    end=_to_time(end_m),
+                    place_type=None,
+                    location_info=None,
+                )
 
             left  = _new_empty_slot(st_m, mid_m)
             right = _new_empty_slot(mid_m, en_m)
@@ -262,13 +426,21 @@ def prepare_dqn(req: PreparePayload):
         _clear_slots_by_deletions(tables, req.deletions)
         # 2) 분할 반영 (빈칸 슬롯만 둘로 쪼개기)
         _apply_splits(tables, req.splits)
+        # 3) 병합 반영  
+        _apply_merges(tables, req.merges)
+        # 4) 클라이언트 현재 상태 오버레이
+        _overlay_client_timeline(tables, req.client_timeline)
+        # 5) 고정 슬롯 반영
+        _apply_fixed_slots(tables, req.fixed_slots)
 
-        # 3) DQN으로 빈칸만 채우기
+        # 6) DQN
         phase = "dqn"
         base_mode = _focus_to_mode(req.focus_type)
         tables = dqn_fill_schedule(req.uid, req.title, tables, base_mode=base_mode)
 
-        # 4) 응답
+        _apply_merges(tables, req.merges)
+        
+        # 7) 응답
         phase = "serialize"
         tables_json = _serialize_tables(tables)
         timeline = _to_timeline(tables_json)

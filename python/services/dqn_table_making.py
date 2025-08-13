@@ -222,6 +222,25 @@ def compute_total_score_fast(params, place, prev_location, dist_cache):
 def _candidates_key(date_str, slot, allowed_types):
     return (date_str, slot.start, slot.end, tuple(sorted(allowed_types)))
 
+# ==== 현재 테이블 기반 in_timetable 시딩 ====
+def _seed_in_timetable_from_tables(all_places, tables):
+    """현재 테이블에 이미 들어가 있는(제목 있는) 슬롯들을 이름 기준으로 in_timetable=True로 표시"""
+    used_names = set()
+    for _, info in tables.items():
+        for slot in info.get("schedule", []):
+            title = getattr(slot, "title", None)
+            if title:
+                nm = str(title).strip()
+                if nm:
+                    used_names.add(nm)
+
+    seeded = 0
+    for p in all_places:
+        if str(p.get("name") or "").strip() in used_names:
+            p["in_timetable"] = True
+            seeded += 1
+    print(f"[DQN] pre-seeded in_timetable from table: {seeded} places")
+
 # ---------- 미래 보상 (Depth=3, 후보 상한 5개) ----------
 def compute_future_reward(user_id, schedule, current_idx, all_places, date_str, ranges, depth, base_mode,
                           params, dist_cache, cand_cache):
@@ -291,6 +310,9 @@ def dqn_fill_schedule(user_id, title, tables, base_mode="명소 중심"):
     if not all_places:
         print("[DQN] 장소 데이터 없음")
         return tables
+
+    # ✅ 현재 테이블에 이미 들어간 장소들은 미리 사용 처리
+    _seed_in_timetable_from_tables(all_places, tables)
 
     ranges = get_score_ranges(all_places)
     _precompute_norm_scores(all_places, ranges)
