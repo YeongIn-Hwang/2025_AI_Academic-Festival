@@ -1,8 +1,20 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth, db } from "../firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  collection,
+  getDocs,
+} from "firebase/firestore";
+
+const TRACK_HEIGHT = 800;   // 세로 트랙 높이(px) — 필요하면 취향에 맞게 조절
+const DAY_COL_WIDTH = 360;
+
+const MIN_SLOT = 30; // 분
+const SNAP = 15;     // 분
+
 
 export default function Journey() {
   const navigate = useNavigate();
@@ -31,10 +43,24 @@ export default function Journey() {
   const [timelineDays, setTimelineDays] = useState([]);
   const [editMode, setEditMode] = useState(false);   // 삭제 모드
   const [splitMode, setSplitMode] = useState(false); // 분할 모드
+  const [mergeMode, setMergeMode] = useState(false);
+
+  // 추가 모드 & 후보 패널
+  const [addMode, setAddMode] = useState(false); // 일정 추가 모드 토글
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerTarget, setPickerTarget] = useState(null); // {date,start,end}
+  const [placeTypeFilter, setPlaceTypeFilter] = useState("all");
+  const [placeOptions, setPlaceOptions] = useState([]);
+  const [loadingPlaces, setLoadingPlaces] = useState(false);
 
   // 서버에 보낼 변경 누적
   const [deletions, setDeletions] = useState([]); // [{date,start,end}]
   const [splits, setSplits] = useState([]);       // [{date,start,end,mid?}]
+  const [pins, setPins] = useState([]);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [merges, setMerges] = useState([]);
+
+  const toggleSidebar = () => setSidebarOpen((v) => !v);
 
   const API_BASE =
     (import.meta?.env?.VITE_API_URL) ||
@@ -74,6 +100,9 @@ export default function Journey() {
             start: s.start,
             end: s.end,
             type: s.place_type || s.type || "etc",
+            place_id: s.place_id ?? null,
+            lat: typeof s.lat === "number" ? s.lat : (s.location_info?.lat ?? null),
+            lng: typeof s.lng === "number" ? s.lng : (s.location_info?.lng ?? null),
           })),
         }));
     }
@@ -187,15 +216,28 @@ export default function Journey() {
   const toggleEdit = () =>
     setEditMode((v) => {
       const next = !v;
-      if (next) setSplitMode(false);
-      if (!next) setDeletions([]);
+      if (next) { setSplitMode(false); setAddMode(false); }
       return next;
     });
   const toggleSplit = () =>
     setSplitMode((v) => {
       const next = !v;
-      if (next) setEditMode(false);
-      if (!next) setSplits([]);
+      if (next) { setEditMode(false); setAddMode(false); setMergeMode(false); }
+      return next;
+    });
+const toggleMerge = () =>
+  setMergeMode((v) => {
+    const next = !v;
+    if (next) { setEditMode(false); setAddMode(false); setSplitMode(false); }
+    if (!next) setMerges((m) => m); // 누적 유지(재생성 시 같이 보냄)
+    return next;
+  });
+
+  const toggleAdd = () =>
+    setAddMode((v) => {
+      const next = !v;
+      if (next) { setEditMode(false); setSplitMode(false); }
+      if (!next) { setPickerOpen(false); setPickerTarget(null); }
       return next;
     });
 
@@ -209,51 +251,126 @@ export default function Journey() {
     const m = mins % 60;
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
   };
-  const roundTo = (mins, base = 15) => Math.round(mins / base) * base;
+  const roundTo = (mins, base = SNAP) => Math.round(mins / base) * base;
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+  // —— 슬롯 시간 변경(드래그 커밋) → 틈 자동 삽입 or 스냅
+  const applyTimeChange = (date, idx, newStartHHMM, newEndHHMM) => {
+    let oldStart, oldEnd;
+    setTimelineDays(prev => prev.map(day => {
+      if (day.date !== date) return day;
+
+      const events = [...day.events].sort((a,b)=>toMin(a.start)-toMin(b.start));
+      let cur = { ...events[idx] };
+      if (!cur) return day;
+      if (["start","end","accommodation"].includes(cur.type)) return day;
+      oldStart = cur.start; oldEnd = cur.end;
+
+      let ns = toMin(newStartHHMM);
+      let ne = toMin(newEndHHMM);
+      if (ne - ns < MIN_SLOT) ne = ns + MIN_SLOT;
+
+      const prevEv = idx > 0 ? events[idx-1] : null;
+      const nextEv = idx < events.length - 1 ? events[idx+1] : null;
+      const leftEnd    = prevEv ? toMin(prevEv.end)   : 0;
+      const rightStart = nextEv ? toMin(nextEv.start) : 24*60;
+
+      ns = clamp(ns, leftEnd, rightStart - MIN_SLOT);
+      ne = clamp(ne, ns + MIN_SLOT, rightStart);
+
+      // 현재 슬롯 반영
+      cur.start = toHHMM(ns);
+      cur.end   = toHHMM(ne);
+      events[idx] = cur;
+
+      // 왼쪽 틈
+      if (prevEv) {
+        const gapL = ns - toMin(prevEv.end);
+        if (gapL >= MIN_SLOT) {
+          const empty = {
+            title: null, type: "etc", locked: false, place_id: null,
+            lat: null, lng: null, start: prevEv.end, end: cur.start
+          };
+          events.splice(idx, 0, empty);
+          idx += 1; // cur 위치 이동
+        } else if (gapL > 0 && gapL < MIN_SLOT) {
+          cur.start = prevEv.end;
+          events[events.indexOf(cur)] = cur;
+        }
+      }
+
+      // 오른쪽 틈
+      const curIdx = events.indexOf(cur);
+      const nextIdx = curIdx + 1;
+      const nextNow = nextIdx < events.length ? events[nextIdx] : null;
+      if (nextNow) {
+        const gapR = toMin(nextNow.start) - toMin(cur.end);
+        if (gapR >= MIN_SLOT) {
+          const empty = {
+            title: null, type: "etc", locked: false, place_id: null,
+            lat: null, lng: null, start: cur.end, end: nextNow.start
+          };
+          events.splice(nextIdx, 0, empty);
+        } else if (gapR > 0 && gapR < MIN_SLOT) {
+          cur.end = nextNow.start;
+          events[curIdx] = cur;
+        }
+      }
+
+      // 정렬
+      return { ...day, events };
+    }));
+
+    // 핀 슬롯이면 pins의 start/end도 갱신
+    setPins(prevPins =>
+    prevPins.map(p => {
+      if (p.date === date && p.start === oldStart && p.end === oldEnd) {
+        return { ...p, start: newStartHHMM, end: newEndHHMM };
+      }
+      return p;
+    })
+  );
+  };
 
   // —— 삭제
   const handleDeleteSlot = (date, ev) => {
-  // 보호: start/end/accommodation 삭제 금지
-  if (["start", "end", "accommodation"].includes(ev.type)) {
-    return alert("시작/종료/숙소 블록은 삭제할 수 없어요.");
-  }
+    if (["start", "end", "accommodation"].includes(ev.type)) {
+      return alert("시작/종료/숙소 블록은 삭제할 수 없어요.");
+    }
+    if (!ev.title && !ev.locked) return;
 
-  // 이미 빈칸이면 굳이 또 처리하지 않음
-  if (!ev.title) {
-    return; // 이미 비어있는 슬롯
-  }
+    setTimelineDays((prev) =>
+      prev.map((d) => {
+        if (d.date !== date) return d;
+        return {
+          ...d,
+          events: d.events.map((e) =>
+            e.start === ev.start && e.end === ev.end
+              ? { ...e, title: null, type: "etc", locked: false, place_id: null, lat: null, lng: null }
+              : e
+          ),
+        };
+      })
+    );
 
-  // UI에서 "빈칸"으로 전환 (시간대 유지)
-  setTimelineDays((prev) =>
-    prev.map((d) => {
-      if (d.date !== date) return d;
-      return {
-        ...d,
-        events: d.events.map((e) =>
-          e.start === ev.start && e.end === ev.end
-            ? { ...e, title: null, type: "etc" } // <-- 핵심: 제거 말고 빈칸으로
-            : e
-        ),
-      };
-    })
-  );
+    setPins((prev) =>
+      prev.filter((p) => !(p.date === date && p.start === ev.start && p.end === ev.end))
+    );
 
-  // 서버 반영용으로 기록(중복 방지)
-  setDeletions((prev) => {
-    const key = `${date}|${ev.start}|${ev.end}`;
-    if (prev.find((x) => `${x.date}|${x.start}|${x.end}` === key)) return prev;
-    return [...prev, { date, start: ev.start, end: ev.end }];
-  });
-};
+    setDeletions((prev) => {
+      const key = `${date}|${ev.start}|${ev.end}`;
+      if (prev.find((x) => `${x.date}|${x.start}|${x.end}` === key)) return prev;
+      return [...prev, { date, start: ev.start, end: ev.end }];
+    });
+  };
 
   // —— 분할
   const handleSplitSlot = (date, ev) => {
     if (["start", "end", "accommodation"].includes(ev.type)) {
       return alert("시작/종료/숙소 블록은 분할할 수 없어요.");
     }
-    if (ev.title) {
-      return alert("채워진 슬롯은 분할 전에 삭제해 주세요.");
-    }
+    if (ev.title) return alert("채워진 슬롯은 분할 전에 삭제해 주세요.");
+
     const s = toMin(ev.start);
     const e = toMin(ev.end);
     if (e - s < 60) return alert("분할하려면 최소 60분 이상이어야 해요.");
@@ -263,7 +380,6 @@ export default function Journey() {
     const rightMin = e - 30;
     mid = Math.max(leftMin, Math.min(rightMin, mid));
 
-    // 프런트 즉시 반영
     setTimelineDays((prev) =>
       prev.map((d) => {
         if (d.date !== date) return d;
@@ -280,7 +396,6 @@ export default function Journey() {
       })
     );
 
-    // 서버 전송용 기록
     setSplits((prev) => {
       const key = `${date}|${ev.start}|${ev.end}|${toHHMM(mid)}`;
       if (prev.find((x) => `${x.date}|${x.start}|${x.end}|${x.mid || ""}` === key)) return prev;
@@ -288,13 +403,124 @@ export default function Journey() {
     });
   };
 
-  // —— 재생성 (삭제/분할 반영)
+  // —— 추가(빈칸 클릭 → 후보 패널 오픈)
+  const handlePickTarget = (date, ev) => {
+    if (!addMode) return;
+    if (["start", "end", "accommodation"].includes(ev.type)) return;
+    if (ev.title) return;
+    setPickerTarget({ date, start: ev.start, end: ev.end });
+    setPickerOpen(true);
+  };
+
+  // 후보 목록 로드
+  const loadPlaces = async () => {
+    const user = auth.currentUser;
+    if (!user || !title.trim()) return;
+    try {
+      setLoadingPlaces(true);
+      const col = collection(db, "user_trips", user.uid, "trips", title.trim(), "places");
+      const snap = await getDocs(col);
+      let rows = snap.docs.map((d) => {
+        const p = d.data() || {};
+        const score =
+          (typeof p.total_score === "number" ? p.total_score : null) ??
+          (typeof p.value_score === "number" ? p.value_score : null) ??
+          (typeof p.trust_score === "number" ? p.trust_score : 0);
+        return {
+          id: d.id,
+          place_id: p.place_id ?? null,
+          name: p.name ?? "(이름 없음)",
+          type: p.type || "etc",
+          lat: p.lat ?? null,
+          lng: p.lng ?? null,
+          vicinity: p.vicinity ?? "",
+          business_status: p.business_status ?? "",
+          open_now: typeof p.open_now === "boolean" ? p.open_now : null,
+          rating: typeof p.rating === "number" ? p.rating : null,
+          user_ratings_total: typeof p.user_ratings_total === "number" ? p.user_ratings_total : null,
+          trust_score: typeof p.trust_score === "number" ? p.trust_score : null,
+          hope_score: typeof p.hope_score === "number" ? p.hope_score : null,
+          nonhope_score: typeof p.nonhope_score === "number" ? p.nonhope_score : null,
+          totalScore: score,
+        };
+      });
+
+      if (placeTypeFilter !== "all") {
+        rows = rows.filter((r) => r.type === placeTypeFilter);
+      }
+
+      rows.sort((a, b) => (b.totalScore ?? -1e9) - (a.totalScore ?? -1e9));
+      setPlaceOptions(rows);
+    } catch (e) {
+      console.warn("[Journey] loadPlaces error:", e);
+      setPlaceOptions([]);
+    } finally {
+      setLoadingPlaces(false);
+    }
+  };
+
+  useEffect(() => {
+    if (pickerOpen) loadPlaces();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickerOpen, placeTypeFilter, title]);
+
+  // 후보 선택 → 슬롯 채우기
+  const handleApplyPlaceToSlot = (place) => {
+    const tgt = pickerTarget;
+    if (!tgt) return;
+
+    setTimelineDays((prev) =>
+      prev.map((d) => {
+        if (d.date !== tgt.date) return d;
+        return {
+          ...d,
+          events: d.events.map((e) =>
+            e.start === tgt.start && e.end === tgt.end
+              ? {
+                  ...e,
+                  title: place.name,
+                  type: place.type || "etc",
+                  place_id: place.place_id ?? null,
+                  lat: typeof place.lat === "number" ? place.lat : null,
+                  lng: typeof place.lng === "number" ? place.lng : null,
+                  locked: true,
+                }
+              : e
+          ),
+        };
+      })
+    );
+
+    setPins((prev) => {
+      const key = `${tgt.date}|${tgt.start}|${tgt.end}`;
+      if (prev.find((p) => `${p.date}|${p.start}|${p.end}` === key)) return prev;
+      return [
+        ...prev,
+        {
+          date: tgt.date,
+          start: tgt.start,
+          end: tgt.end,
+          place: {
+            name: place.name,
+            type: place.type || "etc",
+            place_id: place.place_id ?? null,
+            lat: typeof place.lat === "number" ? place.lat : null,
+            lng: typeof place.lng === "number" ? place.lng : null,
+          },
+        },
+      ];
+    });
+
+    setPickerOpen(false);
+    setPickerTarget(null);
+    setAddMode(false);
+  };
+
+  // —— 재생성 (삭제/분할/현재화면/핀 반영)
   const handleRegenerate = async () => {
     const user = auth.currentUser;
     if (!user) return alert("로그인이 필요합니다.");
     if (!basePayload) return;
-
-    const hasOps = deletions.length > 0 || splits.length > 0;
 
     try {
       setOptimizing(true);
@@ -302,18 +528,23 @@ export default function Journey() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
-          hasOps ? { ...basePayload, deletions, splits } : { ...basePayload }
+          {
+            ...basePayload,
+            deletions,
+            splits,
+            fixed_slots: pins,
+            merges,
+            client_timeline: timelineDays
+          }
         ),
       });
       if (res.ok) {
-        const data = await res.json();
-        const days = asTimeline(data);
-        if (days.length > 0) setTimelineDays(days);
-        setDeletions([]);
-        setSplits([]);
-        setEditMode(false);
-        setSplitMode(false);
-      } else {
+  const data = await res.json();
+  const days = asTimeline(data);
+  if (days.length > 0) setTimelineDays(days);
+  setEditMode(false);
+  setSplitMode(false);
+}  else {
         const msg = await res.text().catch(() => "");
         alert("경로 재생성 실패: " + msg);
       }
@@ -326,148 +557,269 @@ export default function Journey() {
   };
 
   if (loading) return <div>로딩 중...</div>;
+// —— 병합(인접 두 슬롯, 첫번째 클릭 승자)
+const handleMergeSlots = (date, firstIdx, secondIdx) => {
+  let winnerStart, winnerEnd, loserStart, loserEnd;
+  let winnerPlace = null; // ⬅️ 승자 place 보관
+
+  setTimelineDays(prev =>
+    prev.map(d => {
+      if (d.date !== date) return d;
+
+      const events = [...d.events].sort((a,b)=>toMin(a.start)-toMin(b.start));
+      const i = Math.min(firstIdx, secondIdx);
+      const j = Math.max(firstIdx, secondIdx);
+      if (j !== i + 1) {
+        alert("인접한 슬롯만 병합할 수 있어요.");
+        return d;
+      }
+      const winnerIsFirstClick = firstIdx < secondIdx;
+      const a = winnerIsFirstClick ? events[i] : events[j]; // 승자
+      const b = winnerIsFirstClick ? events[j] : events[i]; // 패자
+
+      if (["start","end","accommodation"].includes(a.type) || ["start","end","accommodation"].includes(b.type)) {
+        alert("시작/종료/숙소 블록은 병합할 수 없어요.");
+        return d;
+      }
+
+      winnerStart = a.start; winnerEnd = a.end;
+      loserStart  = b.start; loserEnd  = b.end;
+
+      // 승자 place 추출
+      winnerPlace = a.title ? {
+        name: a.title,
+        type: a.type || "etc",
+        place_id: a.place_id ?? null,
+        lat: typeof a.lat === "number" ? a.lat : null,
+        lng: typeof a.lng === "number" ? a.lng : null,
+      } : null;
+
+      const merged = {
+        title: a.title ?? null,
+        type: a.type || "etc",
+        place_id: a.place_id ?? null,
+        lat: a.lat ?? null,
+        lng: a.lng ?? null,
+        locked: !!a.locked,
+        start: a.start,
+        end: b.end,
+      };
+
+      events.splice(i, 2, merged);
+      return { ...d, events };
+    })
+  );
+
+  // pins 갱신: winner/loser 기존 핀 제거 → 병합 구간으로 1개 pin 추가
+  setPins(prev => {
+    let out = prev.filter(p =>
+      !(p.date===date && (
+        (p.start===winnerStart && p.end===winnerEnd) ||
+        (p.start===loserStart  && p.end===loserEnd)
+      ))
+    );
+
+    // 승자에 내용이 있었거나(=title) locked였다면 합쳐진 구간을 pin으로 유지
+    if (winnerPlace) {
+      const newStart = winnerStart;
+      const newEnd   = (winnerEnd < loserEnd ? loserEnd : winnerEnd);
+      // 중복 방지
+      const exists = out.some(p => p.date===date && p.start===newStart && p.end===newEnd);
+      if (!exists) {
+        out.push({
+          date,
+          start: newStart,
+          end: newEnd,
+          place: winnerPlace,
+        });
+      }
+    }
+    return out;
+  });
+
+  // 백엔드에 보낼 merge 로그
+  setMerges(prev => ([
+    ...prev,
+    { date, winner: { start: winnerStart, end: winnerEnd }, loser: { start: loserStart, end: loserEnd } }
+  ]));
+};
 
   return (
-    <div style={styles.wrap}>
+    <div
+      style={{
+        ...styles.wrap,
+        gridTemplateColumns: sidebarOpen ? "320px 1fr" : "0px 1fr",
+        transition: "grid-template-columns .25s ease",
+        position: "relative",
+      }}
+    >
+      {/* 여기 — aside 앞에 플로팅 핸들 넣기 */}
+      <button
+        onClick={toggleSidebar}
+        aria-label={sidebarOpen ? "세부정보 닫기" : "세부정보 열기"}
+        title={sidebarOpen ? "세부정보 닫기" : "세부정보 열기"}
+        style={styles.floatingHandle(sidebarOpen)}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          {sidebarOpen ? (
+            <path d="M14 7l-5 5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          ) : (
+            <path d="M10 7l5 5-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          )}
+        </svg>
+      </button>
+
       {/* 좌측 네비 (STEP 1) */}
-      <aside style={styles.sidebar}>
-        <div style={styles.sidebarHeader}>
-          <div style={styles.brandDot} />
-          <h2 style={{ margin: 0, fontSize: 18 }}>여행 설정</h2>
-        </div>
-
-        <div style={styles.stepTag}>STEP 1</div>
-        <h3 style={styles.stepTitle}>기본 정보 입력</h3>
-
-        <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12 }}>
-          <Field label="여행 제목">
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="예) 나의 여름 제주 여행"
-              disabled={submitting || preparing || optimizing}
-              style={styles.input}
-            />
-          </Field>
-
-          <Field label="지역(기점)">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="예) 제주시청, 서귀포, 신도림역"
-              disabled={submitting || preparing || optimizing}
-              style={styles.input}
-            />
-          </Field>
-
-          <Field label="이동 방식">
-            <select
-              value={method}
-              onChange={(e) => setMethod(e.target.value)}
-              disabled={submitting || preparing || optimizing}
-              style={styles.input}
-            >
-              <option value="1">도보 (반경 3km)</option>
-              <option value="2">대중교통 (반경 15km)</option>
-              <option value="3">직접 운전 (반경 30km)</option>
-            </select>
-          </Field>
-
-          {/* 날짜/시간 */}
-          <div style={{ display: "grid", gap: 10 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <Field label="시작 날짜">
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  disabled={submitting || preparing || optimizing}
-                  style={styles.input}
-                />
-              </Field>
-              <Field label="종료 날짜">
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  disabled={submitting || preparing || optimizing}
-                  style={styles.input}
-                />
-              </Field>
+      <aside
+        style={{
+          ...styles.sidebar,
+          padding: sidebarOpen ? 16 : 0,
+          borderRight: sidebarOpen ? "1px solid #eee" : "none",
+          overflow: "hidden",
+        }}
+        aria-hidden={!sidebarOpen}
+      >
+        {sidebarOpen && (
+          <>
+            <div style={styles.sidebarHeader}>
+              <div style={styles.brandDot} />
+              <h2 style={{ margin: 0, fontSize: 18 }}>여행 설정</h2>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <Field label="시작 시간">
+            <div style={styles.stepTag}>STEP 1</div>
+            <h3 style={styles.stepTitle}>기본 정보 입력</h3>
+
+            <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12 }}>
+              <Field label="여행 제목">
                 <input
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="예) 나의 여름 제주 여행"
                   disabled={submitting || preparing || optimizing}
                   style={styles.input}
                 />
               </Field>
-              <Field label="종료 시간">
+
+              <Field label="지역(기점)">
                 <input
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="예) 제주시청, 서귀포, 신도림역"
                   disabled={submitting || preparing || optimizing}
                   style={styles.input}
                 />
               </Field>
-            </div>
-          </div>
 
-          {/* 위치들 */}
-          <Field label="시작 위치">
-            <input
-              type="text"
-              value={startLocation}
-              onChange={(e) => setStartLocation(e.target.value)}
-              placeholder="예) 김포공항, 제주시청"
-              disabled={submitting || preparing || optimizing}
-              style={styles.input}
-            />
-          </Field>
+              <Field label="이동 방식">
+                <select
+                  value={method}
+                  onChange={(e) => setMethod(e.target.value)}
+                  disabled={submitting || preparing || optimizing}
+                  style={styles.input}
+                >
+                  <option value="1">도보 (반경 3km)</option>
+                  <option value="2">대중교통 (반경 15km)</option>
+                  <option value="3">직접 운전 (반경 30km)</option>
+                </select>
+              </Field>
 
-          <Field label="숙소(옵션)">
-            <input
-              type="text"
-              value={lodging}
-              onChange={(e) => setLodging(e.target.value)}
-              placeholder="예) OO호텔 제주점"
-              disabled={submitting || preparing || optimizing}
-              style={styles.input}
-            />
-          </Field>
+              {/* 날짜/시간 */}
+              <div style={{ display: "grid", gap: 10 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <Field label="시작 날짜">
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      disabled={submitting || preparing || optimizing}
+                      style={styles.input}
+                    />
+                  </Field>
+                  <Field label="종료 날짜">
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      disabled={submitting || preparing || optimizing}
+                      style={styles.input}
+                    />
+                  </Field>
+                </div>
 
-          <Field label="종료 위치">
-            <input
-              type="text"
-              value={endLocation}
-              onChange={(e) => setEndLocation(e.target.value)}
-              placeholder="예) 제주공항, 서귀포버스터미널"
-              disabled={submitting || preparing || optimizing}
-              style={styles.input}
-            />
-          </Field>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <Field label="시작 시간">
+                    <input
+                      type="time"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      disabled={submitting || preparing || optimizing}
+                      style={styles.input}
+                    />
+                  </Field>
+                  <Field label="종료 시간">
+                    <input
+                      type="time"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                      disabled={submitting || preparing || optimizing}
+                      style={styles.input}
+                    />
+                  </Field>
+                </div>
+              </div>
 
-          {/* 선호 타입 */}
-          <Field label="여행 성향">
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              <Radio label="명소 중심" name="focus" value="attraction" checked={focusType === "attraction"} onChange={setFocusType} disabled={submitting || preparing || optimizing} />
-              <Radio label="식사 중심" name="focus" value="food" checked={focusType === "food"} onChange={setFocusType} disabled={submitting || preparing || optimizing} />
-              <Radio label="카페·빵집 중심" name="focus" value="cafe" checked={focusType === "cafe"} onChange={setFocusType} disabled={submitting || preparing || optimizing} />
-              <Radio label="쇼핑 중심" name="focus" value="shopping" checked={focusType === "shopping"} onChange={setFocusType} disabled={submitting || preparing || optimizing} />
-            </div>
-          </Field>
+              {/* 위치들 */}
+              <Field label="시작 위치">
+                <input
+                  type="text"
+                  value={startLocation}
+                  onChange={(e) => setStartLocation(e.target.value)}
+                  placeholder="예) 김포공항, 제주시청"
+                  disabled={submitting || preparing || optimizing}
+                  style={styles.input}
+                />
+              </Field>
 
-          <button type="submit" disabled={submitting || preparing || optimizing} style={styles.primaryBtn}>
-            {submitting || preparing || optimizing ? "처리 중..." : "저장 & 경로 생성"}
-          </button>
-        </form>
+              <Field label="숙소(옵션)">
+                <input
+                  type="text"
+                  value={lodging}
+                  onChange={(e) => setLodging(e.target.value)}
+                  placeholder="예) OO호텔 제주점"
+                  disabled={submitting || preparing || optimizing}
+                  style={styles.input}
+                />
+              </Field>
+
+              <Field label="종료 위치">
+                <input
+                  type="text"
+                  value={endLocation}
+                  onChange={(e) => setEndLocation(e.target.value)}
+                  placeholder="예) 제주공항, 서귀포버스터미널"
+                  disabled={submitting || preparing || optimizing}
+                  style={styles.input}
+                />
+              </Field>
+
+              {/* 선호 타입 */}
+              <Field label="여행 성향">
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <Radio label="명소 중심" name="focus" value="attraction" checked={focusType === "attraction"} onChange={setFocusType} disabled={submitting || preparing || optimizing} />
+                  <Radio label="식사 중심" name="focus" value="food" checked={focusType === "food"} onChange={setFocusType} disabled={submitting || preparing || optimizing} />
+                  <Radio label="카페·빵집 중심" name="focus" value="cafe" checked={focusType === "cafe"} onChange={setFocusType} disabled={submitting || preparing || optimizing} />
+                  <Radio label="쇼핑 중심" name="focus" value="shopping" checked={focusType === "shopping"} onChange={setFocusType} disabled={submitting || preparing || optimizing} />
+                </div>
+              </Field>
+
+              <button type="submit" disabled={submitting || preparing || optimizing} style={styles.primaryBtn}>
+                {submitting || preparing || optimizing ? "처리 중..." : "저장 & 경로 생성"}
+              </button>
+            </form>
+          </>
+        )}
       </aside>
 
       {/* 우측 콘텐츠 (STEP 2) */}
@@ -479,7 +831,15 @@ export default function Journey() {
           </div>
 
           {/* 편집/재생성 컨트롤 */}
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              onClick={toggleAdd}
+              disabled={preparing || optimizing || timelineDays.length === 0}
+              style={{ ...styles.primaryBtn, background: addMode ? "#0ea5e9" : "#0369a1" }}
+              title="빈칸을 클릭해 직접 장소를 추가합니다"
+            >
+              {addMode ? "일정 추가 모드 종료" : "일정 추가"}
+            </button>
             <button
               onClick={toggleEdit}
               disabled={preparing || optimizing || timelineDays.length === 0}
@@ -504,6 +864,14 @@ export default function Journey() {
             >
               {optimizing ? "DQN 재생성 중..." : `경로 다시 생성${(deletions.length || splits.length) ? ` (${deletions.length + splits.length})` : ""}`}
             </button>
+            <button
+  onClick={toggleMerge}
+  disabled={preparing || optimizing || timelineDays.length === 0}
+  style={{ ...styles.primaryBtn, background: mergeMode ? "#10b981" : "#065f46" }}
+  title="인접한 두 슬롯을 하나로 합치기 (첫번째 클릭 내용이 유지됩니다)"
+>
+  {mergeMode ? "병합 모드 종료" : "병합 모드"}
+</button>
           </div>
         </div>
 
@@ -517,13 +885,31 @@ export default function Journey() {
           {timelineDays.length === 0 ? (
             <div style={styles.placeholder}><div>아직 생성된 일정이 없습니다.</div></div>
           ) : (
-            <Timeline
-              days={timelineDays}
-              editable={editMode}
-              splitable={splitMode}
-              onDelete={handleDeleteSlot}
-              onSplit={handleSplitSlot}
-            />
+            <div style={{ display: "grid", gridTemplateColumns: pickerOpen ? "1fr 320px" : "1fr", gap: 16 }}>
+              <Timeline
+                days={timelineDays}
+                editable={editMode}
+                splitable={splitMode}
+                pickable={addMode}
+                onDelete={handleDeleteSlot}
+                onSplit={handleSplitSlot}
+                onPick={handlePickTarget}
+                onDragCommit={applyTimeChange}
+                mergeable={mergeMode}
+                onMerge={handleMergeSlots}
+              />
+
+              {pickerOpen && (
+                <AddPlacePanel
+                  placeTypeFilter={placeTypeFilter}
+                  setPlaceTypeFilter={setPlaceTypeFilter}
+                  loading={loadingPlaces}
+                  places={placeOptions}
+                  onClose={() => { setPickerOpen(false); setPickerTarget(null); }}
+                  onChoose={handleApplyPlaceToSlot}
+                />
+              )}
+            </div>
           )}
         </section>
       </main>
@@ -557,15 +943,228 @@ function Radio({ label, name, value, checked, onChange, disabled }) {
   );
 }
 
-/* ---------- 타임라인 (삭제/분할) ---------- */
-function Timeline({ days, editable = false, splitable = false, onDelete, onSplit }) {
+/* ---------- 우측 후보 패널 ---------- */
+function AddPlacePanel({ placeTypeFilter, setPlaceTypeFilter, loading, places, onClose, onChoose }) {
+  return (
+    <aside style={panelStyles.wrap}>
+      <div style={panelStyles.header}>
+        <div style={{ fontWeight: 700 }}>후보 선택</div>
+        <button onClick={onClose} style={panelStyles.closeBtn}>닫기</button>
+      </div>
+
+      <div style={{ marginBottom: 8 }}>
+        <label style={{ display: "block", fontSize: 12, color: "#555", marginBottom: 4 }}>타입 필터</label>
+        <select
+          value={placeTypeFilter}
+          onChange={(e) => setPlaceTypeFilter(e.target.value)}
+          style={styles.input}
+        >
+          <option value="all">전체</option>
+          <option value="tourist_attraction">명소</option>
+          <option value="restaurant">식당</option>
+          <option value="cafe">카페</option>
+          <option value="bakery">빵집</option>
+          <option value="bar">바</option>
+          <option value="shopping_mall">쇼핑</option>
+        </select>
+      </div>
+
+      <div style={{ fontSize: 12, color: "#666", marginBottom: 6 }}>
+        {loading ? "불러오는 중..." : `총 ${places.length}개`}
+      </div>
+
+      <div style={panelStyles.list}>
+        {loading ? (
+          <div style={styles.placeholder}>목록 로딩 중…</div>
+        ) : places.length === 0 ? (
+          <div style={styles.placeholder}>해당 타입 후보가 없습니다.</div>
+        ) : (
+          places.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => onChoose?.(p)}
+              style={panelStyles.item}
+              title={`${p.name} · 점수 ${fmtScore(p.totalScore)}`}
+            >
+              {/* 상단: 이름 + 영업상태 */}
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
+                <div
+                  style={{
+                    fontWeight: 700,
+                    fontSize: 14,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    maxWidth: "75%",
+                  }}
+                >
+                  {p.name}
+                </div>
+                <div style={{
+                  fontSize: 11,
+                  padding: "2px 6px",
+                  borderRadius: 999,
+                  border: "1px solid #e5e7eb",
+                  background: p.open_now === true ? "#eafff6" : p.open_now === false ? "#fee2e2" : "#f3f4f6",
+                  color: p.open_now === true ? "#047857" : p.open_now === false ? "#7f1d1d" : "#374151",
+                  whiteSpace: "nowrap"
+                }}>
+                  {p.open_now === true ? "영업중" : p.open_now === false ? "영업종료" : (p.business_status || "상태 미상")}
+                </div>
+              </div>
+
+              {/* 중간: 별점/리뷰수 + 타입 */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+                <StarRating value={p.rating} />
+                <div style={{ fontSize: 12, color: "#555" }}>
+                  {p.rating ? p.rating.toFixed(1) : "N/A"}
+                </div>
+                <div style={{ fontSize: 12, color: "#777" }}>
+                  · 리뷰 {p.user_ratings_total ?? 0}
+                </div>
+                <div style={{ fontSize: 12, color: "#777" }}>
+                  · {typeLabel(p.type)}
+                </div>
+              </div>
+
+              {/* 하단: 주소(있으면) + 내부 점수 */}
+              {p.vicinity && (
+                <div style={{ marginTop: 4, fontSize: 12, color: "#6b7280", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {p.vicinity}
+                </div>
+              )}
+              <div style={{ marginTop: 6, fontSize: 11, color: "#6b7280" }}>
+                총점 {fmtScore(p.totalScore)} · 신뢰 {fmtScore(p.trust_score)} · 희망 {fmtScore(p.hope_score)} · 비희망 {fmtScore(p.nonhope_score)}
+              </div>
+            </button>
+          ))
+        )}
+      </div>
+    </aside>
+  );
+}
+
+function fmtScore(v) {
+  if (v == null) return "0.0";
+  const num = Number(v);
+  if (Number.isNaN(num)) return String(v);
+  return num.toFixed(2);
+}
+function typeLabel(t) {
+  const map = {
+    tourist_attraction: "명소",
+    restaurant: "식당",
+    cafe: "카페",
+    bakery: "빵집",
+    bar: "바",
+    shopping_mall: "쇼핑",
+    start: "출발",
+    end: "도착",
+    accommodation: "숙소",
+    etc: "기타",
+  };
+  return map[t] || "기타";
+}
+function StarRating({ value, size = 12 }) {
+  const v = Math.max(0, Math.min(5, Number(value ?? 0)));
+  const full = Math.floor(v);
+  const half = v - full >= 0.5 ? 1 : 0;
+  const empty = 5 - full - half;
+  const star = "★";
+  const hollow = "☆";
+  const halfChar = "⯪"; // 반쪽 대용(폰트에 따라 다를 수 있음)
+  const part = [];
+  for (let i = 0; i < full; i++) part.push(<span key={`f${i}`}>{star}</span>);
+  if (half) part.push(<span key="h">{halfChar}</span>);
+  for (let i = 0; i < empty; i++) part.push(<span key={`e${i}`}>{hollow}</span>);
+  return <span style={{ fontSize: size, lineHeight: 1 }}>{part}</span>;
+}
+
+/* ---------- 타임라인 (삭제/분할/추가 + 드래그 리사이즈) ---------- */
+function Timeline({ days, editable = false, splitable = false, pickable = false, mergeable = false, onDelete, onSplit, onPick, onDragCommit, onMerge }) {
+  const trackRefs = useRef({}); // day.date -> element
+  const [preview, setPreview] = useState({}); // key=date|idx -> {start, end}
+  const [mergeSel, setMergeSel] = useState(null); // {date, idx}
+
   const toMin = (hm) => {
     const [h, m] = hm.split(":").map(Number);
     return h * 60 + m;
   };
+  const toHHMM = (mins) => {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  };
+  const snap = (mins) => Math.round(mins / SNAP) * SNAP;
+
+  const getKey = (date, idx) => `${date}|${idx}`;
+
+  const handleMouseDown = (e, day, events, idx, edge /* 'left' | 'right' */) => {
+    const ev = events[idx];
+    if (!ev || ["start","end","accommodation"].includes(ev.type)) return;
+
+    const trackEl = trackRefs.current[day.date];
+    if (!trackEl) return;
+
+    const rect = trackEl.getBoundingClientRect();
+    const totalPx = rect.height;
+    const rangeStart = Math.max(0, Math.min(...events.map(x => toMin(x.start))) - 30);
+    const rangeEnd   = Math.min(24*60, Math.max(...events.map(x => toMin(x.end))) + 30);
+    const totalMin = Math.max(1, rangeEnd - rangeStart);
+
+    // 초기값
+    const start0 = toMin(ev.start);
+    const end0   = toMin(ev.end);
+    const mouseStartY = e.clientY;
+
+    const onMove = (me) => {
+      const dyPx = me.clientY - mouseStartY;
+      const dyMin = (dyPx / totalPx) * totalMin;
+      let ns = start0, ne = end0;
+
+      if (edge === "left") ns = snap(start0 + dyMin);
+      else ne = snap(end0 + dyMin);
+
+      // 최소 길이
+      if (ne - ns < MIN_SLOT) {
+        if (edge === "left") ns = ne - MIN_SLOT;
+        else ne = ns + MIN_SLOT;
+      }
+
+      // 이웃과 겹침 방지
+      const prevEv = idx > 0 ? events[idx-1] : null;
+      const nextEv = idx < events.length - 1 ? events[idx+1] : null;
+      const leftEnd    = prevEv ? toMin(prevEv.end)   : 0;
+      const rightStart = nextEv ? toMin(nextEv.start) : 24*60;
+
+      if (edge === "left") {
+        ns = Math.max(leftEnd, Math.min(ns, ne - MIN_SLOT));
+      } else {
+        ne = Math.min(rightStart, Math.max(ne, ns + MIN_SLOT));
+      }
+
+      setPreview((p) => ({
+        ...p,
+        [getKey(day.date, idx)]: { start: toHHMM(ns), end: toHHMM(ne) }
+      }));
+    };
+
+    const onUp = () => {
+      const pv = preview[getKey(day.date, idx)];
+      if (pv) onDragCommit?.(day.date, idx, pv.start, pv.end);
+      setPreview((p) => {
+        const n = { ...p }; delete n[getKey(day.date, idx)]; return n;
+      });
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp, { once: true });
+  };
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
+    <div style={vStyles.dayList}>
       {days.map((day) => {
         const events = day.events || [];
         if (events.length === 0) {
@@ -587,32 +1186,66 @@ function Timeline({ days, editable = false, splitable = false, onDelete, onSplit
           <div key={day.date} style={styles.dayBlock}>
             <DayHeader date={day.date} weekday={day.weekday} />
 
-            <div style={styles.axisRow}>
+            <div style={vStyles.axisCol}>
               <span>{minLabel(rangeStart)}</span>
               <span>{maxLabel(rangeEnd)}</span>
             </div>
 
-            <div style={styles.timelineRow}>
-              <div style={styles.timelineTrack}>
-                {events.map((e, idx) => {
-                  const left = ((toMin(e.start) - rangeStart) / total) * 100;
-                  const width = ((toMin(e.end) - toMin(e.start)) / total) * 100;
+            <div style={vStyles.timelineRow}>
+              <div
+                style={vStyles.timelineTrack}
+                ref={(el) => { trackRefs.current[day.date] = el; }}
+              >
+                {([...events].sort((a,b)=>toMin(a.start)-toMin(b.start))).map((e, idx) => {
+                  const pv = preview[getKey(day.date, idx)];
+                  const start = pv?.start || e.start;
+                  const end   = pv?.end   || e.end;
+
+                  const topPct = ((toMin(start) - rangeStart) / total) * 100;
+                  const heightPct = ((toMin(end) - toMin(start)) / total) * 100;
                   const lock = ["start", "end", "accommodation"].includes(e.type);
 
                   const isEmpty = !e.title;
                   const showDelete = editable && !lock;
                   const showSplit = splitable && !lock && isEmpty;
+                  const canPick = pickable && !lock && isEmpty;
 
                   return (
                     <div
                       key={`${e.start}-${e.end}-${idx}`}
-                      title={`${e.title || "(빈칸)"} (${e.start}~${e.end})`}
+                      title={`${e.title || "(빈칸)"} (${start}~${end})`}
+                      onClick={(ev) => {
+    if (mergeable) {
+      // 병합 선택 흐름
+      if (["start", "end", "accommodation"].includes(e.type)) return;
+      const curIdx = idx; // 현재 렌더 순서가 시간순
+      if (!mergeSel) {
+        setMergeSel({ date: day.date, idx: curIdx });
+      } else {
+        if (mergeSel.date !== day.date) {
+          alert("같은 날짜의 인접 슬롯만 병합할 수 있어요.");
+          setMergeSel(null);
+          return;
+        }
+        if (Math.abs(mergeSel.idx - curIdx) !== 1) {
+          alert("인접한 슬롯만 선택해 주세요.");
+          setMergeSel(null);
+          return;
+        }
+        // 첫 클릭이 승자
+        onMerge?.(day.date, mergeSel.idx, idx);
+        setMergeSel(null);
+      }
+      return;
+    }
+    if (canPick) onPick?.(day.date, e);
+  }}
                       style={{
                         position: "absolute",
-                        left: `${left}%`,
-                        width: `${Math.max(0, width)}%`,
-                        top: 6,
-                        height: 28,
+                        left: 8,
+                        right: 8,
+                        top: `${Math.max(0, topPct)}%`,
+                        height: `${Math.max(0, heightPct)}%`,
                         borderRadius: 8,
                         padding: "4px 8px",
                         overflow: "hidden",
@@ -624,14 +1257,28 @@ function Timeline({ days, editable = false, splitable = false, onDelete, onSplit
                         ...barStyleByType(e.type),
                         opacity: isEmpty ? 0.85 : 1,
                         borderStyle: isEmpty ? "dashed" : "solid",
+                        cursor: canPick ? "pointer" : "default",
+                        userSelect: "none",
+                        outline: mergeable && mergeSel && mergeSel.date === day.date && mergeSel.idx === idx ? "2px dashed #10b981" : "none",
                       }}
                     >
-                      <strong style={{ marginRight: 6 }}>{e.start}</strong>
-                      <span style={{ flex: 1, minWidth: 0 }}>{e.title || "빈 슬롯"}</span>
+                      {/* 왼쪽/오른쪽 드래그 핸들 */}
+                      {!lock && !mergeable && (
+                        <div
+                          onMouseDown={(me) => { me.stopPropagation(); handleMouseDown(me, day, events, idx, "left"); }}
+                          style={resizeHandle.left}
+                          title="시작 시간을 드래그로 조절"
+                        />
+                      )}
+
+                      <strong style={{ marginRight: 6 }}>{start}</strong>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        {e.title || "빈 슬롯 (클릭하여 추가)"} {e.locked ? "🔒" : ""}
+                      </span>
 
                       {showSplit && (
                         <button
-                          onClick={() => onSplit?.(day.date, e)}
+                          onClick={(ev) => { ev.stopPropagation(); onSplit?.(day.date, e); }}
                           style={btnSplit}
                           title="이 빈 슬롯을 두 개로 분할"
                         >
@@ -641,12 +1288,20 @@ function Timeline({ days, editable = false, splitable = false, onDelete, onSplit
 
                       {showDelete && (
                         <button
-                          onClick={() => onDelete?.(day.date, e)}
+                          onClick={(ev) => { ev.stopPropagation(); onDelete?.(day.date, e); }}
                           style={btnDelete}
                           title="이 슬롯 삭제(빈칸으로 만들어 DQN이 다시 채우게 함)"
                         >
                           삭제
                         </button>
+                      )}
+
+                      {!lock && !mergeable && (
+                        <div
+                          onMouseDown={(me) => { me.stopPropagation(); handleMouseDown(me, day, events, idx, "right"); }}
+                          style={resizeHandle.right}
+                          title="종료 시간을 드래그로 조절"
+                        />
                       )}
                     </div>
                   );
@@ -772,6 +1427,8 @@ const styles = {
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 16,
+    flexWrap: "wrap",
+    gap: 8,
   },
   stageCard: {
     background: "#fff",
@@ -812,8 +1469,56 @@ const styles = {
     borderRadius: 10,
     overflow: "hidden",
   },
+  floatingHandle: (open) => ({
+    position: "absolute",
+    top: 96,
+    left: open ? 320 : 0,
+    transform: open ? "translateX(-50%)" : "translateX(0)",
+    width: 44,
+    height: 56,
+    border: "1px solid #e5e7eb",
+    background: "linear-gradient(135deg, #ffffff, #f8fafc)",
+    color: "#111827",
+    borderRadius: open ? "0 14px 14px 0" : "14px",
+    boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 20,
+    transition: "left .25s ease, transform .25s ease, border-radius .25s ease",
+  }),
 };
-
+const vStyles = {
+  dayList: {
+    display: "flex",
+    gap: 16,
+    overflowX: "auto",         // ⬅️ 여러 날이면 가로 스크롤
+    paddingBottom: 8,
+  },
+  axisCol: {
+    display: "flex",
+    justifyContent: "space-between",
+    flexDirection: "column",
+    height: 28,
+    fontSize: 12,
+    color: "#777",
+    marginBottom: 6,
+  },
+  timelineRow: {
+    position: "relative",
+    height: TRACK_HEIGHT,      // ⬅️ 세로 높이 고정
+  },
+  timelineTrack: {
+    position: "relative",
+    height: "100%",
+    width: DAY_COL_WIDTH,      // ⬅️ 하루 칼럼 너비(글자 안 잘리게)
+    background: "#f5f5f7",
+    border: "1px dashed #e5e7eb",
+    borderRadius: 10,
+    overflow: "hidden",
+  },
+};
 const btnDelete = {
   fontSize: 11,
   border: "1px solid #ef4444",
@@ -832,4 +1537,69 @@ const btnSplit = {
   borderRadius: 6,
   padding: "2px 6px",
   cursor: "pointer",
+};
+
+const resizeHandle = {
+  left: {   // 위쪽 핸들
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 6,
+    cursor: "ns-resize",
+    background: "rgba(0,0,0,0.06)",
+  },
+  right: {  // 아래쪽 핸들
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 6,
+    cursor: "ns-resize",
+    background: "rgba(0,0,0,0.06)",
+  },
+};
+
+/* 후보 패널 스타일 */
+const panelStyles = {
+  wrap: {
+    border: "1px solid #eee",
+    background: "#fff",
+    borderRadius: 12,
+    padding: 12,
+    height: "fit-content",
+    maxHeight: 520,
+    overflow: "hidden",
+    display: "flex",
+    flexDirection: "column",
+    position: "sticky",
+    top: 24,
+  },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  closeBtn: {
+    border: "1px solid #e5e7eb",
+    background: "#f9fafb",
+    borderRadius: 8,
+    padding: "6px 10px",
+    cursor: "pointer",
+  },
+  list: {
+    overflowY: "auto",
+    padding: 2,
+    display: "grid",
+    gap: 8,
+  },
+  item: {
+    textAlign: "left",
+    border: "1px solid #e5e7eb",
+    background: "#fff",
+    borderRadius: 10,
+    padding: "10px 12px",
+    cursor: "pointer",
+  },
 };
