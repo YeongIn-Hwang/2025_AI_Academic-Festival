@@ -1,20 +1,16 @@
+// src/pages/Journey.js
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth, db } from "../firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import {
-  doc,
-  getDoc,
-  collection,
-  getDocs,
-} from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, writeBatch, setDoc, serverTimestamp } from "firebase/firestore";
+import { throttle } from "lodash";
 
-const TRACK_HEIGHT = 800;   // 세로 트랙 높이(px) — 필요하면 취향에 맞게 조절
+const TRACK_HEIGHT = 800;   // 세로 트랙 높이(px)
 const DAY_COL_WIDTH = 360;
 
 const MIN_SLOT = 30; // 분
 const SNAP = 15;     // 분
-
 
 export default function Journey() {
   const navigate = useNavigate();
@@ -41,9 +37,9 @@ export default function Journey() {
 
   // 타임라인 & 편집 상태
   const [timelineDays, setTimelineDays] = useState([]);
-  const [editMode, setEditMode] = useState(false);   // 삭제 모드
-  const [splitMode, setSplitMode] = useState(false); // 분할 모드
-  const [mergeMode, setMergeMode] = useState(false);
+  const [editMode, setEditMode] = useState(false);    // 삭제 모드 (빈칸으로 만들기)
+  const [splitMode, setSplitMode] = useState(false);  // 분할 모드
+  const [mergeMode, setMergeMode] = useState(false);  // 병합 모드
 
   // 추가 모드 & 후보 패널
   const [addMode, setAddMode] = useState(false); // 일정 추가 모드 토글
@@ -53,13 +49,7 @@ export default function Journey() {
   const [placeOptions, setPlaceOptions] = useState([]);
   const [loadingPlaces, setLoadingPlaces] = useState(false);
 
-  // 서버에 보낼 변경 누적
-  const [deletions, setDeletions] = useState([]); // [{date,start,end}]
-  const [splits, setSplits] = useState([]);       // [{date,start,end,mid?}]
-  const [pins, setPins] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [merges, setMerges] = useState([]);
-
   const toggleSidebar = () => setSidebarOpen((v) => !v);
 
   const API_BASE =
@@ -88,25 +78,48 @@ export default function Journey() {
   };
 
   const asTimeline = (data) => {
-    if (Array.isArray(data?.timeline)) return data.timeline;
-    if (data?.tables && typeof data.tables === "object") {
-      return Object.keys(data.tables)
-        .sort()
-        .map((date) => ({
-          date,
-          weekday: data.tables[date].weekday || "",
-          events: (data.tables[date].schedule || []).map((s) => ({
-            title: s.title,
-            start: s.start,
-            end: s.end,
-            type: s.place_type || s.type || "etc",
-            place_id: s.place_id ?? null,
-            lat: typeof s.lat === "number" ? s.lat : (s.location_info?.lat ?? null),
-            lng: typeof s.lng === "number" ? s.lng : (s.location_info?.lng ?? null),
-          })),
-        }));
+  // ✅ tables 우선
+  if (data?.tables && typeof data.tables === "object") {
+    return Object.keys(data.tables)
+      .sort()
+      .map((date) => ({
+        date,
+        weekday: data.tables[date].weekday || "",
+        events: (data.tables[date].schedule || []).map((s) => ({
+          title: s.title,
+          start: s.start,
+          end: s.end,
+          type: s.place_type || s.type || "etc",
+          place_id: s.place_id ?? null,
+          lat: typeof s.lat === "number" ? s.lat : (s.location_info?.lat ?? null),
+          lng: typeof s.lng === "number" ? s.lng : (s.location_info?.lng ?? null),
+          locked: s.locked === true,
+        })),
+      }));
+  }
+  // timeline만 있을 때만 사용
+  if (Array.isArray(data?.timeline)) return data.timeline;
+  return [];
+};
+
+  // 지금 화면의 days -> 서버로 보낼 tables 포맷
+  const toTables = (days = []) => {
+    const tables = {};
+    for (const d of days) {
+      tables[d.date] = {
+        weekday: d.weekday || "",
+        schedule: (d.events || []).map((e) => ({
+          title: e.title ?? null,              // 빈칸이면 null
+          start: e.start,
+          end: e.end,
+          place_type: e.title ? (e.type || "etc") : null,
+          place_id: e.place_id ?? null,
+          lat: typeof e.lat === "number" ? e.lat : (e.lat != null ? Number(e.lat) : null),
+          lng: typeof e.lng === "number" ? e.lng : (e.lng != null ? Number(e.lng) : null),
+        })),
+      };
     }
-    return [];
+    return tables;
   };
 
   const basePayload = useMemo(() => {
@@ -216,7 +229,7 @@ export default function Journey() {
   const toggleEdit = () =>
     setEditMode((v) => {
       const next = !v;
-      if (next) { setSplitMode(false); setAddMode(false); }
+      if (next) { setSplitMode(false); setAddMode(false); setMergeMode(false); }
       return next;
     });
   const toggleSplit = () =>
@@ -225,18 +238,16 @@ export default function Journey() {
       if (next) { setEditMode(false); setAddMode(false); setMergeMode(false); }
       return next;
     });
-const toggleMerge = () =>
-  setMergeMode((v) => {
-    const next = !v;
-    if (next) { setEditMode(false); setAddMode(false); setSplitMode(false); }
-    if (!next) setMerges((m) => m); // 누적 유지(재생성 시 같이 보냄)
-    return next;
-  });
-
+  const toggleMerge = () =>
+    setMergeMode((v) => {
+      const next = !v;
+      if (next) { setEditMode(false); setAddMode(false); setSplitMode(false); }
+      return next;
+    });
   const toggleAdd = () =>
     setAddMode((v) => {
       const next = !v;
-      if (next) { setEditMode(false); setSplitMode(false); }
+      if (next) { setEditMode(false); setSplitMode(false); setMergeMode(false); }
       if (!next) { setPickerOpen(false); setPickerTarget(null); }
       return next;
     });
@@ -252,93 +263,146 @@ const toggleMerge = () =>
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
   };
   const roundTo = (mins, base = SNAP) => Math.round(mins / base) * base;
-  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
-  // —— 슬롯 시간 변경(드래그 커밋) → 틈 자동 삽입 or 스냅
-  const applyTimeChange = (date, idx, newStartHHMM, newEndHHMM) => {
-    let oldStart, oldEnd;
-    setTimelineDays(prev => prev.map(day => {
-      if (day.date !== date) return day;
+  // —— 드래그 커밋(이웃 밀착 포함) — 고정 타입만 하드락
+  const applyTimeChange = React.useCallback((date, idx, newStartHHMM, newEndHHMM) => {
+    setTimelineDays(prev =>
+      prev.map(day => {
+        if (day.date !== date) return day;
+        const events = [...day.events].sort((a, b) => toMin(a.start) - toMin(b.start));
+        const curOrig = events[idx];
+        if (!curOrig) return day;
 
-      const events = [...day.events].sort((a,b)=>toMin(a.start)-toMin(b.start));
-      let cur = { ...events[idx] };
-      if (!cur) return day;
-      if (["start","end","accommodation"].includes(cur.type)) return day;
-      oldStart = cur.start; oldEnd = cur.end;
+        const isFixedType = (t) => ["start", "end", "accommodation"].includes(t);
+        if (isFixedType(curOrig.type)) return day;
 
-      let ns = toMin(newStartHHMM);
-      let ne = toMin(newEndHHMM);
-      if (ne - ns < MIN_SLOT) ne = ns + MIN_SLOT;
+        const cur = { ...curOrig };
 
-      const prevEv = idx > 0 ? events[idx-1] : null;
-      const nextEv = idx < events.length - 1 ? events[idx+1] : null;
-      const leftEnd    = prevEv ? toMin(prevEv.end)   : 0;
-      const rightStart = nextEv ? toMin(nextEv.start) : 24*60;
+        let ns = toMin(newStartHHMM);
+        let ne = toMin(newEndHHMM);
+        if (ne - ns < MIN_SLOT) ne = ns + MIN_SLOT;
 
-      ns = clamp(ns, leftEnd, rightStart - MIN_SLOT);
-      ne = clamp(ne, ns + MIN_SLOT, rightStart);
+        const prevIdx = idx > 0 ? idx - 1 : null;
+        const nextIdx = idx < events.length - 1 ? idx + 1 : null;
 
-      // 현재 슬롯 반영
-      cur.start = toHHMM(ns);
-      cur.end   = toHHMM(ne);
-      events[idx] = cur;
+        const prevEv = prevIdx != null ? { ...events[prevIdx] } : null;
+        const nextEv = nextIdx != null ? { ...events[nextIdx] } : null;
 
-      // 왼쪽 틈
-      if (prevEv) {
-        const gapL = ns - toMin(prevEv.end);
-        if (gapL >= MIN_SLOT) {
-          const empty = {
-            title: null, type: "etc", locked: false, place_id: null,
-            lat: null, lng: null, start: prevEv.end, end: cur.start
-          };
-          events.splice(idx, 0, empty);
-          idx += 1; // cur 위치 이동
-        } else if (gapL > 0 && gapL < MIN_SLOT) {
-          cur.start = prevEv.end;
-          events[events.indexOf(cur)] = cur;
+        if (nextEv) {
+          if (!isFixedType(nextEv.type)) {
+            const minNextEnd = toMin(nextEv.end);
+            if (ne > toMin(cur.end)) {
+              let diff = ne - toMin(cur.end);
+              let newNextStart = toMin(nextEv.start) + diff;
+              if (minNextEnd - newNextStart < MIN_SLOT) {
+                newNextStart = minNextEnd - MIN_SLOT;
+                ne = newNextStart;
+              }
+              nextEv.start = toHHMM(newNextStart);
+            }
+            if (ne < toMin(cur.end)) {
+              let diff = toMin(cur.end) - ne;
+              let newNextStart = toMin(nextEv.start) - diff;
+              if (newNextStart < ns) newNextStart = ns;
+              nextEv.start = toHHMM(newNextStart);
+            }
+          } else {
+            ne = Math.min(ne, toMin(nextEv.start));
+            if (ne - ns < MIN_SLOT) ns = ne - MIN_SLOT;
+          }
         }
-      }
 
-      // 오른쪽 틈
-      const curIdx = events.indexOf(cur);
-      const nextIdx = curIdx + 1;
-      const nextNow = nextIdx < events.length ? events[nextIdx] : null;
-      if (nextNow) {
-        const gapR = toMin(nextNow.start) - toMin(cur.end);
-        if (gapR >= MIN_SLOT) {
-          const empty = {
-            title: null, type: "etc", locked: false, place_id: null,
-            lat: null, lng: null, start: cur.end, end: nextNow.start
-          };
-          events.splice(nextIdx, 0, empty);
-        } else if (gapR > 0 && gapR < MIN_SLOT) {
-          cur.end = nextNow.start;
-          events[curIdx] = cur;
+        if (prevEv) {
+          if (!isFixedType(prevEv.type)) {
+            if (ns < toMin(cur.start)) {
+              let diff = toMin(cur.start) - ns;
+              let newPrevEnd = toMin(prevEv.end) - diff;
+              if (ne - newPrevEnd < MIN_SLOT) {
+                newPrevEnd = ne - MIN_SLOT;
+                ns = newPrevEnd;
+              }
+              prevEv.end = toHHMM(newPrevEnd);
+            }
+            if (ns > toMin(cur.start)) {
+              let diff = ns - toMin(cur.start);
+              let newPrevEnd = toMin(prevEv.end) + diff;
+              if (toMin(cur.end) - newPrevEnd < MIN_SLOT) {
+                newPrevEnd = toMin(cur.end) - MIN_SLOT;
+                ns = newPrevEnd;
+              }
+              prevEv.end = toHHMM(newPrevEnd);
+            }
+          } else {
+            ns = Math.max(ns, toMin(prevEv.end));
+            if (ne - ns < MIN_SLOT) ne = ns + MIN_SLOT;
+          }
         }
-      }
 
-      // 정렬
-      return { ...day, events };
-    }));
+        cur.start = toHHMM(ns);
+        cur.end   = toHHMM(ne);
+        events[idx] = cur;
+        if (prevEv) events[prevIdx] = prevEv;
+        if (nextEv) events[nextIdx] = nextEv;
 
-    // 핀 슬롯이면 pins의 start/end도 갱신
-    setPins(prevPins =>
-    prevPins.map(p => {
-      if (p.date === date && p.start === oldStart && p.end === oldEnd) {
-        return { ...p, start: newStartHHMM, end: newEndHHMM };
-      }
-      return p;
-    })
+        return { ...day, events };
+      })
+    );
+  }, []);
+
+  const throttledDrag = useMemo(
+    () => throttle((date, idx, s, e) => applyTimeChange(date, idx, s, e), 50),
+    [applyTimeChange]
   );
-  };
+  useEffect(() => () => throttledDrag.cancel(), [throttledDrag]);
 
-  // —— 삭제
+  const handleSaveLog = async () => {
+  const user = auth.currentUser;
+  if (!user) return alert("로그인이 필요합니다.");
+  if (!title.trim()) return alert("여행 제목을 입력하세요.");
+  if (!Array.isArray(timelineDays) || timelineDays.length === 0) {
+    return alert("저장할 일정이 없습니다.");
+  }
+
+  try {
+    const batch = writeBatch(db);
+
+    // 날짜별로 문서를 만든다: user_trips/{uid}/trips_log/{title}/days/{date}
+    timelineDays.forEach((day) => {
+      const dateId = day.date; // "YYYY-MM-DD"
+      const dayRef = doc(db, "user_trips", user.uid, "trips_log", title.trim(), "days", dateId);
+
+      // 화면 이벤트 -> 저장 포맷으로 변환
+      const schedule = (day.events || []).map((e) => ({
+        title: e?.title ?? null,
+        start: e?.start ?? null,
+        end:   e?.end   ?? null,
+        place_type: e?.type ?? null,
+        place_id: e?.place_id ?? null,
+        lat: typeof e?.lat === "number" ? e.lat : (e?.lat != null ? Number(e.lat) : null),
+        lng: typeof e?.lng === "number" ? e.lng : (e?.lng != null ? Number(e.lng) : null),
+      }));
+
+      batch.set(dayRef, {
+        date: dateId,
+        weekday: day.weekday ?? "",
+        schedule,                 // <-- 요구한 포맷
+        saved_at: serverTimestamp(),
+      });
+    });
+
+    await batch.commit();
+    alert("일정을 날짜별로 저장했습니다!");
+  } catch (err) {
+    console.error("[Journey] handleSaveLog error:", err);
+    alert("일정 저장 실패: " + (err?.message || String(err)));
+  }
+};
+
+  // —— 삭제(= 빈칸으로)
   const handleDeleteSlot = (date, ev) => {
     if (["start", "end", "accommodation"].includes(ev.type)) {
       return alert("시작/종료/숙소 블록은 삭제할 수 없어요.");
     }
-    if (!ev.title && !ev.locked) return;
-
     setTimelineDays((prev) =>
       prev.map((d) => {
         if (d.date !== date) return d;
@@ -346,31 +410,19 @@ const toggleMerge = () =>
           ...d,
           events: d.events.map((e) =>
             e.start === ev.start && e.end === ev.end
-              ? { ...e, title: null, type: "etc", locked: false, place_id: null, lat: null, lng: null }
+              ? { ...e, title: null, type: null, place_id: null, lat: null, lng: null }
               : e
           ),
         };
       })
     );
-
-    setPins((prev) =>
-      prev.filter((p) => !(p.date === date && p.start === ev.start && p.end === ev.end))
-    );
-
-    setDeletions((prev) => {
-      const key = `${date}|${ev.start}|${ev.end}`;
-      if (prev.find((x) => `${x.date}|${x.start}|${x.end}` === key)) return prev;
-      return [...prev, { date, start: ev.start, end: ev.end }];
-    });
   };
 
-  // —— 분할
+  // —— 분할(= 두 개 빈칸)
   const handleSplitSlot = (date, ev) => {
     if (["start", "end", "accommodation"].includes(ev.type)) {
       return alert("시작/종료/숙소 블록은 분할할 수 없어요.");
     }
-    if (ev.title) return alert("채워진 슬롯은 분할 전에 삭제해 주세요.");
-
     const s = toMin(ev.start);
     const e = toMin(ev.end);
     if (e - s < 60) return alert("분할하려면 최소 60분 이상이어야 해요.");
@@ -386,8 +438,8 @@ const toggleMerge = () =>
         const events = [];
         d.events.forEach((x) => {
           if (x.start === ev.start && x.end === ev.end) {
-            events.push({ title: null, start: ev.start, end: toHHMM(mid), type: "etc" });
-            events.push({ title: null, start: toHHMM(mid), end: ev.end, type: "etc" });
+            events.push({ title: null, start: ev.start, end: toHHMM(mid), type: "etc", place_id:null, lat:null, lng:null });
+            events.push({ title: null, start: toHHMM(mid), end: ev.end,  type: "etc", place_id:null, lat:null, lng:null });
           } else {
             events.push(x);
           }
@@ -395,12 +447,6 @@ const toggleMerge = () =>
         return { ...d, events };
       })
     );
-
-    setSplits((prev) => {
-      const key = `${date}|${ev.start}|${ev.end}|${toHHMM(mid)}`;
-      if (prev.find((x) => `${x.date}|${x.start}|${x.end}|${x.mid || ""}` === key)) return prev;
-      return [...prev, { date, start: ev.start, end: ev.end, mid: toHHMM(mid) }];
-    });
   };
 
   // —— 추가(빈칸 클릭 → 후보 패널 오픈)
@@ -461,7 +507,7 @@ const toggleMerge = () =>
 
   useEffect(() => {
     if (pickerOpen) loadPlaces();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pickerOpen, placeTypeFilter, title]);
 
   // 후보 선택 → 슬롯 채우기
@@ -483,7 +529,6 @@ const toggleMerge = () =>
                   place_id: place.place_id ?? null,
                   lat: typeof place.lat === "number" ? place.lat : null,
                   lng: typeof place.lng === "number" ? place.lng : null,
-                  locked: true,
                 }
               : e
           ),
@@ -491,158 +536,94 @@ const toggleMerge = () =>
       })
     );
 
-    setPins((prev) => {
-      const key = `${tgt.date}|${tgt.start}|${tgt.end}`;
-      if (prev.find((p) => `${p.date}|${p.start}|${p.end}` === key)) return prev;
-      return [
-        ...prev,
-        {
-          date: tgt.date,
-          start: tgt.start,
-          end: tgt.end,
-          place: {
-            name: place.name,
-            type: place.type || "etc",
-            place_id: place.place_id ?? null,
-            lat: typeof place.lat === "number" ? place.lat : null,
-            lng: typeof place.lng === "number" ? place.lng : null,
-          },
-        },
-      ];
-    });
-
     setPickerOpen(false);
     setPickerTarget(null);
     setAddMode(false);
   };
 
-  // —— 재생성 (삭제/분할/현재화면/핀 반영)
+  // —— 병합(인접 두 슬롯, 첫번째 클릭 승자)
+  const handleMergeSlots = (date, firstIdx, secondIdx) => {
+  setTimelineDays(prev =>
+    prev.map(d => {
+      if (d.date !== date) return d;
+
+      const events = [...d.events].sort((a,b)=>toMin(a.start)-toMin(b.start));
+      if (Math.abs(firstIdx - secondIdx) !== 1) {
+        alert("인접한 슬롯만 병합할 수 있어요.");
+        return d;
+      }
+
+      const first  = events[firstIdx];
+      const second = events[secondIdx];
+      if (!first || !second) return d;
+
+      if (
+        ["start","end","accommodation"].includes(first?.type) ||
+        ["start","end","accommodation"].includes(second?.type)
+      ) {
+        alert("시작/종료/숙소 블록은 병합할 수 없어요.");
+        return d;
+      }
+
+      // 첫 클릭이 무조건 승자
+      const winner = first;          // ← 여기!
+      const other  = second;         // ← 여기!
+      const merged = {
+        title: winner.title ?? null,
+        type:  winner.type  || "etc",
+        place_id: winner.place_id ?? null,
+        lat: winner.lat ?? null,
+        lng: winner.lng ?? null,
+        // 시간 범위는 항상 min ~ max
+        start: toHHMM(Math.min(toMin(first.start),  toMin(second.start))),
+        end:   toHHMM(Math.max(toMin(first.end),    toMin(second.end))),
+      };
+
+      const keep = events.filter((_, k) => k !== firstIdx && k !== secondIdx);
+      const insertAt = Math.min(firstIdx, secondIdx);
+      keep.splice(insertAt, 0, merged);
+      return { ...d, events: keep };
+    })
+  );
+};
+
+  // —— 재생성 (지금 화면을 테이블로 변환해서만 보냄)
   const handleRegenerate = async () => {
+
+    console.log("[경로 다시 생성] timelineDays:", timelineDays);
+    console.log("[경로 다시 생성] 서버 전송용 tables:", toTables(timelineDays));
+
     const user = auth.currentUser;
     if (!user) return alert("로그인이 필요합니다.");
     if (!basePayload) return;
-
+      
     try {
       setOptimizing(true);
+      const client_tables = toTables(timelineDays);
       const res = await fetch(`${API_BASE}/routes/prepare_dqn`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          {
-            ...basePayload,
-            deletions,
-            splits,
-            fixed_slots: pins,
-            merges,
-            client_timeline: timelineDays
-          }
-        ),
+        body: JSON.stringify({ ...basePayload, client_tables }),
       });
-      if (res.ok) {
-  const data = await res.json();
-  const days = asTimeline(data);
-  if (days.length > 0) setTimelineDays(days);
-  setEditMode(false);
-  setSplitMode(false);
-}  else {
+      if (!res.ok) {
         const msg = await res.text().catch(() => "");
-        alert("경로 재생성 실패: " + msg);
+        throw new Error(msg || "서버 오류");
       }
+      const data = await res.json();
+      const days = asTimeline(data);
+      if (days.length > 0) setTimelineDays(days);
+      setEditMode(false);
+      setSplitMode(false);
+      setMergeMode(false);
     } catch (e) {
       console.error(e);
-      alert("요청 실패: " + (e?.message || String(e)));
+      alert("경로 재생성 실패: " + (e?.message || String(e)));
     } finally {
       setOptimizing(false);
     }
   };
 
   if (loading) return <div>로딩 중...</div>;
-// —— 병합(인접 두 슬롯, 첫번째 클릭 승자)
-const handleMergeSlots = (date, firstIdx, secondIdx) => {
-  let winnerStart, winnerEnd, loserStart, loserEnd;
-  let winnerPlace = null; // ⬅️ 승자 place 보관
-
-  setTimelineDays(prev =>
-    prev.map(d => {
-      if (d.date !== date) return d;
-
-      const events = [...d.events].sort((a,b)=>toMin(a.start)-toMin(b.start));
-      const i = Math.min(firstIdx, secondIdx);
-      const j = Math.max(firstIdx, secondIdx);
-      if (j !== i + 1) {
-        alert("인접한 슬롯만 병합할 수 있어요.");
-        return d;
-      }
-      const winnerIsFirstClick = firstIdx < secondIdx;
-      const a = winnerIsFirstClick ? events[i] : events[j]; // 승자
-      const b = winnerIsFirstClick ? events[j] : events[i]; // 패자
-
-      if (["start","end","accommodation"].includes(a.type) || ["start","end","accommodation"].includes(b.type)) {
-        alert("시작/종료/숙소 블록은 병합할 수 없어요.");
-        return d;
-      }
-
-      winnerStart = a.start; winnerEnd = a.end;
-      loserStart  = b.start; loserEnd  = b.end;
-
-      // 승자 place 추출
-      winnerPlace = a.title ? {
-        name: a.title,
-        type: a.type || "etc",
-        place_id: a.place_id ?? null,
-        lat: typeof a.lat === "number" ? a.lat : null,
-        lng: typeof a.lng === "number" ? a.lng : null,
-      } : null;
-
-      const merged = {
-        title: a.title ?? null,
-        type: a.type || "etc",
-        place_id: a.place_id ?? null,
-        lat: a.lat ?? null,
-        lng: a.lng ?? null,
-        locked: !!a.locked,
-        start: a.start,
-        end: b.end,
-      };
-
-      events.splice(i, 2, merged);
-      return { ...d, events };
-    })
-  );
-
-  // pins 갱신: winner/loser 기존 핀 제거 → 병합 구간으로 1개 pin 추가
-  setPins(prev => {
-    let out = prev.filter(p =>
-      !(p.date===date && (
-        (p.start===winnerStart && p.end===winnerEnd) ||
-        (p.start===loserStart  && p.end===loserEnd)
-      ))
-    );
-
-    // 승자에 내용이 있었거나(=title) locked였다면 합쳐진 구간을 pin으로 유지
-    if (winnerPlace) {
-      const newStart = winnerStart;
-      const newEnd   = (winnerEnd < loserEnd ? loserEnd : winnerEnd);
-      // 중복 방지
-      const exists = out.some(p => p.date===date && p.start===newStart && p.end===newEnd);
-      if (!exists) {
-        out.push({
-          date,
-          start: newStart,
-          end: newEnd,
-          place: winnerPlace,
-        });
-      }
-    }
-    return out;
-  });
-
-  // 백엔드에 보낼 merge 로그
-  setMerges(prev => ([
-    ...prev,
-    { date, winner: { start: winnerStart, end: winnerEnd }, loser: { start: loserStart, end: loserEnd } }
-  ]));
-};
 
   return (
     <div
@@ -653,7 +634,7 @@ const handleMergeSlots = (date, firstIdx, secondIdx) => {
         position: "relative",
       }}
     >
-      {/* 여기 — aside 앞에 플로팅 핸들 넣기 */}
+      {/* 사이드바 토글 핸들 */}
       <button
         onClick={toggleSidebar}
         aria-label={sidebarOpen ? "세부정보 닫기" : "세부정보 열기"}
@@ -833,6 +814,14 @@ const handleMergeSlots = (date, firstIdx, secondIdx) => {
           {/* 편집/재생성 컨트롤 */}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button
+   onClick={handleSaveLog}
+   disabled={preparing || optimizing || timelineDays.length === 0}
+   style={{ ...styles.primaryBtn, background: "#059669" }}
+   title="현재 타임라인을 날짜별로 Firestore에 저장합니다"
+ >
+   일정 저장
+ </button>
+            <button
               onClick={toggleAdd}
               disabled={preparing || optimizing || timelineDays.length === 0}
               style={{ ...styles.primaryBtn, background: addMode ? "#0ea5e9" : "#0369a1" }}
@@ -844,7 +833,7 @@ const handleMergeSlots = (date, firstIdx, secondIdx) => {
               onClick={toggleEdit}
               disabled={preparing || optimizing || timelineDays.length === 0}
               style={{ ...styles.primaryBtn, background: editMode ? "#0a7" : "#111" }}
-              title="빈칸을 삭제(유지)하기 위한 모드"
+              title="슬롯을 빈칸으로 바꿉니다"
             >
               {editMode ? "삭제 모드 종료" : "삭제 모드"}
             </button>
@@ -852,7 +841,7 @@ const handleMergeSlots = (date, firstIdx, secondIdx) => {
               onClick={toggleSplit}
               disabled={preparing || optimizing || timelineDays.length === 0}
               style={{ ...styles.primaryBtn, background: splitMode ? "#8b5cf6" : "#4b5563" }}
-              title="빈칸 슬롯을 둘로 쪼개기"
+              title="슬롯을 둘로 쪼개기"
             >
               {splitMode ? "분할 모드 종료" : "분할 모드"}
             </button>
@@ -860,18 +849,18 @@ const handleMergeSlots = (date, firstIdx, secondIdx) => {
               onClick={handleRegenerate}
               disabled={optimizing || timelineDays.length === 0}
               style={{ ...styles.primaryBtn, background: "#2563eb" }}
-              title="삭제/분할 반영된 빈칸만 자동으로 다시 채웁니다"
+              title="지금 보이는 테이블 그대로 서버에 보내서 재배치합니다"
             >
-              {optimizing ? "DQN 재생성 중..." : `경로 다시 생성${(deletions.length || splits.length) ? ` (${deletions.length + splits.length})` : ""}`}
+              {optimizing ? "DQN 재생성 중..." : "경로 다시 생성"}
             </button>
             <button
-  onClick={toggleMerge}
-  disabled={preparing || optimizing || timelineDays.length === 0}
-  style={{ ...styles.primaryBtn, background: mergeMode ? "#10b981" : "#065f46" }}
-  title="인접한 두 슬롯을 하나로 합치기 (첫번째 클릭 내용이 유지됩니다)"
->
-  {mergeMode ? "병합 모드 종료" : "병합 모드"}
-</button>
+              onClick={toggleMerge}
+              disabled={preparing || optimizing || timelineDays.length === 0}
+              style={{ ...styles.primaryBtn, background: mergeMode ? "#10b981" : "#065f46" }}
+              title="인접한 두 슬롯 병합 (첫번째 클릭한 슬롯이 승자)"
+            >
+              {mergeMode ? "병합 모드 종료" : "병합 모드"}
+            </button>
           </div>
         </div>
 
@@ -894,7 +883,7 @@ const handleMergeSlots = (date, firstIdx, secondIdx) => {
                 onDelete={handleDeleteSlot}
                 onSplit={handleSplitSlot}
                 onPick={handlePickTarget}
-                onDragCommit={applyTimeChange}
+                onDragCommit={throttledDrag}
                 mergeable={mergeMode}
                 onMerge={handleMergeSlots}
               />
@@ -1072,7 +1061,7 @@ function StarRating({ value, size = 12 }) {
   const empty = 5 - full - half;
   const star = "★";
   const hollow = "☆";
-  const halfChar = "⯪"; // 반쪽 대용(폰트에 따라 다를 수 있음)
+  const halfChar = "⯪";
   const part = [];
   for (let i = 0; i < full; i++) part.push(<span key={`f${i}`}>{star}</span>);
   if (half) part.push(<span key="h">{halfChar}</span>);
@@ -1118,43 +1107,38 @@ function Timeline({ days, editable = false, splitable = false, pickable = false,
     const mouseStartY = e.clientY;
 
     const onMove = (me) => {
-      const dyPx = me.clientY - mouseStartY;
+      const dyPx  = me.clientY - mouseStartY;
       const dyMin = (dyPx / totalPx) * totalMin;
-      let ns = start0, ne = end0;
+
+      let ns = start0;
+      let ne = end0;
 
       if (edge === "left") ns = snap(start0 + dyMin);
-      else ne = snap(end0 + dyMin);
+      else                 ne = snap(end0 + dyMin);
 
-      // 최소 길이
       if (ne - ns < MIN_SLOT) {
         if (edge === "left") ns = ne - MIN_SLOT;
-        else ne = ns + MIN_SLOT;
+        else                 ne = ns + MIN_SLOT;
       }
 
-      // 이웃과 겹침 방지
-      const prevEv = idx > 0 ? events[idx-1] : null;
-      const nextEv = idx < events.length - 1 ? events[idx+1] : null;
-      const leftEnd    = prevEv ? toMin(prevEv.end)   : 0;
-      const rightStart = nextEv ? toMin(nextEv.start) : 24*60;
-
-      if (edge === "left") {
-        ns = Math.max(leftEnd, Math.min(ns, ne - MIN_SLOT));
-      } else {
-        ne = Math.min(rightStart, Math.max(ne, ns + MIN_SLOT));
-      }
+      ns = Math.max(0, Math.min(ns, 24 * 60 - MIN_SLOT));
+      ne = Math.max(MIN_SLOT, Math.min(ne, 24 * 60));
 
       setPreview((p) => ({
         ...p,
-        [getKey(day.date, idx)]: { start: toHHMM(ns), end: toHHMM(ne) }
+        [getKey(day.date, idx)]: { start: toHHMM(ns), end: toHHMM(ne) },
       }));
+
+      onDragCommit?.(day.date, idx, toHHMM(ns), toHHMM(ne));
     };
 
     const onUp = () => {
-      const pv = preview[getKey(day.date, idx)];
-      if (pv) onDragCommit?.(day.date, idx, pv.start, pv.end);
       setPreview((p) => {
-        const n = { ...p }; delete n[getKey(day.date, idx)]; return n;
+        const n = { ...p };
+        delete n[getKey(day.date, idx)];
+        return n;
       });
+
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
@@ -1196,116 +1180,117 @@ function Timeline({ days, editable = false, splitable = false, pickable = false,
                 style={vStyles.timelineTrack}
                 ref={(el) => { trackRefs.current[day.date] = el; }}
               >
-                {([...events].sort((a,b)=>toMin(a.start)-toMin(b.start))).map((e, idx) => {
-                  const pv = preview[getKey(day.date, idx)];
-                  const start = pv?.start || e.start;
-                  const end   = pv?.end   || e.end;
+                {(() => {
+                  const ordered = [...events].sort((a,b)=>toMin(a.start)-toMin(b.start));
+                  return ordered.map((e, idx) => {
+                    const pv = preview[getKey(day.date, idx)];
+                    const start = pv?.start || e.start;
+                    const end   = pv?.end   || e.end;
 
-                  const topPct = ((toMin(start) - rangeStart) / total) * 100;
-                  const heightPct = ((toMin(end) - toMin(start)) / total) * 100;
-                  const lock = ["start", "end", "accommodation"].includes(e.type);
+                    const topPct = ((toMin(start) - rangeStart) / total) * 100;
+                    const heightPct = ((toMin(end) - toMin(start)) / total) * 100;
+                    const lockType = ["start", "end", "accommodation"].includes(e.type);
 
-                  const isEmpty = !e.title;
-                  const showDelete = editable && !lock;
-                  const showSplit = splitable && !lock && isEmpty;
-                  const canPick = pickable && !lock && isEmpty;
+                    const isEmpty = !e.title;
+                    const showDelete = editable && !lockType;
+                    const showSplit = splitable && !lockType;
+                    const canPick = pickable && !lockType && isEmpty;
 
-                  return (
-                    <div
-                      key={`${e.start}-${e.end}-${idx}`}
-                      title={`${e.title || "(빈칸)"} (${start}~${end})`}
-                      onClick={(ev) => {
-    if (mergeable) {
-      // 병합 선택 흐름
-      if (["start", "end", "accommodation"].includes(e.type)) return;
-      const curIdx = idx; // 현재 렌더 순서가 시간순
-      if (!mergeSel) {
-        setMergeSel({ date: day.date, idx: curIdx });
-      } else {
-        if (mergeSel.date !== day.date) {
-          alert("같은 날짜의 인접 슬롯만 병합할 수 있어요.");
-          setMergeSel(null);
-          return;
-        }
-        if (Math.abs(mergeSel.idx - curIdx) !== 1) {
-          alert("인접한 슬롯만 선택해 주세요.");
-          setMergeSel(null);
-          return;
-        }
-        // 첫 클릭이 승자
-        onMerge?.(day.date, mergeSel.idx, idx);
-        setMergeSel(null);
-      }
-      return;
-    }
-    if (canPick) onPick?.(day.date, e);
-  }}
-                      style={{
-                        position: "absolute",
-                        left: 8,
-                        right: 8,
-                        top: `${Math.max(0, topPct)}%`,
-                        height: `${Math.max(0, heightPct)}%`,
-                        borderRadius: 8,
-                        padding: "4px 8px",
-                        overflow: "hidden",
-                        whiteSpace: "nowrap",
-                        textOverflow: "ellipsis",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                        ...barStyleByType(e.type),
-                        opacity: isEmpty ? 0.85 : 1,
-                        borderStyle: isEmpty ? "dashed" : "solid",
-                        cursor: canPick ? "pointer" : "default",
-                        userSelect: "none",
-                        outline: mergeable && mergeSel && mergeSel.date === day.date && mergeSel.idx === idx ? "2px dashed #10b981" : "none",
-                      }}
-                    >
-                      {/* 왼쪽/오른쪽 드래그 핸들 */}
-                      {!lock && !mergeable && (
-                        <div
-                          onMouseDown={(me) => { me.stopPropagation(); handleMouseDown(me, day, events, idx, "left"); }}
-                          style={resizeHandle.left}
-                          title="시작 시간을 드래그로 조절"
-                        />
-                      )}
+                    return (
+                      <div
+                        key={`${e.start}-${e.end}-${idx}`}
+                        title={`${e.title || "(빈칸)"} (${start}~${end})`}
+                        onClick={() => {
+                          if (mergeable) {
+                            if (lockType) return;
+                            const curIdx = idx; // 정렬된 인덱스
+                            if (!mergeSel) {
+                              setMergeSel({ date: day.date, idx: curIdx });
+                            } else {
+                              if (mergeSel.date !== day.date) {
+                                alert("같은 날짜의 인접 슬롯만 병합할 수 있어요.");
+                                setMergeSel(null);
+                                return;
+                              }
+                              if (Math.abs(mergeSel.idx - curIdx) !== 1) {
+                                alert("인접한 슬롯만 선택해 주세요.");
+                                setMergeSel(null);
+                                return;
+                              }
+                              onMerge?.(day.date, mergeSel.idx, idx);
+                              setMergeSel(null);
+                            }
+                            return;
+                          }
+                          if (canPick) onPick?.(day.date, e);
+                        }}
+                        style={{
+                          position: "absolute",
+                          left: 8,
+                          right: 8,
+                          top: `${Math.max(0, topPct)}%`,
+                          height: `${Math.max(0, heightPct)}%`,
+                          borderRadius: 8,
+                          padding: "4px 8px",
+                          overflow: "hidden",
+                          whiteSpace: "nowrap",
+                          textOverflow: "ellipsis",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          ...barStyleByType(e.type),
+                          opacity: isEmpty ? 0.85 : 1,
+                          borderStyle: isEmpty ? "dashed" : "solid",
+                          cursor: canPick ? "pointer" : "default",
+                          userSelect: "none",
+                          outline: mergeable && mergeSel && mergeSel.date === day.date && mergeSel.idx === idx ? "2px dashed #10b981" : "none",
+                        }}
+                      >
+                        {/* 위/아래 드래그 핸들 */}
+                        {!lockType && !mergeable && (
+                          <div
+                            onMouseDown={(me) => { me.stopPropagation(); handleMouseDown(me, day, ordered, idx, "left"); }}
+                            style={resizeHandle.left}
+                            title="시작 시간을 드래그로 조절"
+                          />
+                        )}
 
-                      <strong style={{ marginRight: 6 }}>{start}</strong>
-                      <span style={{ flex: 1, minWidth: 0 }}>
-                        {e.title || "빈 슬롯 (클릭하여 추가)"} {e.locked ? "🔒" : ""}
-                      </span>
+                        <strong style={{ marginRight: 6 }}>{start}</strong>
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          {e.title || "빈 슬롯 (클릭하여 추가)"}
+                        </span>
 
-                      {showSplit && (
-                        <button
-                          onClick={(ev) => { ev.stopPropagation(); onSplit?.(day.date, e); }}
-                          style={btnSplit}
-                          title="이 빈 슬롯을 두 개로 분할"
-                        >
-                          분할
-                        </button>
-                      )}
+                        {showSplit && (
+                          <button
+                            onClick={(ev) => { ev.stopPropagation(); onSplit?.(day.date, e); }}
+                            style={btnSplit}
+                            title="이 슬롯을 두 개로 분할"
+                          >
+                            분할
+                          </button>
+                        )}
 
-                      {showDelete && (
-                        <button
-                          onClick={(ev) => { ev.stopPropagation(); onDelete?.(day.date, e); }}
-                          style={btnDelete}
-                          title="이 슬롯 삭제(빈칸으로 만들어 DQN이 다시 채우게 함)"
-                        >
-                          삭제
-                        </button>
-                      )}
+                        {showDelete && (
+                          <button
+                            onClick={(ev) => { ev.stopPropagation(); onDelete?.(day.date, e); }}
+                            style={btnDelete}
+                            title="이 슬롯을 빈칸으로"
+                          >
+                            삭제
+                          </button>
+                        )}
 
-                      {!lock && !mergeable && (
-                        <div
-                          onMouseDown={(me) => { me.stopPropagation(); handleMouseDown(me, day, events, idx, "right"); }}
-                          style={resizeHandle.right}
-                          title="종료 시간을 드래그로 조절"
-                        />
-                      )}
-                    </div>
-                  );
-                })}
+                        {!lockType && !mergeable && (
+                          <div
+                            onMouseDown={(me) => { me.stopPropagation(); handleMouseDown(me, day, ordered, idx, "right"); }}
+                            style={resizeHandle.right}
+                            title="종료 시간을 드래그로 조절"
+                          />
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             </div>
           </div>
@@ -1450,25 +1435,6 @@ const styles = {
     borderRadius: 12,
     padding: 12,
   },
-  axisRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    fontSize: 12,
-    color: "#777",
-    marginBottom: 6,
-  },
-  timelineRow: {
-    position: "relative",
-    height: 40,
-  },
-  timelineTrack: {
-    position: "relative",
-    height: 40,
-    background: "#f5f5f7",
-    border: "1px dashed #e5e7eb",
-    borderRadius: 10,
-    overflow: "hidden",
-  },
   floatingHandle: (open) => ({
     position: "absolute",
     top: 96,
@@ -1489,11 +1455,12 @@ const styles = {
     transition: "left .25s ease, transform .25s ease, border-radius .25s ease",
   }),
 };
+
 const vStyles = {
   dayList: {
     display: "flex",
     gap: 16,
-    overflowX: "auto",         // ⬅️ 여러 날이면 가로 스크롤
+    overflowX: "auto",
     paddingBottom: 8,
   },
   axisCol: {
@@ -1507,18 +1474,19 @@ const vStyles = {
   },
   timelineRow: {
     position: "relative",
-    height: TRACK_HEIGHT,      // ⬅️ 세로 높이 고정
+    height: TRACK_HEIGHT,
   },
   timelineTrack: {
     position: "relative",
     height: "100%",
-    width: DAY_COL_WIDTH,      // ⬅️ 하루 칼럼 너비(글자 안 잘리게)
+    width: DAY_COL_WIDTH,
     background: "#f5f5f7",
     border: "1px dashed #e5e7eb",
     borderRadius: 10,
     overflow: "hidden",
   },
 };
+
 const btnDelete = {
   fontSize: 11,
   border: "1px solid #ef4444",
@@ -1540,7 +1508,7 @@ const btnSplit = {
 };
 
 const resizeHandle = {
-  left: {   // 위쪽 핸들
+  left: {
     position: "absolute",
     top: 0,
     left: 0,
@@ -1549,7 +1517,7 @@ const resizeHandle = {
     cursor: "ns-resize",
     background: "rgba(0,0,0,0.06)",
   },
-  right: {  // 아래쪽 핸들
+  right: {
     position: "absolute",
     bottom: 0,
     left: 0,
