@@ -1,13 +1,14 @@
 # routes/prepare.py
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import os, traceback
 from datetime import time as dtime, datetime
 
 from services.making_table import (
     create_empty_daily_tables,
     insert_initial_schedule_items_dynamic,
+    ScheduleItem,  # ScheduleItem이 공개되어 있다고 가정
 )
 from services.dqn_table_making import dqn_fill_schedule
 
@@ -78,7 +79,11 @@ class PreparePayload(BaseModel):
     fixed_slots: Optional[List[FixedSlot]] = None
     merges: Optional[List[MergeItem]] = None
 
-def _log(*args): print("[/routes/prepare]", *args, flush=True)
+    # 프런트( Journey.js > toTables )가 보내는 현재 화면 테이블
+    client_tables: Optional[Dict[str, Any]] = None
+
+def _log(*args):
+    print("[/routes/prepare]", *args, flush=True)
 
 # ---------- 공통 유틸 ----------
 def _hhmm(s: str) -> dtime:
@@ -100,17 +105,23 @@ def _serialize_tables(tables: dict) -> dict:
             "weekday": info.get("weekday"),
             "start_location": info.get("start_location"),
             "end_location": info.get("end_location"),
-            "schedule": [
-                {
-                    "title": it.title,
-                    "start": it.start.strftime("%H:%M"),
-                    "end": it.end.strftime("%H:%M"),
-                    "place_type": it.place_type,
-                    "location_info": it.location_info,
-                }
-                for it in info.get("schedule", [])
-            ],
+            "schedule": []
         }
+        for it in info.get("schedule", []):
+            loc = getattr(it, "location_info", None) or {}
+            out[d]["schedule"].append({
+                "title": it.title,
+                "start": it.start.strftime("%H:%M"),
+                "end": it.end.strftime("%H:%M"),
+                "place_type": it.place_type,
+                "lat": loc.get("lat"),
+                "lng": loc.get("lng"),
+                "location_info": loc,
+            })
+            
+    #import json
+    #print("[_serialize_tables] 결과:\n", json.dumps(out, ensure_ascii=False, indent=2))
+            
     return out
 
 def _to_timeline(tables_json: dict):
@@ -129,6 +140,7 @@ def _to_timeline(tables_json: dict):
         days.append({"date": date, "weekday": info.get("weekday", ""), "events": events})
     return days
 
+# ---------- 베이스 테이블 생성 ----------
 def _build_base_tables(req: PreparePayload):
     API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
     table_place_info, tables = create_empty_daily_tables(
@@ -180,7 +192,7 @@ def _clear_slots_by_deletions(tables: dict, deletions: Optional[List[DeletionIte
                 cleared += 1
     _log(f"dqn deletions applied. cleared_slots={cleared}")
 
-# ---------- 분할 반영 ----------
+# ---------- 분할/병합 공통 ----------
 MIN_SLOT_MINUTES = 30
 ROUND_TO_MINUTES = 15
 PROTECTED_TYPES = {"start", "end", "accommodation"}
@@ -198,6 +210,7 @@ def _to_time(mins: int) -> dtime:
 
 def _round_to(mins: int, base: int) -> int:
     return round(mins / base) * base
+
 # ---------- 병합 -----------------------------
 
 def _find_slot_index_by_se(schedule, start_hhmm: str, end_hhmm: str):
@@ -243,7 +256,7 @@ def _apply_merges(tables: dict, merges: Optional[List["MergeItem"]]):
         new_end   = max(a_e, b_e)
 
         # 승자(winner) 정보 유지
-        winner_is_a = (wi == i)  # winner 인덱스가 더 앞이면 a
+        winner_is_a = (wi == i)
         winner_slot = a if winner_is_a else b
 
         # slot 타입은 같은 클래스 인스턴스로 생성
@@ -265,6 +278,7 @@ def _apply_merges(tables: dict, merges: Optional[List["MergeItem"]]):
 
 
 # ---------- 클라이언트 타임라인 오버레이 ----------
+
 def _overlay_client_timeline(tables: dict, client_days: Optional[List[ClientDay]]):
     if not client_days:
         return
@@ -300,6 +314,7 @@ def _overlay_client_timeline(tables: dict, client_days: Optional[List[ClientDay]
     _log(f"overlay client timeline: filled={applied_fill}, cleared={applied_clear}")
 
 # ---------- 고정 슬롯 적용 (pins) ----------
+
 def _apply_fixed_slots(tables: dict, fixed_slots: Optional[List[FixedSlot]]):
     if not fixed_slots:
         return
@@ -324,6 +339,8 @@ def _apply_fixed_slots(tables: dict, fixed_slots: Optional[List[FixedSlot]]):
                 applied += 1
                 break
     _log(f"fixed_slots applied: {applied}")
+
+# ---------- 분할 적용 ----------
 
 def _apply_splits(tables: dict, splits: Optional[List[SplitItem]]):
     if not splits:
@@ -397,6 +414,66 @@ def _apply_splits(tables: dict, splits: Optional[List[SplitItem]]):
 
     _log(f"splits applied: {applied}")
 
+# ---------- 프런트 client_tables → 내부 테이블 변환 ----------
+
+def _client_event_to_item(ev: dict) -> "ScheduleItem":
+    """프런트 이벤트 한 칸을 ScheduleItem으로 변환"""
+    start_s = ev.get("start")
+    end_s   = ev.get("end")
+    if not start_s or not end_s:
+        raise ValueError("event start/end missing")
+
+    start_t = _parse_hhmm(start_s)
+    end_t   = _parse_hhmm(end_s)
+
+    title = ev.get("title")
+    # Journey.toTables()는 'place_type'로 내려줌. 혹시 'type'만 있는 경우도 보정
+    place_type = ev.get("place_type") or ev.get("type") or None
+    if not title:
+        # 삭제된 슬롯은 진짜 빈칸으로
+        place_type = None
+        lat = None
+        lng = None
+
+    # 위치 정보 조립
+    lat = ev.get("lat")
+    lng = ev.get("lng")
+    loc = None
+    if isinstance(lat, (int, float)) and isinstance(lng, (int, float)):
+        loc = {"name": (title or ev.get("name") or ""), "lat": lat, "lng": lng}
+    elif title:
+        loc = {"name": title}
+
+    return ScheduleItem(
+        title=title,
+        start=start_t,
+        end=end_t,
+        place_type=place_type,
+        location_info=loc,
+    )
+
+def _tables_from_client_tables(client_tables: Dict[str, Any]) -> dict:
+    """Journey.js -> toTables() 포맷을 서버 내부 테이블(dict[date] -> {..., schedule:[ScheduleItem,...]})로 변환"""
+    out = {}
+    for date, info in (client_tables or {}).items():
+        sched_items = []
+        for ev in info.get("schedule", []):
+            try:
+                item = _client_event_to_item(ev)
+                sched_items.append(item)
+            except Exception as e:
+                _log(f"skip bad event on {date}: {e}")
+                continue
+        # 시작시간 기준 정렬
+        sched_items.sort(key=lambda it: (it.start.hour, it.start.minute))
+        out[date] = {
+            "weekday": info.get("weekday", ""),
+            "start_location": info.get("start_location"),
+            "end_location": info.get("end_location"),
+            "schedule": sched_items,
+        }
+    return out
+
 # ---------- 라우터 ----------
 @router.post("/routes/prepare_basic")
 def prepare_basic(req: PreparePayload):
@@ -419,27 +496,34 @@ def prepare_dqn(req: PreparePayload):
     phase = "start"
     try:
         _log("dqn payload:", req.model_dump())
-        phase = "build"
-        tables = _build_base_tables(req)
+        used_client_tables = False
 
-        # 1) 삭제 반영 (슬롯을 None으로)
-        _clear_slots_by_deletions(tables, req.deletions)
-        # 2) 분할 반영 (빈칸 슬롯만 둘로 쪼개기)
-        _apply_splits(tables, req.splits)
-        # 3) 병합 반영  
-        _apply_merges(tables, req.merges)
-        # 4) 클라이언트 현재 상태 오버레이
-        _overlay_client_timeline(tables, req.client_timeline)
-        # 5) 고정 슬롯 반영
-        _apply_fixed_slots(tables, req.fixed_slots)
+        phase = "build"
+        if req.client_tables:
+            # 프런트가 보낸 현재 화면 상태를 그대로 사용
+            tables = _tables_from_client_tables(req.client_tables)
+            used_client_tables = True
+            _log("using client_tables as base")
+        else:
+            # 기존 로직: 새로 베이스를 만들고 각종 diff를 반영
+            tables = _build_base_tables(req)
+
+        if not used_client_tables:
+            # 화면 전체 테이블이 아닌, 일부 diff만 온 경우에만 적용
+            _clear_slots_by_deletions(tables, req.deletions)
+            _apply_splits(tables, req.splits)
+            _apply_merges(tables, req.merges)
+            _overlay_client_timeline(tables, req.client_timeline)
+            _apply_fixed_slots(tables, req.fixed_slots)
 
         # 6) DQN
         phase = "dqn"
         base_mode = _focus_to_mode(req.focus_type)
         tables = dqn_fill_schedule(req.uid, req.title, tables, base_mode=base_mode)
 
+        # 병합 요청이 있었다면, DQN 이후에도 한 번 더 반영(선택):
         _apply_merges(tables, req.merges)
-        
+
         # 7) 응답
         phase = "serialize"
         tables_json = _serialize_tables(tables)
