@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Home from "../pages/Home";
 import Login from "../pages/Login";
 import SignUp from "../pages/SignUp";
@@ -12,6 +12,7 @@ import Diary from "../pages/Diary";
 import DiaryView from "../pages/DiaryView";
 import Profile from "../pages/Profile";
 import SetPreferences from "../pages/SetPreferences"; ////////////////////////////////////////////////////추가
+import JourneyList from "../pages/JourneyList";
 
 function AppRouter() {
     return (
@@ -31,6 +32,8 @@ function AppRouter() {
 
 
                 <Route path="/set-preferences" element={<SetPreferences />} />
+                <Route path="/journey_list" element={<JourneyList />} />
+                <Route path="/journey_list.js" element={<Navigate to="/journey_list" replace />} />
 
 
             </Routes>
