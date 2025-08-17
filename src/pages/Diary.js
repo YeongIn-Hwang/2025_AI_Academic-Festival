@@ -25,9 +25,9 @@ export default function Diary() {
     const inputRef = useRef(null);
     const GOOGLE_API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
 
-    // ✅ 로그인 상태 감지
+    // 로그인 상태
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+        const unsub = onAuthStateChanged(auth, (currentUser) => {
             if (!currentUser) {
                 alert("로그인이 필요합니다.");
                 window.location.href = "/login";
@@ -35,10 +35,10 @@ export default function Diary() {
                 setUser(currentUser);
             }
         });
-        return () => unsubscribe();
+        return () => unsub();
     }, []);
 
-    // ✅ 기존 저장된 장소 불러오기
+    // 기존 장소 불러오기
     useEffect(() => {
         const loadPlaces = async () => {
             if (!user) return;
@@ -55,66 +55,47 @@ export default function Diary() {
         loadPlaces();
     }, [user, region, startDate, endDate]);
 
-    // ✅ Google Places API 자동완성
-    const fetchPlaces = async (query) => {
-        if (!query.trim() || !GOOGLE_API_KEY) {
-            console.error("❌ Google API Key가 없거나 검색어가 비어 있습니다.");
-            return [];
-        }
+    // 자동완성
+    const fetchPlaces = async (q) => {
+        if (!q.trim() || !GOOGLE_API_KEY) return [];
         try {
             const res = await fetch("https://places.googleapis.com/v1/places:autocomplete", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     "X-Goog-Api-Key": GOOGLE_API_KEY,
-                    "X-Goog-FieldMask": "suggestions.placePrediction.placeId,suggestions.placePrediction.text.text"
+                    "X-Goog-FieldMask":
+                        "suggestions.placePrediction.placeId,suggestions.placePrediction.text.text",
                 },
-                body: JSON.stringify({ input: query, languageCode: "ko" })
+                body: JSON.stringify({ input: q, languageCode: "ko" }),
             });
-
-            if (!res.ok) {
-                console.error(`🔥 Places API 요청 실패: ${res.status} ${res.statusText}`);
-                return [];
-            }
-
+            if (!res.ok) return [];
             const data = await res.json();
             return data.suggestions || [];
-        } catch (err) {
-            console.error("🔥 자동완성 요청 오류:", err);
+        } catch {
             return [];
         }
     };
 
-    // ✅ 장소 상세 정보 가져오기
     const fetchPlaceDetails = async (placeId, fallbackName) => {
-        if (!GOOGLE_API_KEY) {
-            console.error("❌ Google API Key가 설정되지 않아 상세 정보를 불러올 수 없습니다.");
-            return null;
-        }
+        if (!GOOGLE_API_KEY) return null;
         try {
             const res = await fetch(
                 `https://places.googleapis.com/v1/places/${placeId}?fields=displayName,googleMapsUri`,
                 { headers: { "X-Goog-Api-Key": GOOGLE_API_KEY } }
             );
-
-            if (!res.ok) {
-                console.error(`🔥 장소 상세 API 실패: ${res.status}`);
-                return null;
-            }
-
+            if (!res.ok) return null;
             const details = await res.json();
             return {
                 name: details.displayName?.text || fallbackName,
                 place_id: placeId,
-                mapsUrl: details.googleMapsUri
+                mapsUrl: details.googleMapsUri,
             };
-        } catch (err) {
-            console.error("🔥 장소 상세정보 오류:", err);
+        } catch {
             return null;
         }
     };
 
-    // ✅ 입력 시 자동완성 호출
     const handleSearchChange = async (e) => {
         const value = e.target.value;
         setSearchTerm(value);
@@ -122,7 +103,6 @@ export default function Diary() {
         setSuggestions(await fetchPlaces(value));
     };
 
-    // ✅ 장소 선택 시 상세 정보 호출
     const handleSelectPlace = async (prediction) => {
         const details = await fetchPlaceDetails(prediction.placeId, prediction.text.text);
         if (details) {
@@ -132,7 +112,7 @@ export default function Diary() {
         }
     };
 
-    // ✅ 장소 저장
+    // 장소 저장
     const handleAddPlace = async () => {
         if (!photo || !selectedPlace) return alert("사진과 장소를 모두 선택하세요.");
         if (!user) return;
@@ -148,11 +128,11 @@ export default function Diary() {
             let trips = snap.exists() ? snap.data().trips || [] : [];
 
             const newPlace = { ...selectedPlace, photoURL, review };
-            const tripIndex = trips.findIndex(
+            const idx = trips.findIndex(
                 (t) => t.city === region && t.startDate === startDate && t.endDate === endDate
             );
 
-            if (tripIndex !== -1) trips[tripIndex].places.push(newPlace);
+            if (idx !== -1) trips[idx].places.push(newPlace);
             else trips.push({ city: region, startDate, endDate, places: [newPlace] });
 
             await setDoc(userRef, { trips }, { merge: true });
@@ -163,7 +143,7 @@ export default function Diary() {
             setSelectedPlace(null);
             setReview("");
             setSearchTerm("");
-            inputRef.current.value = "";
+            if (inputRef.current) inputRef.current.value = "";
         } catch (err) {
             console.error("🔥 장소 저장 오류:", err);
         } finally {
@@ -171,7 +151,7 @@ export default function Diary() {
         }
     };
 
-    // ✅ 일기 작성 완료 → 방문 도시 Firestore에 추가 후 /map 이동
+    // 작성 완료
     const handleCompleteDiary = async () => {
         if (!user) return;
         try {
@@ -192,73 +172,88 @@ export default function Diary() {
     };
 
     return (
-        <div className="diary-container">
-            <h2>📍 {region}</h2>
-            <p>📅 {startDate} ~ {endDate}</p>
+        <div className="diary-page">
+            <header className="diary-header">
+                <h2>📍 {region}</h2>
+                <p>📅 {startDate} ~ {endDate}</p>
+            </header>
 
-            {/* ✅ 이미지 업로드 */}
-            <label className="upload-btn">
-                📷 이미지 선택
-                <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        setPhoto(file);
-                        setPhotoPreview(URL.createObjectURL(file));
-                    }}
-                    hidden
+            <main className="diary-content">
+                {/* 이미지 업로드 */}
+                <div className="row">
+                    <label className="btn btn-primary upload-btn" role="button">
+                        <span className="btn-icon">📷</span>
+                        <span className="btn-text">이미지 선택</span>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            hidden
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                setPhoto(file);
+                                setPhotoPreview(URL.createObjectURL(file));
+                            }}
+                        />
+                    </label>
+
+                    {photoPreview && <img className="preview" src={photoPreview} alt="미리보기" />}
+                </div>
+
+                {/* 여행지 입력 + 자동완성 */}
+                <div className="field">
+                    <input
+                        ref={inputRef}
+                        type="text"
+                        value={searchTerm}
+                        onChange={handleSearchChange}
+                        placeholder="다녀온 여행지를 입력해보세요"
+                    />
+                    {suggestions.length > 0 && (
+                        <ul className="suggestions">
+                            {suggestions.map((s, i) => (
+                                <li key={i} onClick={() => handleSelectPlace(s.placePrediction)}>
+                                    {s.placePrediction.text.text}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+
+                {selectedPlace && (
+                    <p className="selected">✅ 선택된 장소: <strong>📍 {selectedPlace.name}</strong></p>
+                )}
+
+                <textarea
+                    placeholder="여행을 간단히 기록해보세요!"
+                    value={review}
+                    onChange={(e) => setReview(e.target.value)}
                 />
-            </label>
-            {photoPreview && <img src={photoPreview} alt="미리보기" width="200" />}
 
-            {/* ✅ 장소 검색 */}
-            <input
-                ref={inputRef}
-                type="text"
-                value={searchTerm}
-                onChange={handleSearchChange}
-                placeholder="다녀온 여행지를 입력해보세요"
-            />
+                {/* 액션: 장소 저장만 남김 */}
+                <div className="actions">
+                    <button className="btn btn-ghost" onClick={handleAddPlace} disabled={loading}>
+                        <span className="btn-icon">＋</span>
+                        <span className="btn-text">{loading ? "저장 중..." : "장소 저장"}</span>
+                    </button>
+                </div>
 
-            {/* ✅ 자동완성 리스트 */}
-            {suggestions.length > 0 && (
-                <ul className="suggestions">
-                    {suggestions.map((s, i) => (
-                        <li key={i} onClick={() => handleSelectPlace(s.placePrediction)}>
-                            {s.placePrediction.text.text}
-                        </li>
+                {/* 저장된 장소 */}
+                <div className="places-list">
+                    {places.map((p, idx) => (
+                        <article key={idx} className="place-card">
+                            <h4>📍 {p.name}</h4>
+                            <img src={p.photoURL} alt={p.name} />
+                            <p>{p.review}</p>
+                        </article>
                     ))}
-                </ul>
-            )}
+                </div>
+            </main>
 
-            {selectedPlace && <p>✅ 선택된 장소: <strong>📍 {selectedPlace.name}</strong></p>}
-
-            <textarea
-                placeholder="여행을 간단히 기록해보세요!"
-                value={review}
-                onChange={(e) => setReview(e.target.value)}
-            />
-
-            <button onClick={handleAddPlace} disabled={loading}>
-                {loading ? "저장 중..." : "➕ 장소 저장"}
-            </button>
-
+            {/* 하단 스티키 CTA */}
             <button className="complete-btn" onClick={handleCompleteDiary}>
                 일기 작성 완료
             </button>
-
-            {/* ✅ 저장된 장소 카드 */}
-            <div className="places-list">
-                {places.map((p, idx) => (
-                    <div key={idx} className="place-card">
-                        <h4>📍 {p.name}</h4>
-                        <img src={p.photoURL} alt={p.name} />
-                        <p>{p.review}</p>
-                    </div>
-                ))}
-            </div>
         </div>
     );
 }
