@@ -363,13 +363,17 @@ export default function Journey() {
         if (prevEv) {
           if (!isFixedType(prevEv.type)) {
             if (ns < toMin(cur.start)) {
-              let diff = toMin(cur.start) - ns;
-              let newPrevEnd = toMin(prevEv.end) - diff;
-              if (ne - newPrevEnd < MIN_SLOT) {
-                newPrevEnd = ne - MIN_SLOT;
-                ns = newPrevEnd;
-              }
-              prevEv.end = toHHMM(newPrevEnd);
+              const diff = toMin(cur.start) - ns;
+     const prevStart = toMin(prevEv.start);
+     let newPrevEnd = toMin(prevEv.end) - diff;           // 이전 슬롯 끝을 앞으로 당김
+     // ✅ 이전 슬롯 길이 보장: prevEv.end - prevEv.start >= MIN_SLOT
+     if (newPrevEnd - prevStart < MIN_SLOT) {
+       newPrevEnd = prevStart + MIN_SLOT;                 // 더 이상 못 줄임
+       ns = newPrevEnd;                                   // 현재 슬롯 시작도 여기까지만 당김(대칭 멈춤)
+     }
+     // 현재 슬롯 최소 길이도 보장(혹시 모를 경계 충돌)
+     if (ne - ns < MIN_SLOT) ns = ne - MIN_SLOT;
+     prevEv.end = toHHMM(newPrevEnd);
             }
             if (ns > toMin(cur.start)) {
               let diff = ns - toMin(cur.start);
