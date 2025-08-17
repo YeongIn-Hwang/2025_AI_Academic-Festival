@@ -1,9 +1,9 @@
 // src/pages/Journey.js
 import React, { useEffect, useState, useMemo, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { auth, db } from "../firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc, collection, getDocs, writeBatch, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, writeBatch, setDoc, serverTimestamp, query, orderBy } from "firebase/firestore";
 import { throttle } from "lodash";
 
 const TRACK_HEIGHT = 800;   // 세로 트랙 높이(px)
@@ -14,6 +14,8 @@ const SNAP = 15;     // 분
 
 export default function Journey() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const loadTitle = location.state?.loadTitle || null;
   const [loading, setLoading] = useState(true);
 
   // 기본 입력
@@ -64,6 +66,20 @@ export default function Journey() {
     });
     return () => unsubscribe();
   }, [navigate]);
+
+  useEffect(() => {
+   if (!loadTitle) return;
+   // 로그인 체크가 끝난 뒤 실행되도록 약간 지연
+   (async () => {
+     try {
+       await loadSavedTrip(loadTitle);
+     } catch (e) {
+       console.warn("[Journey] loadSavedTrip error:", e);
+       alert("저장된 여행을 불러오지 못했어요.");
+     }
+   })();
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [loadTitle, loading]);
 
   // Firestore에 동일 title 존재 여부 확인
   const checkTripExists = async (uid, tripTitle) => {
@@ -145,6 +161,38 @@ export default function Journey() {
     startDate, endDate, startTime, endTime,
     startLocation, lodging, endLocation, focusType
   ]);
+
+  const loadSavedTrip = async (tripTitle) => {
+  const user = auth.currentUser;
+  if (!user || !tripTitle) return;
+
+  // user_trips/{uid}/trips_log/{title}/days/* 문서들
+  const daysCol = collection(db, "user_trips", user.uid, "trips_log", tripTitle, "days");
+  // 날짜 id가 YYYY-MM-DD 형식이면 orderBy 없어도 정렬되지만 안전하게 클라이언트 정렬
+  const snap = await getDocs(daysCol);
+
+  const rows = snap.docs
+    .map(d => ({ id: d.id, ...(d.data() || {}) }))
+    .sort((a,b) => a.id.localeCompare(b.id));
+
+  const days = rows.map(row => ({
+    date: row.id,
+    weekday: row.weekday || "",
+    events: (row.schedule || []).map(s => ({
+      title: s.title ?? null,
+      start: s.start,
+      end: s.end,
+      type: s.place_type || s.type || "etc",
+      place_id: s.place_id ?? null,
+      lat: typeof s.lat === "number" ? s.lat : (s.lat != null ? Number(s.lat) : null),
+      lng: typeof s.lng === "number" ? s.lng : (s.lng != null ? Number(s.lng) : null),
+      locked: ["start","end","accommodation"].includes(s.place_type || s.type),
+    })),
+  }));
+
+  setTitle(tripTitle);           // 제목 필드도 동기화 (원하면 읽기전용 UI로 바꿔도 됨)
+  setTimelineDays(days);
+};
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -366,12 +414,29 @@ export default function Journey() {
   try {
     const batch = writeBatch(db);
 
-    // 날짜별로 문서를 만든다: user_trips/{uid}/trips_log/{title}/days/{date}
+    // 부모 문서(인덱스) 업데이트
+    const tripRef = doc(db, "user_trips", user.uid, "trips_log", title.trim());
+
+    // 1) 기존 days 목록 읽기
+    const daysColRef = collection(tripRef, "days");
+    const existingSnap = await getDocs(daysColRef);
+    const existingIds = new Set(existingSnap.docs.map(d => d.id));
+
+    // 2) 이번에 저장할 days 집합
+    const newIds = new Set(timelineDays.map(d => d.date));
+
+    // 3) 이번 저장본에 없는 날짜는 삭제
+    existingSnap.docs.forEach(d => {
+      if (!newIds.has(d.id)) {
+        batch.delete(d.ref);
+      }
+    });
+
+    // 4) 이번 저장본은 set (업서트)
     timelineDays.forEach((day) => {
       const dateId = day.date; // "YYYY-MM-DD"
-      const dayRef = doc(db, "user_trips", user.uid, "trips_log", title.trim(), "days", dateId);
+      const dayRef = doc(daysColRef, dateId);
 
-      // 화면 이벤트 -> 저장 포맷으로 변환
       const schedule = (day.events || []).map((e) => ({
         title: e?.title ?? null,
         start: e?.start ?? null,
@@ -385,10 +450,23 @@ export default function Journey() {
       batch.set(dayRef, {
         date: dateId,
         weekday: day.weekday ?? "",
-        schedule,                 // <-- 요구한 포맷
+        schedule,
         saved_at: serverTimestamp(),
       });
     });
+
+    // 5) 부모 문서 메타 갱신 (day_count 등)
+    //    first_date/last_date는 정렬 가정
+    const firstDate = timelineDays[0]?.date ?? null;
+    const lastDate  = timelineDays[timelineDays.length - 1]?.date ?? null;
+
+    batch.set(tripRef, {
+      title: title.trim(),
+      day_count: timelineDays.length,
+      first_date: firstDate,
+      last_date: lastDate,
+      updated_at: serverTimestamp(),
+    }, { merge: true });
 
     await batch.commit();
     alert("일정을 날짜별로 저장했습니다!");
@@ -814,6 +892,14 @@ export default function Journey() {
           {/* 편집/재생성 컨트롤 */}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button
+  onClick={() => navigate("/home")}
+  style={styles.ghostBtn}
+  title="홈으로 이동"
+  aria-label="홈으로 이동"
+>
+  ← 홈으로
+</button>
+            <button
    onClick={handleSaveLog}
    disabled={preparing || optimizing || timelineDays.length === 0}
    style={{ ...styles.primaryBtn, background: "#059669" }}
@@ -969,14 +1055,32 @@ function AddPlacePanel({ placeTypeFilter, setPlaceTypeFilter, loading, places, o
           <div style={styles.placeholder}>해당 타입 후보가 없습니다.</div>
         ) : (
           places.map((p) => (
-            <button
+            <div
               key={p.id}
+              role="button"
+              tabIndex={0}
               onClick={() => onChoose?.(p)}
+              onKeyDown={(e) => { if (e.key === "Enter") onChoose?.(p); }}
               style={panelStyles.item}
               title={`${p.name} · 점수 ${fmtScore(p.totalScore)}`}
             >
-              {/* 상단: 이름 + 영업상태 */}
+              {/* ✅ 우측 상단 플로팅 상세 버튼 (카드 클릭과 무관) */}
+              <button
+                type="button"
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  window.open(mapsSearchUrl(p.name, p.vicinity), "_blank", "noopener");
+                }}
+                style={panelStyles.detailFloatBtn}
+                title="Google 지도에서 보기"
+                aria-label="Google 지도에서 보기"
+              >
+                상세
+              </button>
+
+              {/* 상단: 이름 + 영업 상태 */}
               <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
+                {/* 장소 이름 */}
                 <div
                   style={{
                     fontWeight: 700,
@@ -985,20 +1089,10 @@ function AddPlacePanel({ placeTypeFilter, setPlaceTypeFilter, loading, places, o
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     maxWidth: "75%",
+                    color: "#111",
                   }}
                 >
                   {p.name}
-                </div>
-                <div style={{
-                  fontSize: 11,
-                  padding: "2px 6px",
-                  borderRadius: 999,
-                  border: "1px solid #e5e7eb",
-                  background: p.open_now === true ? "#eafff6" : p.open_now === false ? "#fee2e2" : "#f3f4f6",
-                  color: p.open_now === true ? "#047857" : p.open_now === false ? "#7f1d1d" : "#374151",
-                  whiteSpace: "nowrap"
-                }}>
-                  {p.open_now === true ? "영업중" : p.open_now === false ? "영업종료" : (p.business_status || "상태 미상")}
                 </div>
               </div>
 
@@ -1023,9 +1117,9 @@ function AddPlacePanel({ placeTypeFilter, setPlaceTypeFilter, loading, places, o
                 </div>
               )}
               <div style={{ marginTop: 6, fontSize: 11, color: "#6b7280" }}>
-                총점 {fmtScore(p.totalScore)} · 신뢰 {fmtScore(p.trust_score)} · 희망 {fmtScore(p.hope_score)} · 비희망 {fmtScore(p.nonhope_score)}
+                희망 {fmtScore(p.hope_score)} · 비희망 {fmtScore(p.nonhope_score)}
               </div>
-            </button>
+            </div>
           ))
         )}
       </div>
@@ -1054,6 +1148,14 @@ function typeLabel(t) {
   };
   return map[t] || "기타";
 }
+function mapsSearchUrl(name, vicinity) {
+  const q = [name, vicinity].filter(Boolean).join(" ");
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+}
+function mapsUrlFromEvent(ev) {
+  // 무조건 이름(title)으로만 검색
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ev.title || "")}`;
+}
 function StarRating({ value, size = 12 }) {
   const v = Math.max(0, Math.min(5, Number(value ?? 0)));
   const full = Math.floor(v);
@@ -1066,7 +1168,11 @@ function StarRating({ value, size = 12 }) {
   for (let i = 0; i < full; i++) part.push(<span key={`f${i}`}>{star}</span>);
   if (half) part.push(<span key="h">{halfChar}</span>);
   for (let i = 0; i < empty; i++) part.push(<span key={`e${i}`}>{hollow}</span>);
-  return <span style={{ fontSize: size, lineHeight: 1 }}>{part}</span>;
+  return (
+  <span style={{ fontSize: size, lineHeight: 1, color: "#f59e0b" }}>
+    {part}
+  </span>
+);
 }
 
 /* ---------- 타임라인 (삭제/분할/추가 + 드래그 리사이즈) ---------- */
@@ -1201,29 +1307,41 @@ function Timeline({ days, editable = false, splitable = false, pickable = false,
                         key={`${e.start}-${e.end}-${idx}`}
                         title={`${e.title || "(빈칸)"} (${start}~${end})`}
                         onClick={() => {
-                          if (mergeable) {
-                            if (lockType) return;
-                            const curIdx = idx; // 정렬된 인덱스
-                            if (!mergeSel) {
-                              setMergeSel({ date: day.date, idx: curIdx });
-                            } else {
-                              if (mergeSel.date !== day.date) {
-                                alert("같은 날짜의 인접 슬롯만 병합할 수 있어요.");
-                                setMergeSel(null);
-                                return;
-                              }
-                              if (Math.abs(mergeSel.idx - curIdx) !== 1) {
-                                alert("인접한 슬롯만 선택해 주세요.");
-                                setMergeSel(null);
-                                return;
-                              }
-                              onMerge?.(day.date, mergeSel.idx, idx);
-                              setMergeSel(null);
-                            }
-                            return;
-                          }
-                          if (canPick) onPick?.(day.date, e);
-                        }}
+  // 병합 모드 우선 처리
+  if (mergeable) {
+    if (lockType) return;
+    const curIdx = idx; // 정렬된 인덱스
+    if (!mergeSel) {
+      setMergeSel({ date: day.date, idx: curIdx });
+    } else {
+      if (mergeSel.date !== day.date) {
+        alert("같은 날짜의 인접 슬롯만 병합할 수 있어요.");
+        setMergeSel(null);
+        return;
+      }
+      if (Math.abs(mergeSel.idx - curIdx) !== 1) {
+        alert("인접한 슬롯만 선택해 주세요.");
+        setMergeSel(null);
+        return;
+      }
+      onMerge?.(day.date, mergeSel.idx, idx);
+      setMergeSel(null);
+    }
+    return;
+  }
+
+  // 추가 모드: 빈칸이면 후보 패널
+  if (canPick) {
+    onPick?.(day.date, e);
+    return;
+  }
+
+  // 그 외: 제목 있는 일반 슬롯은 지도 열기
+  if (e.title && !lockType) {
+    const url = mapsUrlFromEvent(e);
+    window.open(url, "_blank", "noopener");
+  }
+}}
                         style={{
                           position: "absolute",
                           left: 8,
@@ -1538,6 +1656,7 @@ const panelStyles = {
     height: "fit-content",
     maxHeight: 520,
     overflow: "hidden",
+    overflowX: "hidden",
     display: "flex",
     flexDirection: "column",
     position: "sticky",
@@ -1555,6 +1674,7 @@ const panelStyles = {
     borderRadius: 8,
     padding: "6px 10px",
     cursor: "pointer",
+    color: "#111",
   },
   list: {
     overflowY: "auto",
@@ -1569,5 +1689,42 @@ const panelStyles = {
     borderRadius: 10,
     padding: "10px 12px",
     cursor: "pointer",
+    position: "relative",   // ✅ 추가
   },
+  // ...기존 값들...
+  detailFloatBtn: {
+  position: "absolute",
+  top: 10,
+  right: 8,
+  fontSize: 11,
+  border: "1px solid #2563eb",   // 진한 파랑
+  background: "#3b82f6",          // 기본 파랑
+  color: "#fff",                  // 흰 글씨
+  borderRadius: 999,
+  padding: "2px 10px",
+  cursor: "pointer",
+  lineHeight: 1.6,
+  zIndex: 10,                     // 혹시 겹침 방지
+},
+  ghostBtn: {
+  padding: "12px 14px",
+  borderRadius: 12,
+  border: "1px solid #e5e7eb",
+  background: "#fff",
+  color: "#111",
+  cursor: "pointer",
+  fontWeight: 700,
+},
+detailBtn: {
+   fontSize: 11,
+   border: "1px solid #e5e7eb",
+   background: "#f3f4f6",
+   color: "#111827",
+   borderRadius: 999,
+   padding: "2px 8px",
+   cursor: "pointer",
+   display: "inline-block",
+   textDecoration: "none",
+ },
+ 
 };
