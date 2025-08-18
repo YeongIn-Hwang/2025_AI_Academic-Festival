@@ -5,7 +5,7 @@ import "../styles/section-ai.css";
 function SectionAI() {
     const navigate = useNavigate();
     const goToJourney = () => {
-        navigate("/journey");
+        navigate("/journey_list");
     };
 
     return (
