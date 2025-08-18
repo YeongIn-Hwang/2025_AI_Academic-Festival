@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { auth, db } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
 import "../styles/diaryview.css";
+import { MdPlace } from "react-icons/md";
 
 export default function DiaryView() {
     const { region } = useParams();
@@ -32,20 +33,22 @@ export default function DiaryView() {
 
     return (
         <div className="diaryview-container">
-            <h2>📍 {region} 여행 기록</h2>
+            <div className="diaryview-header">
+                <h1>{region} 여행 기록</h1>
+            </div>
 
             {places.length === 0 ? (
-                <p className="empty-message">📌 저장된 일기가 없습니다.</p>
+                <p className="empty-message"> 저장된 일기가 없습니다.</p>
             ) : (
                 <div className="diary-cards">
                     {places.map((p, idx) => (
                         <div key={idx} className="diary-card">
                             <img src={p.photoURL} alt={p.name} />
-                            <h4>📍 {p.name}</h4>
+                            <h4><MdPlace /> {p.name}</h4>
                             <p>{p.review}</p>
                             {p.mapsUrl && (
                                 <a href={p.mapsUrl} target="_blank" rel="noopener noreferrer">
-                                    📍 Google Maps에서 보기
+                                     Google Maps에서 보기
                                 </a>
                             )}
                         </div>

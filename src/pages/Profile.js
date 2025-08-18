@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "../styles/profile.css";
 import { auth } from "../firebase";
 import { onAuthStateChanged } from "firebase/auth";
+import { IoMdArrowDropright } from "react-icons/io";
 
 export default function Profile() {
     const navigate = useNavigate();
@@ -41,13 +42,21 @@ export default function Profile() {
             <main className="profile-content">
                 <div className="profile-menu">
                     <div className="menu-item" onClick={goToDiaryView}>
-                        &gt; 나의 일기장 바로가기
+      <span className="menu-item-icon">
+        <IoMdArrowDropright />
+      </span>
+                        <span className="menu-item-text">나의 일기장 바로가기</span>
                     </div>
+
                     <div className="menu-item">
-                        &gt; 나의 경로 바로가기
+      <span className="menu-item-icon">
+        <IoMdArrowDropright />
+      </span>
+                        <span className="menu-item-text">나의 경로 바로가기</span>
                     </div>
                 </div>
             </main>
+
         </div>
     );
 }

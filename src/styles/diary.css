@@ -26,26 +26,47 @@
 
 /* 이미지 선택 버튼 */
 .upload-btn {
-    top: 150px;           /* ✅ 하단에서 100px 위 */
+    top: 150px;
     transform: translateX(-50%);
     display: inline-block;
-    background: #2E86FF;
-    color: #fff;
+    border-color: #9c9b9b;
+    border-style: inherit;
+    color: #a3a2a2;
     font-weight: 600;
     padding: 8px 18px;
-    border-radius: 25px;
     cursor: pointer;
     transition: 0.2s;
     margin-top: 8px;
     margin-left: 60px;
 }
 
-.upload-btn:hover { background: #1c65cc; }
+.upload-btn:hover { color:#2E86FF; border-color:#2E86FF; }
+
+.save-button {
+    top: 150px;
+    transform: translateX(-50%);
+    display: inline-block;
+    color: #a3a2a2;
+    border: 2px solid #9c9b9b;
+    background-color: transparent;
+    font-weight: 600;
+    padding: 9px 18px;
+    cursor: pointer;
+    transition: 0.2s;
+    margin-top: 25px;
+    margin-left: 55px;
+    margin-bottom: 15px;
+    border-radius: 0;
+    font-size: 14px;
+}
+
+.save-button:hover {color:#2E86FF; border-color:#2E86FF; background-color: transparent;}
 
 /* 이미지 미리보기 */
 .diary-container img {
+    display: block;                         /* ✅ 인라인 요소 → 블록 요소로 */
+    margin: 20px auto 20px auto;               /* ✅ 위쪽 여백 10px, 좌우 자동 → 가운데 정렬 */
     border-radius: 12px;
-    margin-top: 10px;
     max-width: 220px;
     box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
 }
@@ -95,8 +116,7 @@
 }
 
 /* 저장 버튼 */
-button {
-    background: #2E86FF;
+.complete-btn {
     color: #fff;
     font-weight: 600;
     padding: 8px 28px;
@@ -108,9 +128,8 @@ button {
     margin-top: 25px;
     margin-bottom: 15px;
 }
-.diary-container button:hover { background: #1c65cc; }
+.complete-btn:hover { background: #1c65cc; }
 
-/* ✅ 일기 작성 완료 버튼 - 화면 가운데 하단 고정 */
 .complete-btn {
     background: #2E86FF;
     position: fixed;
@@ -119,6 +138,7 @@ button {
     transform: translateX(-50%); /* 버튼을 정확히 가운데로 이동 */
     border-radius: 30px;
     z-index: 1000;
+    font-size: 16px;
     width: 53%;
     padding: 13px 40px;
 }

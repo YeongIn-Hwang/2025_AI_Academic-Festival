@@ -17,6 +17,7 @@
     transform: scale(0.9);
     cursor: pointer;
     margin-top: 35px;
+    margin-left: 80px;
 }
 
 .region-popup {
@@ -24,7 +25,7 @@
     background: white;
     border: 2px solid #2E86FF;
     border-radius: 12px;
-    padding: 5px 14px;
+    padding: 5px 14px 10px 14px;
     display: inline-flex;          /* ✅ 내용만큼만 크기 */
     flex-direction: column;
     align-items: center;
@@ -106,7 +107,7 @@ padding-bottom: 3px;}
     width: 100%;
     max-width: 450px;
     border-radius: 12px;
-    margin-top: 10px;
+    margin-top: 20px;
     margin-left: 50px;
 }
 
@@ -129,7 +130,6 @@ padding-bottom: 3px;}
     font-size: 16px;
     padding: 12px 20px;
     height: 51px;
-    margin-bottom: 25px;
     border: none;
     border-radius: 8px;
     cursor: pointer;

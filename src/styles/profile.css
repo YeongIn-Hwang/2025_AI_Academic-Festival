@@ -52,11 +52,24 @@
     margin-top: 15px;
 }
 
-.menu-item{
-    padding-top: 30px;
-    font-size: 25px;
-    font-weight: bold;
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;  /* 아이콘과 글자 간격 */
+    padding: 10px 0;
+    cursor: pointer;
+    margin-top: 30px;
+}
+
+.menu-item-icon {
+    font-size: 24px;   /* 아이콘 크기 */
+    color: black;    /* 아이콘 색상 */
     margin-left: 50px;
-    margin-top: 15px;
-    color: #525252;
+
+}
+
+.menu-item-text {
+    font-size: 22px;   /* 글자 크기 */
+    font-weight: 600;
+    color: #333;
 }

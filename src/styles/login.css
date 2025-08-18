@@ -45,9 +45,13 @@
 .signup-link {
     display: flex;
     align-items: center;
-    gap: 10px; /* 버튼과 텍스트 간 간격 */
+    gap: 30px; /* 버튼과 텍스트 간 간격 */
     margin-top: 10px;
     justify-content: center;
+}
+
+.signup-link p{
+    margin-top: 12px;
 }
 
 .signup-button {

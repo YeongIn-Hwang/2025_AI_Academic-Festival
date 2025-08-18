@@ -193,12 +193,12 @@ export default function Diary() {
 
     return (
         <div className="diary-container">
-            <h2>📍 {region}</h2>
-            <p>📅 {startDate} ~ {endDate}</p>
+            <h2>{region}</h2>
+            <p>{startDate} ~ {endDate}</p>
 
             {/* ✅ 이미지 업로드 */}
             <label className="upload-btn">
-                📷 이미지 선택
+                이미지 선택
                 <input
                     type="file"
                     accept="image/*"
@@ -233,7 +233,11 @@ export default function Diary() {
                 </ul>
             )}
 
-            {selectedPlace && <p>✅ 선택된 장소: <strong>📍 {selectedPlace.name}</strong></p>}
+            {selectedPlace && (
+                <p style={{ marginTop: "12px", marginBottom: "12px" }}>
+                    선택된 장소: <strong>{selectedPlace.name}</strong>
+                </p>
+            )}
 
             <textarea
                 placeholder="여행을 간단히 기록해보세요!"
@@ -241,8 +245,8 @@ export default function Diary() {
                 onChange={(e) => setReview(e.target.value)}
             />
 
-            <button onClick={handleAddPlace} disabled={loading}>
-                {loading ? "저장 중..." : "➕ 장소 저장"}
+            <button onClick={handleAddPlace} disabled={loading}  className="save-button">
+                {loading ? "저장 중..." : "장소 저장"}
             </button>
 
             <button className="complete-btn" onClick={handleCompleteDiary}>
@@ -253,7 +257,7 @@ export default function Diary() {
             <div className="places-list">
                 {places.map((p, idx) => (
                     <div key={idx} className="place-card">
-                        <h4>📍 {p.name}</h4>
+                        <h4> {p.name}</h4>
                         <img src={p.photoURL} alt={p.name} />
                         <p>{p.review}</p>
                     </div>
