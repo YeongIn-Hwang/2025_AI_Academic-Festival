@@ -5,11 +5,12 @@ import { auth, db } from "../firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc, collection, getDocs, writeBatch, serverTimestamp } from "firebase/firestore";
 import { throttle } from "lodash";
-import { RiArrowDropDownLine } from "react-icons/ri";
 import "../styles/Journey.css";
+import {RiArrowDropDownLine} from "react-icons/ri";
 
 const TRACK_HEIGHT = 800;   // 세로 트랙 높이(px)
 const DAY_COL_WIDTH = 360;
+const AXIS_COL_WIDTH = 72;  // 세로 타임라인 축 너비(px)
 
 const MIN_SLOT = 30; // 분
 const SNAP = 15;     // 분
@@ -20,12 +21,11 @@ export default function Journey() {
   const loadTitle = location.state?.loadTitle || null;
   const [loading, setLoading] = useState(true);
 
-  // 기본 입력
+  // 기본 입력(상태는 유지: 재생성 등에 사용)
   const [title, setTitle] = useState("");
   const [query, setQuery] = useState("");
   const [method, setMethod] = useState("2");
 
-  // 신규 입력
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [startTime, setStartTime] = useState("10:00");
@@ -35,7 +35,6 @@ export default function Journey() {
   const [endLocation, setEndLocation] = useState("");
   const [focusType, setFocusType] = useState("attraction");
 
-  const [submitting, setSubmitting] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
 
@@ -53,14 +52,48 @@ export default function Journey() {
   const [placeOptions, setPlaceOptions] = useState([]);
   const [loadingPlaces, setLoadingPlaces] = useState(false);
 
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const toggleSidebar = () => setSidebarOpen((v) => !v);
+  // 일차 보기
+  const [dayView, setDayView] = useState("all");
+
+  // ⬇ “일차 번호”를 day 객체에 주입 (사이드바 i를 재활용)
+  const displayedDays = useMemo(() => {
+    if (dayView === "all") {
+      return timelineDays.map((d, i) => ({ ...d, _dayNum: i + 1 }));
+    }
+    const idx = Number(dayView);
+    if (Number.isInteger(idx) && timelineDays[idx]) {
+      return [{ ...timelineDays[idx], _dayNum: idx + 1 }];
+    }
+    return timelineDays.map((d, i) => ({ ...d, _dayNum: i + 1 }));
+  }, [dayView, timelineDays]);
+
+  const dateRangeLabel = useMemo(() => {
+    let s = startDate;
+    let e = endDate;
+    if ((!s || !e) && Array.isArray(timelineDays) && timelineDays.length > 0) {
+      s = s || timelineDays[0]?.date;
+      e = e || timelineDays[timelineDays.length - 1]?.date;
+    }
+    if (!s || !e) return "";
+    const fmt = (str) => {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str.replaceAll("-", ".");
+      try {
+        const d = new Date(str);
+        const pad = (n) => String(n).padStart(2, "0");
+        return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`;
+      } catch {
+        return str;
+      }
+    };
+    return `${fmt(s)} ~ ${fmt(e)}`;
+  }, [startDate, endDate, timelineDays]);
 
   const API_BASE =
       (import.meta?.env?.VITE_API_URL) ||
       process.env.REACT_APP_API_URL ||
       "http://localhost:8000";
 
+  // 로그인 체크
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) navigate("/login");
@@ -69,6 +102,7 @@ export default function Journey() {
     return () => unsubscribe();
   }, [navigate]);
 
+  // 저장된 일정 불러오기 (loadTitle로 들어온 경우)
   useEffect(() => {
     if (!loadTitle) return;
     (async () => {
@@ -190,108 +224,94 @@ export default function Journey() {
     setTimelineDays(days);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // ✅ 설정페이지에서 넘어온 payload로 자동 생성
+  const generateFromPayload = async (payload) => {
     const user = auth.currentUser;
-    if (!user) return alert("로그인이 필요합니다.");
-
-    if (!title.trim()) return alert("여행 제목을 입력하세요.");
-    if (!query.trim()) return alert("지역(기점)을 입력하세요.");
-    if (!startDate || !endDate) return alert("시작/종료 날짜를 선택하세요.");
-    if (!startTime || !endTime) return alert("시작/종료 시간을 입력하세요.");
-    if (!startLocation.trim() || !endLocation.trim())
-      return alert("시작/종료 위치를 입력하세요.");
-
+    if (!user) {
+      alert("로그인이 필요합니다.");
+      return;
+    }
     try {
-      setSubmitting(true);
-      const payload = { ...basePayload, uid: user.uid };
+      const filled = { ...payload, uid: user.uid };
 
-      const alreadyExists = await checkTripExists(user.uid, title);
-      if (!alreadyExists) {
-        const res = await fetch(`${API_BASE}/places_build_save`, {
+      // 새 trip이면 places 저장
+      const already = await checkTripExists(user.uid, filled.title);
+      if (!already) {
+        const r1 = await fetch(`${API_BASE}/places_build_save`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(filled),
         });
-        if (res.status === 401) {
+        if (r1.status === 401) {
           alert("로그인이 만료되었습니다. 다시 로그인해 주세요.");
           navigate("/login");
           return;
         }
-        if (!res.ok) {
-          const msg = await res.text().catch(() => "");
-          console.error(msg);
-          alert("서버 오류: " + msg);
-          return;
+        if (!r1.ok) {
+          const msg = await r1.text().catch(()=> "");
+          throw new Error("서버 오류: " + msg);
         }
-        await res.text().catch(() => "");
+        await r1.text().catch(()=> "");
       }
 
+      // 기본 테이블
       setPreparing(true);
-      const prepBasic = await fetch(`${API_BASE}/routes/prepare_basic`, {
+      const r2 = await fetch(`${API_BASE}/routes/prepare_basic`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(filled),
       });
-      if (!prepBasic.ok) {
-        const msg = await prepBasic.text().catch(() => "");
-        console.error(msg);
-        alert("경로 생성 실패: " + msg);
-        return;
+      if (!r2.ok) {
+        const msg = await r2.text().catch(()=> "");
+        throw new Error("경로 생성 실패: " + msg);
       }
-      const basicData = await prepBasic.json();
-      setTimelineDays(asTimeline(basicData));
+      const basic = await r2.json();
+      setTimelineDays(asTimeline(basic));
 
+      // DQN 최적화
       setOptimizing(true);
-      const prepDqn = await fetch(`${API_BASE}/routes/prepare_dqn`, {
+      const r3 = await fetch(`${API_BASE}/routes/prepare_dqn`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(filled),
       });
-      if (prepDqn.ok) {
-        const dqnData = await prepDqn.json();
-        const dqnDays = asTimeline(dqnData);
+      if (r3.ok) {
+        const dqn = await r3.json();
+        const dqnDays = asTimeline(dqn);
         if (dqnDays.length > 0) setTimelineDays(dqnDays);
       } else {
-        const msg = await prepDqn.text().catch(() => "");
+        const msg = await r3.text().catch(()=> "");
         console.warn("DQN 실패:", msg);
       }
     } catch (err) {
       console.error(err);
-      alert("요청 실패: " + (err?.message || String(err)));
+      alert(err?.message || String(err));
     } finally {
       setPreparing(false);
       setOptimizing(false);
-      setSubmitting(false);
     }
   };
 
-  // —— 모드 토글
-  const toggleEdit = () =>
-      setEditMode((v) => {
-        const next = !v;
-        if (next) { setSplitMode(false); setAddMode(false); setMergeMode(false); }
-        return next;
-      });
-  const toggleSplit = () =>
-      setSplitMode((v) => {
-        const next = !v;
-        if (next) { setEditMode(false); setAddMode(false); setMergeMode(false); }
-        return next;
-      });
-  const toggleMerge = () =>
-      setMergeMode((v) => {
-        const next = !v;
-        if (next) { setEditMode(false); setAddMode(false); setSplitMode(false); }
-        return next;
-      });
-  const toggleAdd = () =>
-      setAddMode((v) => {
-        const next = !v;
-        if (next) { setEditMode(false); setSplitMode(false); setMergeMode(false); }
-        if (!next) { setPickerOpen(false); setPickerTarget(null); }
-        return next;
-      });
+  // ✅ payload 감지하여 상태 세팅 + 자동 생성
+  useEffect(() => {
+    const pl = location.state?.payload;
+    if (!loading && pl) {
+      setTitle(pl.title || "");
+      setQuery(pl.query || "");
+      setMethod(String(pl.method ?? "2"));
+      setStartDate(pl.start_date || "");
+      setEndDate(pl.end_date || "");
+      setStartTime(pl.start_time || "10:00");
+      setEndTime(pl.end_time || "22:00");
+      setStartLocation(pl.start_location || "");
+      setLodging(pl.lodging || "");
+      setEndLocation(pl.end_location || "");
+      setFocusType(pl.focus_type || "attraction");
+
+      generateFromPayload(pl);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [loading, location.state, navigate]);
 
   // —— 프런트 유틸
   const toMin = (hm) => {
@@ -301,7 +321,7 @@ export default function Journey() {
   const toHHMM = (mins) => {
     const h = Math.floor(mins / 60);
     const m = mins % 60;
-    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    return `${String(h).padStart(2, "0")}:${String(m).toString().padStart(2, "0")}`;
   };
   const roundTo = (mins, base = SNAP) => Math.round(mins / base) * base;
 
@@ -463,6 +483,32 @@ export default function Journey() {
       alert("일정 저장 실패: " + (err?.message || String(err)));
     }
   };
+
+  const toggleEdit = () =>
+      setEditMode((v) => {
+        const next = !v;
+        if (next) { setSplitMode(false); setAddMode(false); setMergeMode(false); }
+        return next;
+      });
+  const toggleSplit = () =>
+      setSplitMode((v) => {
+        const next = !v;
+        if (next) { setEditMode(false); setAddMode(false); setMergeMode(false); }
+        return next;
+      });
+  const toggleMerge = () =>
+      setMergeMode((v) => {
+        const next = !v;
+        if (next) { setEditMode(false); setAddMode(false); setSplitMode(false); }
+        return next;
+      });
+  const toggleAdd = () =>
+      setAddMode((v) => {
+        const next = !v;
+        if (next) { setEditMode(false); setSplitMode(false); setMergeMode(false); }
+        if (!next) { setPickerOpen(false); setPickerTarget(null); }
+        return next;
+      });
 
   const handleDeleteSlot = (date, ev) => {
     if (["start", "end", "accommodation"].includes(ev.type)) {
@@ -679,325 +725,189 @@ export default function Journey() {
 
   return (
       <>
-      {/* 상단 헤더 */}
-      <header className="jr-topbar">
-        <div className="jr-topbar-inner">
-          <h1 className="jr-logo" onClick={() => navigate("/home")}>
-            Boyage
-          </h1>
-          <div className="jr-actions">
-            <button
-                onClick={() => navigate("/home")}
-                className="btn btn-primary"
-                title="홈 화면으로 이동합니다"
-            >
-              홈으로
-            </button>
-            <button
-                onClick={handleSaveLog}
-                disabled={preparing || optimizing || timelineDays.length === 0}
-                className="btn btn-primary"
-                title="현재 타임라인을 날짜별로 Firestore에 저장합니다"
-            >
-              일정 저장
-            </button>
-            <button
-                onClick={toggleAdd}
-                disabled={preparing || optimizing || timelineDays.length === 0}
-                className="btn btn-primary"
-                style={{ color: addMode ? "#3884FF" : "black" }}
-                title="빈칸을 클릭해 직접 장소를 추가합니다"
-            >
-              {addMode ? "일정 추가 모드 종료" : "일정 추가"}
-            </button>
-          <button
-                onClick={toggleEdit}
-                disabled={preparing || optimizing || timelineDays.length === 0}
-                className="btn btn-primary"
-                style={{ color: editMode ? "#ef4444" : "black" }}
-                title="슬롯을 빈칸으로 바꿉니다"
-            >
-              {editMode ? "삭제 모드 종료" : "삭제 모드"}
-            </button>
-            <button
-                onClick={toggleSplit}
-                disabled={preparing || optimizing || timelineDays.length === 0}
-                className="btn btn-primary"
-                style={{ color: splitMode ? "#5b21b6" : "black" }}
-                title="슬롯을 둘로 쪼개기"
-            >
-              {splitMode ? "분할 모드 종료" : "분할 모드"}
-            </button>
-            <button
-                onClick={toggleMerge}
-                disabled={preparing || optimizing || timelineDays.length === 0}
-                className="btn btn-primary"
-                style={{ color: mergeMode ? "orange" : "black" }}
-                title="인접한 두 슬롯 병합 (첫번째 클릭한 슬롯이 승자)"
-            >
-              {mergeMode ? "병합 모드 종료" : "병합 모드"}
-            </button>
-            <button
-                onClick={handleRegenerate}
-                disabled={optimizing || timelineDays.length === 0}
-                className="btn btn-primary"
-                style={{ color: optimizing ? "#3884FF" : "black" }}
-                title="지금 보이는 테이블 그대로 서버에 보내서 재배치합니다"
-            >
-              {optimizing ? "DQN 재생성 중..." : "경로 재생성"}
-            </button>
+        <div className="jr-wrap two-col">
+          <main className="jr-main">
+            <div className="jr-stage-flex has-mini">
+              {/* 왼쪽: 일차 네비 + 하단 액션들 */}
+              <nav className="jr-mini-sidenav" aria-label="일정 보기 선택">
+                <button
+                    type="button"
+                    className="Journey-logo"
+                    onClick={() => navigate("/home")}
+                    aria-label="Boyage 홈으로"
+                >
+                  Boyage
+                </button>
 
-          </div>
-          <div className={"header-divider"}/>
-        </div>
-      </header>
-      <div
-          className="jr-wrap"
-          style={{
-            gridTemplateColumns: sidebarOpen ? "320px 1fr" : "0px 1fr",
-            transition: "grid-template-columns .25s ease",
-            position: "relative",
-          }}
-      >
-        {/* 사이드바 토글 핸들 */}
-        <button
-            onClick={toggleSidebar}
-            aria-label={sidebarOpen ? "세부정보 닫기" : "세부정보 열기"}
-            title={sidebarOpen ? "세부정보 닫기" : "세부정보 열기"}
-            className={`jr-handle ${sidebarOpen ? "is-open" : ""}`}
-            style={{ left: sidebarOpen ? 320 : 40 }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            {sidebarOpen ? (
-                <path d="M14 7l-5 5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            ) : (
-                <path d="M10 7l5 5-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            )}
-          </svg>
-        </button>
-
-        {/* 좌측 네비 (STEP 1) */}
-        <aside
-            className={`jr-sidebar ${sidebarOpen ? "is-open" : "is-closed"}`}
-            aria-hidden={!sidebarOpen}
-        >
-          {sidebarOpen && (
-              <>
-                <h3 className="jr-step-title">여행 정보 입력</h3>
-
-                <form onSubmit={handleSubmit} className="jr-form-grid">
-                  <Field label="여행 제목">
-                    <input
-                        type="text"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        placeholder="예) 나의 여름 제주 여행"
-                        disabled={submitting || preparing || optimizing}
-                        className="jr-input"
-                    />
-                  </Field>
-
-                  <Field label="지역(기점)">
-                    <input
-                        type="text"
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        placeholder="예) 제주시청, 서귀포, 신도림역"
-                        disabled={submitting || preparing || optimizing}
-                        className="jr-input"
-                    />
-                  </Field>
-
-                  <Field label="이동 방식">
-                    <div className="jr-select-wrapper">
-                      <select
-                          value={method}
-                          onChange={(e) => setMethod(e.target.value)}
-                          disabled={submitting || preparing || optimizing}
-                          className="jr-input jr-select"
-                      >
-                        <option value="1">도보 (반경 3km)</option>
-                        <option value="2">대중교통 (반경 15km)</option>
-                        <option value="3">직접 운전 (반경 30km)</option>
-                      </select>
-                      <RiArrowDropDownLine className="jr-select-icon" />
-                    </div>
-                  </Field>
-
-                  {/* 날짜/시간 */}
-                  <div className="jr-grid-2">
-                    <Field label="시작 날짜">
-                      <input
-                          type="date"
-                          value={startDate}
-                          onChange={(e) => setStartDate(e.target.value)}
-                          disabled={submitting || preparing || optimizing}
-                          className="jr-input"
-                      />
-                    </Field>
-                    <Field label="종료 날짜">
-                      <input
-                          type="date"
-                          value={endDate}
-                          onChange={(e) => setEndDate(e.target.value)}
-                          disabled={submitting || preparing || optimizing}
-                          className="jr-input"
-                      />
-                    </Field>
-                  </div>
-
-                  <div className="jr-grid-2">
-                    <Field label="시작 시간">
-                      <input
-                          type="time"
-                          value={startTime}
-                          onChange={(e) => setStartTime(e.target.value)}
-                          disabled={submitting || preparing || optimizing}
-                          className="jr-input"
-                      />
-                    </Field>
-                    <Field label="종료 시간">
-                      <input
-                          type="time"
-                          value={endTime}
-                          onChange={(e) => setEndTime(e.target.value)}
-                          disabled={submitting || preparing || optimizing}
-                          className="jr-input"
-                      />
-                    </Field>
-                  </div>
-
-                  <Field label="시작 위치">
-                    <input
-                        type="text"
-                        value={startLocation}
-                        onChange={(e) => setStartLocation(e.target.value)}
-                        placeholder="예) 김포공항, 제주시청"
-                        disabled={submitting || preparing || optimizing}
-                        className="jr-input"
-                    />
-                  </Field>
-
-                  <Field label="숙소(옵션)">
-                    <input
-                        type="text"
-                        value={lodging}
-                        onChange={(e) => setLodging(e.target.value)}
-                        placeholder="예) OO호텔 제주점"
-                        disabled={submitting || preparing || optimizing}
-                        className="jr-input"
-                    />
-                  </Field>
-
-                  <Field label="종료 위치">
-                    <input
-                        type="text"
-                        value={endLocation}
-                        onChange={(e) => setEndLocation(e.target.value)}
-                        placeholder="예) 제주공항, 서귀포버스터미널"
-                        disabled={submitting || preparing || optimizing}
-                        className="jr-input"
-                    />
-                  </Field>
-
-                  <Field label="여행 성향">
-                    <div className="jr-grid-2 gap-8">
-                      <Radio label="명소 중심" name="focus" value="attraction" checked={focusType === "attraction"} onChange={setFocusType} disabled={submitting || preparing || optimizing} />
-                      <Radio label="식사 중심" name="focus" value="food" checked={focusType === "food"} onChange={setFocusType} disabled={submitting || preparing || optimizing} />
-                      <Radio label="카페·빵집 중심" name="focus" value="cafe" checked={focusType === "cafe"} onChange={setFocusType} disabled={submitting || preparing || optimizing} />
-                      <Radio label="쇼핑 중심" name="focus" value="shopping" checked={focusType === "shopping"} onChange={setFocusType} disabled={submitting || preparing || optimizing} />
-                    </div>
-                  </Field>
-
-                  <button type="submit" disabled={submitting || preparing || optimizing} className="btn-primary_main">
-                    {submitting || preparing || optimizing ? "처리 중..." : "저장 & 경로 생성"}
+                <div className="mini-list">
+                  <button
+                      className={`mini-btn ${dayView === "all" ? "is-active" : ""}`}
+                      onClick={() => setDayView("all")}
+                  >
+                    전체&nbsp;일정
                   </button>
-                </form>
-              </>
-          )}
-        </aside>
 
-        {/* 우측 콘텐츠 (STEP 2) */}
-        <main className="jr-main">
-          <div className="jr-header-row">
-            <div>
-              <div className="jr-title-lg">AI 경로 추천</div>
-            </div>
-          </div>
-          {/* ✅ 카드 + 사진 2컬럼 래퍼로 감싸기 */}
-          <div className="jr-stage-flex">
-            {/* 왼쪽: 타임라인 카드 */}
-            <section className="jr-stage-card">
-              {preparing && <div className="jr-note">기초 테이블 생성 중...</div>}
-              {optimizing && <div className="jr-note">DQN 최적화 중...</div>}
+                  {timelineDays.map((d, i) => (
+                      <button
+                          key={d.date || i}
+                          className={`mini-btn ${dayView === i ? "is-active" : ""}`}
+                          onClick={() => setDayView(i)}
+                          title={d.date}
+                      >
+                        <span className="mini-daynum">{i + 1}일차</span>
+                      </button>
+                  ))}
+                </div>
 
-              {timelineDays.length === 0 ? (
-                  <div className="placeholder"><div>아직 생성된 일정이 없습니다.</div></div>
-              ) : (
-                  /* ✅ 가로 스크롤 전용 래퍼로 교체 (원래 jr-grid 사용하던 자리) */
-                  <div className={`tl-scroll ${pickerOpen ? "has-panel" : ""}`}>
-                    <Timeline
-                        days={timelineDays}
-                        editable={editMode}
-                        splitable={splitMode}
-                        pickable={addMode}
-                        onDelete={handleDeleteSlot}
-                        onSplit={handleSplitSlot}
-                        onPick={handlePickTarget}
-                        onDragCommit={throttledDrag}
-                        mergeable={mergeMode}
-                        onMerge={handleMergeSlots}
-                    />
+                <div className="mini-actions">
+                  <button
+                      onClick={() => navigate("/journey/setting")}
+                      className="mini-act ghost"
+                      title="여행 정보 입력 페이지로 이동"
+                  >
+                    <span>설정</span>
+                    <span>페이지</span>
+                  </button>
 
-                    {pickerOpen && (
-                        <AddPlacePanel
-                            placeTypeFilter={placeTypeFilter}
-                            setPlaceTypeFilter={setPlaceTypeFilter}
-                            loading={loadingPlaces}
-                            places={placeOptions}
-                            onClose={() => { setPickerOpen(false); setPickerTarget(null); }}
-                            onChoose={handleApplyPlaceToSlot}
-                        />
+                  <button
+                      onClick={handleRegenerate}
+                      disabled={preparing || optimizing || timelineDays.length === 0}
+                      className={`mini-act ${optimizing ? "active-outline" : "ghost"}`}
+                      title="지금 보이는 테이블 그대로 서버에 보내서 재배치합니다"
+                  >
+                    {optimizing ? (
+                        <>
+                          <span>&nbsp;&nbsp;&nbsp;&nbsp;재생성 중..&nbsp;</span>
+                        </>
+                    ) : (
+                        <>
+                          <span>경로</span>
+                          <span>재생성</span>
+                        </>
                     )}
-                  </div>
-              )}
-            </section>
+                  </button>
+                  <button
+                      onClick={toggleMerge}
+                      disabled={preparing || optimizing || timelineDays.length === 0}
+                      className={`mini-act ${mergeMode ? "is-yellow" : ""}`}
+                      title="인접한 두 슬롯 병합 (첫번째 클릭한 슬롯이 승자)"
+                  >
+                    <span>병합</span>
+                    <span>{mergeMode ? "모드" : "모드"}</span>
+                    {mergeMode && <span>종료</span>}
+                  </button>
 
-            {/* ✅ 오른쪽: 사진(카드 밖, 화면 꽉 채우는 컬럼) */}
-            <aside className="jr-right-photo">
-              {/* 원하는 이미지 경로 */}
+                  <button
+                      onClick={toggleSplit}
+                      disabled={preparing || optimizing || timelineDays.length === 0}
+                      className={`mini-act ${splitMode ? "is-purple" : ""}`}
+                      title="슬롯을 둘로 쪼개기"
+                  >
+                    <span>분할</span>
+                    <span>{splitMode ? "모드" : "모드"}</span>
+                    {splitMode && <span>종료</span>}
+                  </button>
 
-            </aside>
-          </div>
-        </main>
-      </div>
+                  <button
+                      onClick={toggleEdit}
+                      disabled={preparing || optimizing || timelineDays.length === 0}
+                      className={`mini-act ${editMode ? "is-red" : ""}`}
+                      title="슬롯을 빈칸으로 바꿉니다"
+                  >
+                    {editMode ? (
+                        <>
+                          <span>삭제</span>
+                          <span>모드</span>
+                          <span>종료</span>
+                        </>
+                    ) : (
+                        <>
+                          <span>삭제</span>
+                          <span>모드</span>
+                        </>
+                    )}
+                  </button>
+                  <button
+                      onClick={toggleAdd}
+                      disabled={preparing || optimizing || timelineDays.length === 0}
+                      className={`mini-act ${addMode ? "active-outline" : "ghost"}`}
+                      title="빈칸을 클릭해 직접 장소를 추가합니다"
+                  >
+                    {addMode ? (
+                        <>
+                          <span>일정</span>
+                          <span>추가</span>
+                          <span>종료</span>
+                        </>
+                    ) : (
+                        <>
+                          <span>일정</span>
+                          <span>추가</span>
+                        </>
+                    )}
+                  </button>
+
+                  <button
+                      onClick={handleSaveLog}
+                      disabled={preparing || optimizing || timelineDays.length === 0}
+                      className="mini-act ghost"
+                      title="현재 타임라인을 날짜별로 Firestore에 저장합니다"
+                  >
+                    <span>일정</span>
+                    <span>저장</span>
+                  </button>
+
+                </div>
+              </nav>
+
+              {/* 가운데: 타임라인 */}
+              <section className="jr-stage-card">
+                {/* 여행 요약 헤더 */}
+                <div className="trip-summary">
+                  <div className="trip-place">{query || "여행지 미정"}</div>
+                  {dateRangeLabel && <div className="trip-dates">{dateRangeLabel}</div>}
+                </div>
+
+                {preparing && <div className="jr-note">기초 테이블 생성 중...</div>}
+                {optimizing && <div className="jr-note">DQN 최적화 중...</div>}
+
+                {displayedDays.length === 0 ? (
+                    <div className="placeholder"><div>아직 생성된 일정이 없습니다.</div></div>
+                ) : (
+                    <div className={`tl-scroll ${pickerOpen ? "has-panel" : ""}`}>
+                      <Timeline
+                          days={displayedDays}
+                          editable={editMode}
+                          splitable={splitMode}
+                          pickable={addMode}
+                          onDelete={handleDeleteSlot}
+                          onSplit={handleSplitSlot}
+                          onPick={handlePickTarget}
+                          onDragCommit={throttledDrag}
+                          mergeable={mergeMode}
+                          onMerge={handleMergeSlots}
+                      />
+
+                      {pickerOpen && (
+                          <AddPlacePanel
+                              placeTypeFilter={placeTypeFilter}
+                              setPlaceTypeFilter={setPlaceTypeFilter}
+                              loading={loadingPlaces}
+                              places={placeOptions}
+                              onClose={() => { setPickerOpen(false); setPickerTarget(null); }}
+                              onChoose={handleApplyPlaceToSlot}
+                          />
+                      )}
+                    </div>
+                )}
+              </section>
+
+              {/* 오른쪽: 비워둠 */}
+              <aside className="jr-right-empty" />
+            </div>
+          </main>
+        </div>
       </>
-  );
-}
-
-/* ---------- 작은 UI 헬퍼 ---------- */
-function Field({ label, children }) {
-  return (
-      <div>
-        <label className="jr-label">{label}</label>
-        {children}
-      </div>
-  );
-}
-
-function Radio({ label, name, value, checked, onChange, disabled }) {
-  return (
-      <label className="jr-radio">
-        <input
-            type="radio"
-            name={name}
-            value={value}
-            checked={checked}
-            onChange={(e) => onChange(e.target.value)}
-            disabled={disabled}
-        />
-        <span>{label}</span>
-      </label>
   );
 }
 
@@ -1005,11 +915,6 @@ function Radio({ label, name, value, checked, onChange, disabled }) {
 function AddPlacePanel({ placeTypeFilter, setPlaceTypeFilter, loading, places, onClose, onChoose }) {
   return (
       <aside className="panel">
-        <div className="panel-header">
-          <div className="fw-700">후보 선택</div>
-          <button onClick={onClose} className="panel-close">닫기</button>
-        </div>
-
         <div className="mb-8">
           <label className="panel-label">타입 필터</label>
           <select
@@ -1025,6 +930,7 @@ function AddPlacePanel({ placeTypeFilter, setPlaceTypeFilter, loading, places, o
             <option value="bar">바</option>
             <option value="shopping_mall">쇼핑</option>
           </select>
+          <RiArrowDropDownLine className="jr-select-icon-2" />
         </div>
 
         <div className="panel-count">
@@ -1093,6 +999,7 @@ function fmtScore(v) {
   if (Number.isNaN(num)) return String(v);
   return num.toFixed(2);
 }
+
 function typeLabel(t) {
   const map = {
     tourist_attraction: "명소",
@@ -1100,13 +1007,28 @@ function typeLabel(t) {
     cafe: "카페",
     bakery: "빵집",
     bar: "바",
-    shopping_mall: "쇼핑",
+    shopping_mall: "쇼핑몰",
     start: "출발",
     end: "도착",
     accommodation: "숙소",
     etc: "기타",
   };
   return map[t] || "기타";
+}
+function typeColor(t) {
+  const map = {
+    tourist_attraction: "#3884FF",
+    restaurant: "#F0735B",
+    cafe: "#8B4513",
+    bakery: "#B8860B",
+    bar: "#EA4F85",
+    shopping_mall: "#2563eb",
+    start: "#5b21b6",
+    end: "#D63384",
+    accommodation: "#00C853",
+    etc: "#f59e0b",
+  };
+  return map[t] || map.etc;
 }
 function mapsSearchUrl(name, vicinity) {
   const q = [name, vicinity].filter(Boolean).join(" ");
@@ -1134,11 +1056,25 @@ function StarRating({ value, size = 12 }) {
   );
 }
 
-/* ---------- 타임라인 ---------- */
-function Timeline({ days, editable = false, splitable = false, pickable = false, mergeable = false, onDelete, onSplit, onPick, onDragCommit, onMerge }) {
+/* ---------- 타임라인 (새 UI, 겹침 방지 버전) ---------- */
+function Timeline({
+                    days,
+                    editable = false,
+                    splitable = false,
+                    pickable = false,
+                    mergeable = false,
+                    onDelete,
+                    onSplit,
+                    onPick,
+                    onDragCommit,
+                    onMerge,
+                  }) {
   const trackRefs = useRef({});
   const [preview, setPreview] = useState({});
   const [mergeSel, setMergeSel] = useState(null);
+
+  const MIN_CARD_PX = 100; // 카드 최소 높이(px) - CSS의 min-height와 맞추세요
+  const MIN_GAP_PX  = 6;   // 인접 카드 사이 최소 간격(px)
 
   const toMin = (hm) => {
     const [h, m] = hm.split(":").map(Number);
@@ -1147,42 +1083,52 @@ function Timeline({ days, editable = false, splitable = false, pickable = false,
   const toHHMM = (mins) => {
     const h = Math.floor(mins / 60);
     const m = mins % 60;
-    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    return `${String(h).padStart(2, "0")}:${String(m).toString().padStart(2, "0")}`;
   };
   const snap = (mins) => Math.round(mins / SNAP) * SNAP;
-
   const getKey = (date, idx) => `${date}|${idx}`;
 
-  const handleMouseDown = (e, day, events, idx, edge /* 'left' | 'right' */) => {
+  // 축(회색구간)에서 드래그
+  const handleMouseDown = (e, day, events, idx, edge /* 'left'|'right' */) => {
+    e.preventDefault();
+    e.stopPropagation();
+
     const ev = events[idx];
-    if (!ev || ["start","end","accommodation"].includes(ev.type)) return;
+    if (!ev || ["start", "end", "accommodation"].includes(ev.type)) return;
 
     const trackEl = trackRefs.current[day.date];
     if (!trackEl) return;
 
+    document.body.classList.add("dragging");
+
     const rect = trackEl.getBoundingClientRect();
     const totalPx = rect.height;
-    const rangeStart = Math.max(0, Math.min(...events.map(x => toMin(x.start))) - 30);
-    const rangeEnd   = Math.min(24*60, Math.max(...events.map(x => toMin(x.end))) + 30);
+
+    const rangeStart = Math.max(0, Math.min(...events.map((x) => toMin(x.start))) - 30);
+    const rangeEnd = Math.min(
+        24 * 60,
+        Math.max(...events.map((x) => toMin(x.end))) + 30
+    );
     const totalMin = Math.max(1, rangeEnd - rangeStart);
 
     const start0 = toMin(ev.start);
-    const end0   = toMin(ev.end);
+    const end0 = toMin(ev.end);
     const mouseStartY = e.clientY;
 
     const onMove = (me) => {
-      const dyPx  = me.clientY - mouseStartY;
+      me.preventDefault();
+      const dyPx = me.clientY - mouseStartY;
       const dyMin = (dyPx / totalPx) * totalMin;
 
       let ns = start0;
       let ne = end0;
 
       if (edge === "left") ns = snap(start0 + dyMin);
-      else                 ne = snap(end0 + dyMin);
+      else ne = snap(end0 + dyMin);
 
       if (ne - ns < MIN_SLOT) {
         if (edge === "left") ns = ne - MIN_SLOT;
-        else                 ne = ns + MIN_SLOT;
+        else ne = ns + MIN_SLOT;
       }
 
       ns = Math.max(0, Math.min(ns, 24 * 60 - MIN_SLOT));
@@ -1202,163 +1148,231 @@ function Timeline({ days, editable = false, splitable = false, pickable = false,
         delete n[getKey(day.date, idx)];
         return n;
       });
-
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
+      document.body.classList.remove("dragging");
+      window.removeEventListener("mousemove", onMove, true);
+      window.removeEventListener("mouseup", onUp, true);
     };
 
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp, { once: true });
+    window.addEventListener("mousemove", onMove, true);
+    window.addEventListener("mouseup", onUp, true);
+  };
+
+  const dayColor = (dayNum) => {
+    const colors = [
+      "#ef4444", // 1 빨
+      "#f97316", // 2 주
+      "#eab308", // 3 노
+      "#22c55e", // 4 초
+      "#3b82f6", // 5 파
+      "#6366f1", // 6 남
+      "#a855f7", // 7 보
+      "#b45309", // 8 황토
+      "#8b5e3c", // 9 갈
+      "#111827", // 10 검
+    ];
+    const idx = Math.max(1, Math.min(10, Number(dayNum || 1))) - 1;
+    return colors[idx];
   };
 
   return (
       <div className="tl-day-list">
         {days.map((day) => {
-          const events = day.events || [];
-          if (events.length === 0) {
+          const eventsRaw = day.events || [];
+          if (eventsRaw.length === 0) {
             return (
                 <div key={day.date} className="day-block">
-                  <DayHeader date={day.date} weekday={day.weekday} />
+                  <DayHeader date={day.date} weekday={day.weekday} dayNum={day._dayNum} />
                   <div className="placeholder">이 날의 일정이 없습니다.</div>
                 </div>
             );
           }
 
+          // 시간 정렬
+          const events = [...eventsRaw].sort(
+              (a, b) => toMin(a.start) - toMin(b.start)
+          );
+
+          // 범위(분)
           const minStart = Math.min(...events.map((e) => toMin(e.start)));
           const maxEnd = Math.max(...events.map((e) => toMin(e.end)));
           const rangeStart = Math.max(0, minStart - 30);
           const rangeEnd = Math.min(24 * 60, maxEnd + 30);
-          const total = Math.max(1, rangeEnd - rangeStart);
+          const totalMin = Math.max(1, rangeEnd - rangeStart);
+
+          // --- 스케일(px/min) 계산: 겹침이 없도록 k를 충분히 키움
+          let k = TRACK_HEIGHT / totalMin; // 기본 스케일
+
+          // 1) 각 카드의 최소 높이를 보장
+          for (let i = 0; i < events.length; i++) {
+            const d = Math.max(1, toMin(events[i].end) - toMin(events[i].start));
+            k = Math.max(k, MIN_CARD_PX / d);
+          }
+          // 2) 인접 일정의 시작-시작 간격이 (이전 카드 높이 + 최소 간격) 이상
+          for (let i = 0; i < events.length - 1; i++) {
+            const s0 = toMin(events[i].start);
+            const e0 = toMin(events[i].end);
+            const s1 = toMin(events[i + 1].start);
+
+            const startDiff = Math.max(1, s1 - s0);       // 분
+            const dur0 = Math.max(1, e0 - s0);            // 분
+            // 이전 카드 실제 px 높이 후보: max(MIN_CARD_PX, dur0 * k)
+            // 겹치지 않으려면: startDiff * k >= prevHeight + MIN_GAP_PX
+            // prevHeight가 아직 k에 의존 -> 보수적으로 MIN_CARD_PX 사용
+            k = Math.max(k, (MIN_CARD_PX + MIN_GAP_PX) / startDiff);
+          }
+
+          // 최종 트랙 높이(px): 범위를 k로 환산 + 마지막 카드가 충분히 들어갈 여유
+          const last = events[events.length - 1];
+          const lastTopPx = (toMin(last.start) - rangeStart) * k;
+          const lastHeightPx = Math.max(
+              MIN_CARD_PX,
+              (toMin(last.end) - toMin(last.start)) * k
+          );
+          const trackHeight = Math.max(
+              Math.ceil(k * totalMin),
+              Math.ceil(lastTopPx + lastHeightPx + 24)
+          );
 
           return (
               <div key={day.date} className="day-block">
-                <DayHeader date={day.date} weekday={day.weekday} />
+                <DayHeader date={day.date} weekday={day.weekday} dayNum={day._dayNum} />
 
-                <div className="axis-col">
-                  <span>{minLabel(rangeStart)}</span><p>~</p>
-                  <span>{maxLabel(rangeEnd)}</span>
-                </div>
-
-                <div className="tl-row" style={{ height: TRACK_HEIGHT }}>
+                {/* 날짜별 한 줄(축+카드). 높이를 동적으로 지정 */}
+                <div className="tl-row" style={{ height: `${trackHeight}px` }}>
+                  {/* 세로 축 */}
                   <div
-                      className="tl-track"
-                      style={{ width: DAY_COL_WIDTH }}
-                      ref={(el) => { trackRefs.current[day.date] = el; }}
+                      className="tl-axis"
+                      style={{ width: AXIS_COL_WIDTH, height: "100%" }}
+                      ref={(el) => {
+                        trackRefs.current[day.date] = el;
+                      }}
                   >
-                    {(() => {
-                      const ordered = [...events].sort((a,b)=>toMin(a.start)-toMin(b.start));
-                      return ordered.map((e, idx) => {
-                        const pv = preview[getKey(day.date, idx)];
-                        const start = pv?.start || e.start;
-                        const end   = pv?.end   || e.end;
+                    <div className="axis-line" />
 
-                        const topPct = ((toMin(start) - rangeStart) / total) * 100;
-                        const heightPct = ((toMin(end) - toMin(start)) / total) * 100;
-                        const lockType = ["start", "end", "accommodation"].includes(e.type);
+                    {events.map((e, idx) => {
+                      const pv = preview[getKey(day.date, idx)];
+                      const start = pv?.start || e.start;
+                      const end = pv?.end || e.end;
 
-                        const GAP_PX = 3;
-                        const gapPct = (GAP_PX / TRACK_HEIGHT) * 100;
-                        const topWithGap = topPct + idx * gapPct;
-                        const heightWithGap = Math.max(0, heightPct - gapPct);
+                      const startPx = (toMin(start) - rangeStart) * k;
+                      const durPx = Math.max(2, (toMin(end) - toMin(start)) * k);
 
-                        const isEmpty = !e.title;
-                        const showDelete = editable && !lockType;
-                        const showSplit = splitable && !lockType;
-                        const canPick = pickable && !lockType && isEmpty;
+                      const circleColor = dayColor(day._dayNum);
 
-                        const slotClass = [
-                          "tl-slot",
-                          isEmpty ? "is-empty" : "",
-                          lockType ? "is-locked" : "",
-                          mergeable && mergeSel && mergeSel.date === day.date && mergeSel.idx === idx ? "is-selected" : ""
-                        ].join(" ").trim();
-
-                        return (
+                      return (
+                          <div key={`${e.start}-${e.end}-${idx}`}>
+                            {/* 번호 동그라미 */}
                             <div
-                                key={`${e.start}-${e.end}-${idx}`}
-                                className={slotClass}
-                                title={`${e.title || "(빈칸)"} (${start}~${end})`}
-                                onClick={() => {
-                                  if (mergeable) {
-                                    if (lockType) return;
-                                    const curIdx = idx;
-                                    if (!mergeSel) {
-                                      setMergeSel({ date: day.date, idx: curIdx });
-                                    } else {
-                                      if (mergeSel.date !== day.date) {
-                                        alert("같은 날짜의 인접 슬롯만 병합할 수 있어요.");
-                                        setMergeSel(null);
-                                        return;
-                                      }
-                                      if (Math.abs(mergeSel.idx - curIdx) !== 1) {
-                                        alert("인접한 슬롯만 선택해 주세요.");
-                                        setMergeSel(null);
-                                        return;
-                                      }
-                                      onMerge?.(day.date, mergeSel.idx, idx);
-                                      setMergeSel(null);
-                                    }
-                                    return;
-                                  }
-                                  if (canPick) {
-                                    onPick?.(day.date, e);
-                                    return;
-                                  }
-                                  if (e.title && !lockType) {
-                                    const url = mapsUrlFromEvent(e);
-                                    window.open(url, "_blank", "noopener");
-                                  }
-                                }}
+                                className="axis-bullet"
                                 style={{
-                                  top: `${Math.max(0, topWithGap)}%`,
-                                  height: `${Math.max(0, heightWithGap)}%`,
-                                  ...barStyleByType(e.type),
+                                  top: `${Math.max(0, startPx - 10)}px`,
+                                  backgroundColor: circleColor,
                                 }}
+                                title={`${idx + 1} • ${start}`}
                             >
-                              {!lockType && !mergeable && (
-                                  <div
-                                      onMouseDown={(me) => { me.stopPropagation(); handleMouseDown(me, day, ordered, idx, "left"); }}
-                                      className="tl-slot-handle top"
-                                      title="시작 시간을 드래그로 조절"
-                                  />
-                              )}
-
-                              <strong className="time">{start}</strong>
-                              <span className="slot-title">
-                          {e.title || "빈 슬롯 (클릭하여 추가)"}
-                        </span>
-
-                              {showSplit && (
-                                  <button
-                                      onClick={(ev) => { ev.stopPropagation(); onSplit?.(day.date, e); }}
-                                      className="btn btn-split"
-                                      title="이 슬롯을 두 개로 분할"
-                                  >
-                                    분할
-                                  </button>
-                              )}
-
-                              {showDelete && (
-                                  <button
-                                      onClick={(ev) => { ev.stopPropagation(); onDelete?.(day.date, e); }}
-                                      className="btn btn-delete"
-                                      title="이 슬롯을 빈칸으로"
-                                  >
-                                    삭제
-                                  </button>
-                              )}
-
-                              {!lockType && !mergeable && (
-                                  <div
-                                      onMouseDown={(me) => { me.stopPropagation(); handleMouseDown(me, day, ordered, idx, "right"); }}
-                                      className="tl-slot-handle bottom"
-                                      title="종료 시간을 드래그로 조절"
-                                  />
-                              )}
+                              {idx + 1}
                             </div>
-                        );
-                      });
-                    })()}
+
+                            {/* 회색 구간 + 드래그 핸들 */}
+                            <div
+                                className="axis-span"
+                                style={{ top: `${startPx}px`, height: `${durPx}px` }}
+                                title={`${start} - ${end}`}
+                            >
+                              <div
+                                  className="axis-handle axis-handle-top"
+                                  onMouseDown={(me) =>
+                                      handleMouseDown(me, day, events, idx, "left")
+                                  }
+                                  title="시작 시간을 드래그로 조절"
+                              />
+                              <div
+                                  className="axis-handle axis-handle-bottom"
+                                  onMouseDown={(me) =>
+                                      handleMouseDown(me, day, events, idx, "right")
+                                  }
+                                  title="종료 시간을 드래그로 조절"
+                              />
+                            </div>
+                          </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* 카드 영역 */}
+                  <div className="tl-cards" style={{ width: DAY_COL_WIDTH, height: "100%" }}>
+                    {events.map((e, idx) => {
+                      const pv = preview[getKey(day.date, idx)];
+                      const start = pv?.start || e.start;
+                      const end = pv?.end || e.end;
+
+                      const topPx = (toMin(start) - rangeStart) * k;
+
+                      const lockType = ["start", "end", "accommodation"].includes(e.type);
+                      const isEmpty = !e.title;
+                      const canPick = !lockType && !e.title && pickable;
+
+                      return (
+                          <div
+                              key={`${e.start}-${e.end}-${idx}-card`}
+                              className={`ev-card ${isEmpty ? "is-empty" : ""} ${
+                                  lockType ? "is-locked" : ""
+                              }`}
+                              style={{ top: `${topPx}px` }}
+                              title={`${e.title || "(빈칸)"} (${start}~${end})`}
+                              onClick={() => {
+                                if (mergeable) return;
+                                if (canPick) {
+                                  onPick?.(day.date, e);
+                                  return;
+                                }
+                                if (e.title && !lockType) {
+                                  const url = mapsUrlFromEvent(e);
+                                  window.open(url, "_blank", "noopener");
+                                }
+                              }}
+                          >
+                            <div className="ev-body">
+                              <div className="ev-sub">
+                          <span className="ev-range">
+                            {start} ~ {end}
+                          </span>
+                                <span className="ev-type" style={{ color: typeColor(e.type) }}>
+                            {typeLabel(e.type)}
+                          </span>
+                              </div>
+                              <div className="ev-title">
+                                {e.title || "빈 슬롯 (클릭하여 추가)"}
+                              </div>
+                            </div>
+
+                            {!lockType && splitable && (
+                                <button
+                                    onClick={(ev) => {
+                                      ev.stopPropagation();
+                                      onSplit?.(day.date, e);
+                                    }}
+                                    className="btn btn-split"
+                                    title="이 슬롯을 두 개로 분할"
+                                >
+                                  분할
+                                </button>
+                            )}
+                            {!lockType && editable && (
+                                <button
+                                    onClick={(ev) => {
+                                      ev.stopPropagation();
+                                      onDelete?.(day.date, e);
+                                    }}
+                                    className="btn btn-delete"
+                                    title="이 슬롯을 빈칸으로"
+                                >
+                                  삭제
+                                </button>
+                            )}
+                          </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -1368,9 +1382,11 @@ function Timeline({ days, editable = false, splitable = false, pickable = false,
   );
 }
 
-function DayHeader({ date, weekday }) {
+
+function DayHeader({ date, weekday, dayNum }) {
   return (
       <div className="day-header">
+        {typeof dayNum === "number" && <div className="day-num">{dayNum}일차</div>}
         <div className="day-date">{date}</div>
         {weekday && <div className="day-wd">{weekday}</div>}
       </div>
@@ -1380,23 +1396,12 @@ function DayHeader({ date, weekday }) {
 function minLabel(mins) {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  return `${String(h).padStart(2, "0")}:${String(m).toString().padStart(2, "0")}`;
 }
 function maxLabel(mins) { return minLabel(mins); }
 
+/* (barStyleByType는 더 이상 카드 테두리에 쓰지 않으므로 유지하지 않아도 되지만,
+   혹시 다른 곳에서 참조할 수 있어 남겨둡니다.) */
 function barStyleByType(type) {
-  const map = {
-
-    start: { background: null, border: "2px solid #5b21b6", color:"black"},
-    end: { background: null, border: "2px solid #D63384", color:"black" },
-    accommodation: { background: null, border: "2px solid #00C853", color:"black" },
-    tourist_attraction: { background: null, border: "2px solid #3884FF", color:"black" },
-    restaurant: { background: null, border: "2px solid #F0735B", color:"black" },
-    cafe: { background: null, border: "2px solid #8B4513", color:"black"},
-    bakery: { background: null, border: "2px solid #B8860B", color:"black"},
-    bar: { background: null, border: "2px solid #EA4F85", color:"black" },
-    shopping_mall: { background: null, border: "2px solid blue", color:"black"},
-    etc: { background: null, border: "2px solid orange", color:"black"},
-  };
-  return map[type] || map.etc;
+  return {};
 }

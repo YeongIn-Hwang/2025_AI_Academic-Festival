@@ -104,7 +104,7 @@ export default function JourneyList() {
           </h1>
           <button
               className="jl-btn_newpath"
-              onClick={() => navigate("/journey")}
+              onClick={() => navigate("/journey/setting")}
           >
             + 새 경로 생성
           </button>
