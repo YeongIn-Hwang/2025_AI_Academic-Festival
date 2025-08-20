@@ -1,99 +1,212 @@
+/* ===== 컨테이너 & 타이포 ===== */
 .diaryview-container {
+    --head-offset: -260px;          /* 제목/날짜/그리드 왼쪽 오프셋 (한 번에 조절) */
+    min-height: 100vh;
     max-width: 900px;
     margin: 40px auto;
     padding: 20px;
+    padding-top: 76px;              /* 헤더 공간 */
+    position: relative;
+    z-index: 0;
     font-family: 'Noto Sans KR', sans-serif;
 }
 
-/* ✅ 제목 스타일 */
-.diaryview-container h2 {
-    font-size: 28px;
-    font-weight: 700;
-    margin-bottom: 20px;
-    text-align: center;
+/* ===== 풀스크린 배경 (JS에서 <div class="dv-bg">로 주입) ===== */
+.dv-bg{
+    position: fixed;                /* 스크롤해도 고정 */
+    inset: 0;
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    opacity: .55;                    /* 필요 시 0.4~0.7로 조절 */
+    pointer-events: none;
+    z-index: -1;
 }
 
-/* ✅ 비어있을 때 메시지 */
+/* ===== 상단 고정 헤더 ===== */
+.dv-topbar{
+    position: fixed; top:0; left:0; width:100%; height:56px;
+    display:flex; align-items:center; padding:0 20px;
+    background: transparent;        /* 사진이 Boyage 뒤까지 덮이게 */
+    border-bottom: none;
+    backdrop-filter: none;
+    z-index:1000;
+}
+.dv-logo {
+    font-size: 28px;
+    font-weight: 800;
+    color: #031765;
+    cursor: pointer;
+    margin: 0;
+}
+
+/* ===== 제목 / 날짜 (왼쪽 정렬 + 오프셋 적용) ===== */
+.diaryview-container h2 {
+    font-size: 33px;
+    font-weight: 700;
+    text-align: left;
+    margin: 0 0 8px;
+    margin-left: var(--head-offset);   /* ← 제목을 좀 더 왼쪽으로 */
+}
+
+.dv-dates{
+    text-align: left;
+    font-size: 25px;
+    color: #334155;
+    font-weight: 700;
+    margin: 0 0 30px;
+    margin-left: var(--head-offset);   /* ← 날짜도 같은 라인 */
+}
+
+/* ===== 비어있을 때 ===== */
 .empty-message {
     text-align: center;
     font-size: 18px;
     color: #777;
 }
 
-/* ✅ 카드 그리드 */
+/* ===== 카드 그리드 (제목/날짜와 라인 맞춤 + 살짝 컴팩트) ===== */
 .diary-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 25px;
+    margin-left: var(--head-offset);                     /* ← 그리드 시작선을 제목/날짜와 맞춤 */
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); /* 240 → 220 */
+    gap: 14px;                                           /* 16 → 14 */
 }
 
-/* ✅ 폴라로이드 카드 */
-.diary-card {
-    background: #fff;
-    border-radius: 6px;
-    border: 2px solid #3884FF;          /* ✅ 테두리 색 변경 */
-    padding: 10px 10px 18px 10px;
-    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2); /* ✅ 깊은 그림자 */
-    text-align: center;
-    transition: transform 0.25s ease, box-shadow 0.25s ease;
+/* ===== 카드 ===== */
+.place-card{
+    position:relative;
+    padding:12px;                 /* 14 → 12 */
+    border-radius:14px;           /* 16 → 14 */
+    background: rgba(255,255,255,.65);
+    backdrop-filter: blur(8px);
+    border:1px solid rgba(255,255,255,.5);
+    box-shadow:
+            0 10px 28px rgba(13,27,42,.18),
+            inset 0 1px 0 rgba(255,255,255,.35);
+    transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+}
+.place-card:hover{
+    transform: translateY(-2px);
+    box-shadow:
+            0 16px 36px rgba(13,27,42,.24),
+            inset 0 1px 0 rgba(255,255,255,.4);
+    background: rgba(255,255,255,.71);
 }
 
-/* ✅ hover 시 즉석사진처럼 기울어짐 */
-.diary-card:hover {
-    transform: translateY(-5px) rotate(-2deg);
-    box-shadow: 0 12px 20px rgba(0, 0, 0, 0.3);
-}
-
-/* ✅ 사진 (즉석사진 스타일) */
-.diary-card img {
+/* 사진 */
+.place-photo{
     width: 100%;
-    height: 180px;
+    height: 150px;                /* 160 → 150 */
     object-fit: cover;
-    background: #fff;
-    border: 5px solid #fff;             /* ✅ 흰색 두꺼운 테두리 */
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25); /* ✅ 강한 그림자 */
-    margin-bottom: 10px;
-    border-radius: 3px;
-    transition: transform 0.3s ease;
+    border-radius: 10px;          /* 12 → 10 */
+    margin: 6px 0 8px;            /* 아래 여백 살짝 축소 */
+    box-shadow: 0 6px 16px rgba(0,0,0,.16);
 }
 
-.diary-card img:hover {
-    transform: scale(1.05);
+/* 제목 + 하트 한 줄 */
+.place-header{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin: 0 0 6px;
+}
+.place-name{
+    margin:0;
+    font-size:17px;               /* 18 → 17 */
+    font-weight:800;
+    color:#031765;
+    letter-spacing:.2px;
+    flex:1 1 auto;
 }
 
-/* ✅ 장소명 (2B79C2) */
-.diary-card h4 {
-    color: #2B79C2;                     /* ✅ 장소명 색상 */
-    font-size: 16px;
+/* 라인 하트 버튼 */
+.heart-icon{
+    border:none;
+    background:transparent;
+    padding:4px;
+    line-height:0;
+    cursor:pointer;
+}
+.icon-line-heart{
+    width:22px;
+    height:22px;
+    fill:none;
+    stroke:#8aa0c9;
+    stroke-width:2.1;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+    transition: transform .15s ease, stroke .15s ease, fill .15s ease;
+}
+.heart-icon:hover .icon-line-heart{
+    transform: scale(1.06);
+    stroke:#5b82c5;
+}
+.heart-icon.is-active .icon-line-heart{
+    fill:#ff3b57;
+    stroke:#ff3b57;
+}
+
+/* 메모 */
+.place-review{
+    margin: 0;
+    font-size: 14.5px;
+    line-height: 1.55;
+    color: #0f172a;
+}
+
+/* 별점 + 지도보기 */
+.place-footer{
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.map-link{
+    font-size: 12.5px;            /* 13 → 12.5 */
     font-weight: 700;
-    margin-bottom: 6px;
-    font-family: 'Noto Sans KR', sans-serif;
-}
-
-/* ✅ 리뷰 */
-.diary-card p {
-    font-size: 13px;
-    color: #555;
-    line-height: 1.4;
-    margin-bottom: 8px;
-    font-style: italic;
-}
-
-/* ✅ 구글맵 링크 버튼 */
-.diary-card a {
-    display: inline-block;
-    margin-top: 5px;
-    color: #3884FF;                     /* ✅ 테두리와 통일 */
-    font-weight: 800;
-    font-size: 13px;
+    color: #3884FF;
     border: 1.5px solid #3884FF;
     border-radius: 6px;
-    padding: 4px 8px;
+    padding: 3px 9px;             /* 4x10 → 3x9 */
     background: #fff;
-    transition: all 0.2s ease;
+    text-decoration: none;
+    transition: all .18s ease;
 }
+.map-link:hover{ background:#3884FF; color:#fff; }
 
-.diary-card a:hover {
-    background: #3884FF;
-    color: #fff;
+/* ===== 별점 (읽기 전용) ===== */
+.rating-block { display:inline-flex; flex-direction:column; gap:6px; }
+.stars-row{ display:inline-flex; gap:6px; --star-size:18px; }
+.stars-row[role="img"] { cursor: default; }
+.star{
+    position: relative;
+    font-size: var(--star-size);
+    line-height: 1;
+    color: #e5e7eb;
+    text-shadow: 0 1px 0 rgba(0,0,0,0.04);
+    transform-origin: center;
+}
+.star::after{
+    content: "★";
+    position: absolute;
+    inset: 0;
+    color: #f59e0b;
+    clip-path: inset(0 calc((1 - var(--fill, 0)) * 100%) 0 0);
+    pointer-events: none;
+}
+@keyframes pop { 0%{transform:scale(.8)} 60%{transform:scale(1.12)} 100%{transform:scale(1)} }
+.star.filled { animation: pop 180ms ease; }
+
+/* ===== 반응형: 작은 화면에서 안전하게 정렬 ===== */
+@media (max-width: 1024px){
+    .diaryview-container{ --head-offset: -140px; }
+}
+@media (max-width: 768px){
+    .diaryview-container{ --head-offset: -12px; }
+    .diary-cards{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+@media (max-width: 480px){
+    .diaryview-container{ --head-offset: 0px; }
+    .diary-cards{ grid-template-columns: 1fr; }
 }

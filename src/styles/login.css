@@ -1,70 +1,78 @@
+/* === 레이아웃 === */
 .login-container {
-    text-align: center;
-    margin-top: 130px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center; /* ⬅️ 수직 중앙 정렬 추가 */
 }
 
-.login-title {
-    font-size: 30px;
-    font-weight: bold;
-    margin-bottom: 50px;
+/* 상단(제목/입력/회원가입 안내) */
+.login-main {
+    width: 100%;
+    /* padding-top: 130px; ⬅️ 제거 */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
+/* 하단(로그인 버튼) */
+.login-footer {
+    /* margin-top: auto; ⬅️ 제거 */
+    width: 100%;
+    display: flex;
+    justify-content: center;       /* 중앙 정렬 */
+    padding: 16px 0 40px;          /* 하단 여백 */
+}
+
+/* 입력창 */
 .login-input {
     width: 400px;
     height: 50px;
     padding: 20px;
-    margin-bottom:20px;
+    margin-bottom: 20px;
     border: 1px solid #ccc;
     border-radius: 6px;
     font-size: 14px;
 }
 
-.login-input:focus {
-    outline: none;
-    border-color: #007bff;
-}
-
+/* 로그인 버튼 (여백 초기화) */
 .login-button {
-    padding: 10px 20px;
     width: 400px;
     height: 50px;
-    margin-top: 330px;
     font-size: 15px;
     border: none;
     background-color: #007bff;
     color: white;
-    border-radius: 6px;
+    border-radius: 20px;
     cursor: pointer;
     transition: background-color 0.3s ease;
+    margin-top: 20px;
 }
+.login-button:hover { background-color: #0056b3; }
 
-.login-button:hover {
-    background-color: #0056b3;
-}
-
+/* 회원가입 안내 행: 텍스트와 링크 나란히 */
 .signup-link {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 10px; /* 버튼과 텍스트 간 간격 */
-    margin-top: 10px;
+    gap: 8px;
+    white-space: nowrap;
+    margin-top: 12px;
     justify-content: center;
 }
 
+/* a 또는 버튼 둘 다 커버 */
+.signup-link a,
 .signup-button {
-    border: none;
-    background-color: transparent;
+    all: unset;
+    cursor: pointer;
     color: #3884FF;
-    text-decoration: underline;        /* ✅ 기본 밑줄 */
-    text-decoration-color: #3884FF;    /* ✅ 파란색으로 지정 */
-    text-underline-offset: 5px;        /* ✅ 글자와의 간격 조절 */
-    text-decoration-thickness: 1px;    /* ✅ 선 두께 조절 (최신 브라우저 지원) */
-    margin-left: -15px;   /* ✅ 왼쪽으로 이동 */
-    margin-top: 13px;     /* ✅ 위로 이동 */
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    text-decoration-thickness: 1px;
+    font-size: 14px;
 }
 
-
-.login-logo{
-    font-size:60px;
-    margin-bottom: 10px;
-}
-
+/* 제목 */
+.login-title { font-size: 30px; font-weight: bold; margin-bottom: 50px; }
+.login-logo { font-size: 60px; margin-bottom: 10px; }

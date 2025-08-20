@@ -34,7 +34,7 @@
 }
 
 .nav-btn {
-   border: none;
+    border: none;
     color: black;
     background-color: transparent;
     padding: 1px 18px;
@@ -161,7 +161,3 @@
     border-radius: 999px;
     text-align: center;
 }
-
-
-
-
