@@ -2,6 +2,8 @@
 import os
 from dotenv import load_dotenv
 from firebase_admin import credentials, initialize_app, firestore as admin_fs, auth
+from pathlib import Path
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -19,3 +21,5 @@ except ValueError:
 
 db = admin_fs.client()  # Firestore
 # 필요 시: auth.verify_id_token(id_token) 으로 토큰 검증
+
+load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
