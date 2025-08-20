@@ -1,0 +1,139 @@
+/* ===== 페이지 레이아웃 ===== */
+.heart-page {
+    max-width: 960px;
+    margin: 0 auto;
+    font-family: 'Noto Sans KR', sans-serif;
+}
+
+/* ===== 상단 고정 헤더 (DiaryView와 동일) ===== */
+.dv-topbar {
+    position: fixed;      /* ← 상단 고정 */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    background: #fff;
+    border-bottom: 1px solid #eee;
+    z-index: 1000;        /* 콘텐츠 위에 표시 */
+}
+
+.dv-logo {
+    font-size: 28px;
+    font-weight: 800;
+    color: #031765;
+    cursor: pointer;
+    margin: 0;
+}
+
+/* 본문 컨테이너(헤더 아래 여백 확보) */
+.heart-body {
+    padding: 72px 16px 40px; /* 헤더 높이(56px) + 여유 */
+}
+
+/* 빈 상태 */
+.heart-empty { text-align:center; color:#777; margin-top:40px; }
+
+/* 그리드 */
+.heart-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+}
+
+/* 카드 */
+.heart-card {
+    position: relative;
+    padding: 14px;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 10px 28px rgba(13,27,42,.12);
+}
+
+/* 도시 배지 (이미지 위에 겹치지 않도록 상단 배치) */
+.city-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #1e3a8a;
+    background: rgba(46,134,255,.12);
+    margin-bottom: 6px;
+    position: static;
+}
+
+/* 이미지 */
+.card-photo {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+    border-radius: 12px;
+    margin: 6px 0 10px;
+}
+
+/* 제목 + 하트(라인 하트) */
+.place-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 6px;
+}
+
+.card-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    color: #031765;
+    letter-spacing: .2px;
+    flex: 1 1 auto;
+}
+
+/* 라인 하트 버튼 */
+.heart-icon {
+    border: none;
+    background: transparent;
+    padding: 4px;
+    line-height: 0;
+    cursor: pointer;
+}
+
+.icon-line-heart {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: #8aa0c9;
+    stroke-width: 2.1;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform .15s ease, stroke .15s ease, fill .15s ease;
+}
+.heart-icon:hover .icon-line-heart { transform: scale(1.06); stroke: #5b82c5; }
+.heart-icon.is-active .icon-line-heart { fill: #ff3b57; stroke: #ff3b57; }
+
+/* 본문/푸터 */
+.card-note { margin: 0; font-size: 14.5px; line-height: 1.55; color: #0f172a; }
+
+.card-footer {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.card-rating { color: #f59e0b; font-weight: 700; }
+
+/* 지도 보기 버튼 */
+.map-link {
+    font-size: 13px;
+    font-weight: 700;
+    color: #3884FF;
+    border: 1.5px solid #3884FF;
+    border-radius: 6px;
+    padding: 4px 10px;
+    background: #fff;
+    text-decoration: none;
+    transition: all .18s;
+}
+.map-link:hover { background:#3884FF; color:#fff; }

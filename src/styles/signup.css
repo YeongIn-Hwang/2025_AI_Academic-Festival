@@ -1,7 +1,10 @@
 /* 회원가입 화면 공통 스타일 */
 .signup-container {
-    text-align: center;
-    margin-top: 130px;
+    min-height: 100vh; /* ⬅️ 화면 높이 전체를 차지하게 */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center; /* ⬅️ 수직 중앙 정렬 */
 }
 
 .signup-title {
@@ -31,7 +34,7 @@
     width: 400px;
     height: 50px;
     padding: 10px 20px;
-    margin-top: 335px;
+    margin-top: 20px; /* ⬅️ 입력창과 버튼 사이의 간격 추가 */
     font-size: 15px;
     font-weight: bold;
     border: none;

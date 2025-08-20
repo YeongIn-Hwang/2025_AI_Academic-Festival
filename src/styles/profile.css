@@ -1,62 +1,77 @@
-.profile-header {
-    width: 100%;
-    height: 80vh;           /* 화면 절반 높이 */
-    position: relative;     /* 동영상 및 텍스트 배치를 위해 relative */
-    overflow: hidden;       /* 동영상 넘침 방지 */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    color: white;
+/* ===== Profile 전용 영역 =====
+   아래 변수 값만 바꾸면 위치 미세조정 가능
+*/
+.profile-page{
+    /* ⬇️ 위치 조절 변수: Profile 안에서만 유효 */
+    --hero-top: 15vh;   /* 숫자 작게=더 위, 크게=더 아래 */
+    --hero-left: 40px;  /* 숫자 작게=더 왼쪽, 크게=더 오른쪽 */
+
+    /* 배경을 이 페이지에만 적용 */
+    min-height:100vh;
+    background: url("../assets/profile-background.png") no-repeat center center;
+    background-size: cover;
+    background-attachment: fixed; /* 스크롤해도 고정 */
 }
 
-/*.background-video {*/
-/*    position: absolute;*/
-/*    top: 0;*/
-/*    left: 0;*/
-/*    width: 100%;*/
-/*    height: 100%;*/
-/*    object-fit: cover;      !* 동영상을 배경처럼 꽉 채움 *!*/
-/*    z-index: 0;*/
-/*}*/
-
-.background-image {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    z-index: -1; /* 텍스트 위에 배경이 오도록 */
+/* 1뷰포트 레이아웃 */
+.profile-container{
+    min-height:100vh;
+    display:grid;
+    grid-template-rows: 60vh 1fr;
 }
 
-.profile-logo,
-.welcome-text {
-    z-index: 1;
-    position: relative;
-    color: white;
-    text-shadow: none;
-    text-align: left;
-    align-self: flex-start;
-    margin-left: 60px;
+/* 헤더(히어로) */
+.profile-header{
+    justify-content:flex-start;   /* 상단 정렬 */
+    align-items:flex-start;       /* 좌측 정렬 */
+    padding: var(--hero-top) 0 24px; /* ⬅️ 상단 위치: 여기 숫자 조절 */
+    gap:10px;
+    height:auto;
+    min-height:0;
+    color:#fff;
+    background:transparent;       /* 배경은 profile-page가 담당 */
+    box-sizing:border-box;
 }
 
-.profile-logo {
-    font-size: 55px;        /* ✅ Boyage 로고 크기 조금 키움 */
-    font-weight: bold;
+/* 텍스트 */
+.profile-logo{
+    font-size:65px;
+    font-weight:800;
+    margin: 0 0 6px var(--hero-left); /* ⬅️ 좌우 위치: 여기 숫자 조절 */
+}
+.welcome-text{
+    font-size:38px;
+    font-weight:600;
+    margin: 0 0 0 var(--hero-left);   /* ⬅️ 좌우 위치: 여기 숫자 조절 */
 }
 
-.welcome-text {
-    font-size: 25px;        /* ✅ 환영 문구 크기 업 */
-    font-weight: 600;
-    margin-top: 15px;
+/* 본문(메뉴) */
+.profile-content{
+    display:flex;
+    align-items:center;
 }
-
+.profile-menu{
+    display:flex;
+    flex-direction:column;
+    gap:35px;
+}
 .menu-item{
-    padding-top: 30px;
-    font-size: 25px;
-    font-weight: bold;
-    margin-left: 50px;
-    margin-top: 15px;
-    color: #525252;
+    font-size:35px;
+    font-weight:700;
+    color:#f0f0f0;
+    margin-left: var(--hero-left);     /* 메뉴도 정렬선 맞추기 */
+    cursor:pointer;
+    transition:transform .1s ease, opacity .1s ease;
+}
+.menu-item:hover{ transform: translateX(2px); opacity:.95; }
+
+/* 모바일 */
+@media (max-width: 768px){
+    .profile-page{
+        --hero-top: 4vh;
+        --hero-left: 16px;
+    }
+    .profile-container{ grid-template-rows: 52vh 1fr; }
+    .profile-logo{ font-size:36px; }
+    .welcome-text, .menu-item{ font-size:18px; }
 }

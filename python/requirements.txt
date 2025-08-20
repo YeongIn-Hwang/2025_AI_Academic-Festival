@@ -1,0 +1,20 @@
+# --- Web Framework ---
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+
+# --- Data / Utils ---
+numpy>=1.26.0
+pandas>=2.2.0
+python-dateutil>=2.9.0
+requests>=2.32.0
+pydantic>=2.8.0
+
+# --- AI / Embedding / RL ---
+torch>=2.3.0
+sentence-transformers>=2.7.0
+
+# --- Firebase / DB ---
+firebase-admin>=6.5.0
+
+# --- Logging / Debugging ---
+loguru>=0.7.0
