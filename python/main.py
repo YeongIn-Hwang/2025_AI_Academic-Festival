@@ -1,12 +1,24 @@
 # main.py
 import os
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sentence_transformers import SentenceTransformer
 
-# 라우터 한 번에 임포트 (중복 제거)
-from routes import user, prefs, places, prepare, travel_log
+# firebase_admin 초기화 (이미 다른 곳에서 한다면 중복 방지)
+import firebase_admin
+from firebase_admin import credentials
+
+# 이미 초기화돼있지 않다면 서비스키/기본버킷과 함께 초기화
+if not firebase_admin._apps:
+    # service_account.json 경로/이름은 환경에 맞게 변경
+    cred = credentials.Certificate("service_account.json")
+    # storageBucket은 Firebase Storage 버킷 주소
+    firebase_admin.initialize_app(cred, {"storageBucket": os.getenv("FIREBASE_BUCKET")})
+
+# 라우터 임포트
+from routes import user, prefs, places, prepare, travel_log, geocode, update_user_params, lightgcn
 
 # ===== SBERT 모델명 =====
 SBERT_NAME = os.getenv("SBERT_NAME", "snunlp/KR-SBERT-V40K-klueNLI-augSTS")
@@ -19,8 +31,27 @@ def load_sbert():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # 1) SBERT 로드
     app.state.sbert = load_sbert()
+
+    # 2) 서버 기동 직후 LightGCN warm-start (학습 데이터 있으면 학습/업로드)
+    async def _warm():
+        # 너무 무거우면 환경변수로 스킵 가능
+        if os.getenv("LIGHTGCN_WARM", "1") != "1":
+            print("[LightGCN] warm_start skipped by env LIGHTGCN_WARM")
+            return
+        try:
+            # routes/lightgcn.py의 동기 함수 호출을 스레드로 넘겨 비동기화
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, lightgcn.warm_start)
+            print("[LightGCN] warm_start done.")
+        except Exception as e:
+            print("[LightGCN] warm_start failed:", e)
+
+    asyncio.create_task(_warm())
+
     yield
+    # 종료 시 정리 필요하면 여기서
 
 app = FastAPI(lifespan=lifespan)
 
@@ -50,16 +81,14 @@ def test_sbert(request: Request):
     dim = model.get_sentence_embedding_dimension()
     return {"ready": True, "model": SBERT_NAME, "dim": dim}
 
-# ===== 라우터 등록 =====
-app.include_router(user.router, prefix="")           # /user_param_init
-app.include_router(prefs.router, prefix="")          # /user_keywords_embed
-app.include_router(places.router, prefix="")         # 장소 저장/조회
-
-# 경로 생성 전용 (prepare.py): /routes/prepare_basic, /routes/prepare_dqn 등
+# ===== 라우터 등록 (중복 없이!) =====
+app.include_router(user.router, prefix="")
+app.include_router(prefs.router, prefix="")
+app.include_router(places.router, prefix="")
 app.include_router(prepare.router, prefix="")
-
-# 여행 기록 저장/조회 전용 (travel_log.py): /save_travel_log, /trips/{uid}/{title}/timeline
 app.include_router(travel_log.router, prefix="")
+app.include_router(geocode.router, prefix="/api")
+app.include_router(update_user_params.router, prefix="")
+app.include_router(lightgcn.router, prefix="")
 
-# ===== 실행 =====
-# uvicorn main:app --host 0.0.0.0 --port 8000
+# 실행: uvicorn main:app --host 0.0.0.0 --port 8000
