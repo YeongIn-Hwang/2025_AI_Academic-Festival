@@ -92,7 +92,7 @@
     gap: 8px;                          /* 원형 + 텍스트 간격 */
     cursor: pointer;
     font-size: 15px;
-    font-weight: 500;
+    font-weight: 700;
     color: #333;
     user-select: none;
 
@@ -139,7 +139,7 @@
 /* 선택된 경우 칸 전체 강조 */
 .jr-radio-set input[type="radio"]:checked + span {
     color: black;
-    font-weight: 600;
+    font-weight: 700;
 }
 .jr-radio-set input[type="radio"]:checked + span::before {
     border-color: #2563eb;

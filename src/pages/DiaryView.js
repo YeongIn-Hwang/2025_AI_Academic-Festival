@@ -139,11 +139,8 @@ export default function DiaryView() {
 
   return (
     <div className="diaryview-container">
-      {/* ✅ 전체 화면 배경 (고정) */}
-      <div
-        className="dv-bg"
-        style={{ backgroundImage: `url(${bgFerris})` }}
-      />
+
+
 
       {/* 상단 고정 로고 */}
       <div className="dv-topbar">

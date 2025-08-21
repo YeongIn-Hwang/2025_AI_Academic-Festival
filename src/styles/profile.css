@@ -1,35 +1,30 @@
-/* ===== Profile 전용 영역 =====
-   아래 변수 값만 바꾸면 위치 미세조정 가능
-*/
+/* 페이지 래퍼에서 위치 변수 기본값 정의 */
 .profile-page{
-    /* ⬇️ 위치 조절 변수: Profile 안에서만 유효 */
-    --hero-top: 15vh;   /* 숫자 작게=더 위, 크게=더 아래 */
-    --hero-left: 40px;  /* 숫자 작게=더 왼쪽, 크게=더 오른쪽 */
-
-    /* 배경을 이 페이지에만 적용 */
-    min-height:100vh;
-    background: url("../assets/profile-background.png") no-repeat center center;
-    background-size: cover;
-    background-attachment: fixed; /* 스크롤해도 고정 */
+    --hero-top: 18vh;   /* 헤더를 아래로 내리고 싶으면 수치 ↑ */
+    --hero-left: 96px;  /* 좌측 여백 늘리고 싶으면 수치 ↑ */
 }
 
-/* 1뷰포트 레이아웃 */
+/* 1뷰포트 레이아웃 + 배경: "한 번만" 선언 */
 .profile-container{
     min-height:100vh;
     display:grid;
     grid-template-rows: 60vh 1fr;
+    background: url("../assets/profile-background.png") no-repeat center top;
+    background-size: 100% 60vh;
 }
 
 /* 헤더(히어로) */
 .profile-header{
-    justify-content:flex-start;   /* 상단 정렬 */
-    align-items:flex-start;       /* 좌측 정렬 */
-    padding: var(--hero-top) 0 24px; /* ⬅️ 상단 위치: 여기 숫자 조절 */
+    display:flex;               /* ← flex 추가 */
+    flex-direction: column;
+    justify-content:flex-start; /* 상단 정렬 */
+    align-items:flex-start;     /* 좌측 정렬 */
+    padding: var(--hero-top, 18vh) 0 24px; /* fallback 포함 */
     gap:10px;
     height:auto;
     min-height:0;
     color:#fff;
-    background:transparent;       /* 배경은 profile-page가 담당 */
+    background:transparent;     /* 배경은 container가 담당 */
     box-sizing:border-box;
 }
 
@@ -37,18 +32,19 @@
 .profile-logo{
     font-size:65px;
     font-weight:800;
-    margin: 0 0 6px var(--hero-left); /* ⬅️ 좌우 위치: 여기 숫자 조절 */
+    margin: 0 0 6px var(--hero-left, 96px); /* fallback 포함 */
 }
 .welcome-text{
     font-size:38px;
     font-weight:600;
-    margin: 0 0 0 var(--hero-left);   /* ⬅️ 좌우 위치: 여기 숫자 조절 */
+    margin: 0 0 0 var(--hero-left, 96px);
 }
 
 /* 본문(메뉴) */
 .profile-content{
     display:flex;
     align-items:center;
+    padding-left: var(--hero-left, 96px); /* 메뉴도 같은 기준선 */
 }
 .profile-menu{
     display:flex;
@@ -58,8 +54,7 @@
 .menu-item{
     font-size:35px;
     font-weight:700;
-    color:#f0f0f0;
-    margin-left: var(--hero-left);     /* 메뉴도 정렬선 맞추기 */
+    color:#000000;
     cursor:pointer;
     transition:transform .1s ease, opacity .1s ease;
 }
@@ -68,8 +63,8 @@
 /* 모바일 */
 @media (max-width: 768px){
     .profile-page{
-        --hero-top: 4vh;
-        --hero-left: 16px;
+        --hero-top: 20vh;
+        --hero-left: 40px;
     }
     .profile-container{ grid-template-rows: 52vh 1fr; }
     .profile-logo{ font-size:36px; }

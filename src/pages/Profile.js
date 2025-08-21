@@ -24,14 +24,7 @@ export default function Profile() {
   return (
     <div
       className="profile-container"
-      style={{
-        /* 필요 시 배경 이미지만 JS로 주입 (레이아웃/타이포 등은 CSS 클래스에 위임) */
-        backgroundImage: `linear-gradient(rgba(0,0,0,.25), rgba(0,0,0,.15)), url(${bg})`,
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-        backgroundSize: "cover",
-        backgroundAttachment: "fixed",
-      }}
+
     >
       <header className="profile-header">
         <h2 className="profile-logo">Boyage</h2>
