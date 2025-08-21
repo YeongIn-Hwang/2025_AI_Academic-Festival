@@ -20,6 +20,8 @@ export default function Journey() {
   const location = useLocation();
   const loadTitle = location.state?.loadTitle || null;
   const [loading, setLoading] = useState(true);
+  const [saveMode, setSaveMode] = useState(false);
+  const [settingMode, setSettingMode] = useState(false);
 
   // 기본 입력(상태는 유지: 재생성 등에 사용)
   const [title, setTitle] = useState("");
@@ -419,11 +421,18 @@ export default function Journey() {
   useEffect(() => () => throttledDrag.cancel(), [throttledDrag]);
 
   const handleSaveLog = async () => {
+    // 중복 클릭 방지
+    if (saveMode) return;
+
+    setSaveMode(true); // ✅ 시작할 때 '활성(검정)' 켬
+
     const user = auth.currentUser;
-    if (!user) return alert("로그인이 필요합니다.");
-    if (!title.trim()) return alert("여행 제목을 입력하세요.");
+    if (!user) { alert("로그인이 필요합니다."); setSaveMode(false); return; }
+    if (!title.trim()) { alert("여행 제목을 입력하세요."); setSaveMode(false); return; }
     if (!Array.isArray(timelineDays) || timelineDays.length === 0) {
-      return alert("저장할 일정이 없습니다.");
+      alert("저장할 일정이 없습니다.");
+      setSaveMode(false);
+      return;
     }
 
     try {
@@ -481,8 +490,11 @@ export default function Journey() {
     } catch (err) {
       console.error("[Journey] handleSaveLog error:", err);
       alert("일정 저장 실패: " + (err?.message || String(err)));
+    } finally {
+      setSaveMode(false); // ✅ 성공/실패 상관없이 항상 OFF
     }
   };
+
 
   const toggleEdit = () =>
       setEditMode((v) => {
@@ -617,6 +629,9 @@ export default function Journey() {
     if (pickerOpen) loadPlaces();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pickerOpen, placeTypeFilter, title]);
+  useEffect(() => {
+    setSettingMode(false);  // 라우트 변경될 때마다 초기화
+  }, [location.pathname]);
 
   const handleApplyPlaceToSlot = (place) => {
     const tgt = pickerTarget;
@@ -723,6 +738,7 @@ export default function Journey() {
 
   if (loading) return <div>로딩 중...</div>;
 
+
   return (
       <>
         <div className="jr-wrap two-col">
@@ -761,14 +777,16 @@ export default function Journey() {
 
                 <div className="mini-actions">
                   <button
-                      onClick={() => navigate("/journey/setting")}
-                      className="mini-act ghost"
+                      onClick={() => {
+                        setSettingMode(true);   // 클릭하면 검은색
+                        navigate("/journey/setting");
+                      }}
+                      className={`mini-act ${settingMode ? "active" : "ghost"}`}
                       title="여행 정보 입력 페이지로 이동"
                   >
                     <span>설정</span>
                     <span>페이지</span>
                   </button>
-
                   <button
                       onClick={handleRegenerate}
                       disabled={preparing || optimizing || timelineDays.length === 0}
@@ -777,7 +795,7 @@ export default function Journey() {
                   >
                     {optimizing ? (
                         <>
-                          <span>&nbsp;&nbsp;&nbsp;&nbsp;재생성 중..&nbsp;</span>
+                          <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;재생성중..</span>
                         </>
                     ) : (
                         <>
@@ -846,16 +864,24 @@ export default function Journey() {
                         </>
                     )}
                   </button>
-
                   <button
                       onClick={handleSaveLog}
-                      disabled={preparing || optimizing || timelineDays.length === 0}
-                      className="mini-act ghost"
+                      disabled={preparing || optimizing || timelineDays.length === 0 || saveMode}
+                      className={`mini-act ${saveMode ? "active" : "ghost"}`}
                       title="현재 타임라인을 날짜별로 Firestore에 저장합니다"
                   >
-                    <span>일정</span>
-                    <span>저장</span>
+                    {saveMode ? (
+                        <>
+                          <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;저장중..</span>
+                        </>
+                    ) : (
+                        <>
+                          <span>일정</span>
+                          <span>저장</span>
+                        </>
+                    )}
                   </button>
+
 
                 </div>
               </nav>

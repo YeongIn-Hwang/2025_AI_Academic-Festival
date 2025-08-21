@@ -59,7 +59,7 @@
 }
 .btn-delete{
     font-size:11px;
-    border:1px solid #ef4444;
+    border:1px solid #ef4444!important;
     background:none;
     color:#991b1b;
     border-radius:6px;
@@ -69,7 +69,7 @@
 }
 .btn-split{
     font-size:11px;
-    border:1px solid #7c3aed;
+    border:1px solid #7c3aed!important;
     background:none;
     color:#5b21b6;
     border-radius:6px;
@@ -140,7 +140,7 @@
     background:#fff;
     border:none;
     padding:5px;
-    width:55%;
+    width:50%;
 }
 .day-header {
     display: flex;
@@ -541,10 +541,11 @@ body.dragging, body.dragging *{
 }
 
 .mini-act.active-outline,
-.mini-act.active {
+.mini-act.active,
+.mini-act.ghost.active{
     padding:14px 16px;
     color: white;
-    background-color: #3884FF;
+    background-color: black;
 }
 
 /* 활성화 컬러만 바꾸는 유틸 클래스들 */
