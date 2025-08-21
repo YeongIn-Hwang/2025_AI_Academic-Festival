@@ -2,6 +2,7 @@
 *.iml
 .gradle
 /local.properties
+<<<<<<< HEAD
 /.idea/
 
 # VSCode
@@ -13,6 +14,17 @@
 .LSOverride
 Thumbs.db
 ehthumbs.db
+=======
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+
+# OS
+.DS_Store
+>>>>>>> origin/feat/travel-map
 
 # Build & Captures
 /build
@@ -41,6 +53,7 @@ local.properties
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+<<<<<<< HEAD
 pnpm-debug.log*
 *.log
 python/secrets/*.json
@@ -81,3 +94,6 @@ build/
 
 venv/
 >>>>>>> origin/dayoung
+=======
+python/secrets/*.json
+>>>>>>> origin/feat/travel-map
