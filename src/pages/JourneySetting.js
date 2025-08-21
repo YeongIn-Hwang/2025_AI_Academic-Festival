@@ -1,6 +1,6 @@
 // src/pages/JourneySetting.js
 import React, { useEffect, useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { auth } from "../firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { RiArrowDropDownLine } from "react-icons/ri";
@@ -9,6 +9,7 @@ import "../styles/JourneySetting.css";
 
 export default function JourneySetting() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [loading, setLoading] = useState(true);
 
     // 기본 입력 상태 (Journey.js에서 쓰던 것과 동일 키)
@@ -32,7 +33,24 @@ export default function JourneySetting() {
         });
         return () => unsub();
     }, [navigate]);
-
+useEffect(() => {
+    if (loading) return;
+    const init = location.state?.initial;
+    if (!init) return;
+    setTitle(init.title ?? "");
+    setQuery(init.query ?? "");
+    setMethod(String(init.method ?? "2"));
+    setStartDate(init.start_date ?? "");
+    setEndDate(init.end_date ?? "");
+    setStartTime(init.start_time ?? "10:00");
+    setEndTime(init.end_time ?? "22:00");
+    setStartLocation(init.start_location ?? "");
+    setLodging(init.lodging ?? "");
+    setEndLocation(init.end_location ?? "");
+    setFocusType(init.focus_type ?? "attraction");
+    // 필요하면, 한 번 채운 뒤 state를 비워 히스토리 뒤로가기에 잔상 남지 않게 할 수도 있음:
+    // navigate(location.pathname, { replace: true, state: {} });
+  }, [loading, location.state, navigate]);
     const payload = useMemo(() => ({
         title: title.trim(),
         query: query.trim(),
@@ -59,6 +77,13 @@ export default function JourneySetting() {
         // ✅ Journey 페이지로 폼 값 전달
         navigate("/journey", { state: { payload } });
     };
+
+    const handleOpenSaved = () => {
+  const t = title.trim();
+  if (!t) return alert("여행 제목을 먼저 입력하세요.");
+  // ✅ Journey.js는 state.loadTitle을 보고 저장된 경로를 불러옵니다.
+  navigate("/journey", { state: { loadTitle: t } });
+};
 
     if (loading) return <div>로딩 중...</div>;
 
@@ -133,7 +158,14 @@ export default function JourneySetting() {
                     </Field>
 
                     <div className="jr-hint">
-                        이미 저장해둔 일정이 있다면 <button type="button" className="linklike" onClick={() => navigate("/journey")}>바로 경로 보기</button>
+                        이미 저장해둔 일정이 있다면 <button
+   type="button"
+   className="linklike"
+   onClick={handleOpenSaved}
+   disabled={!title.trim()}
+ >
+   바로 경로 보기
+ </button>
                     </div>
 
                     <button type="submit" className="btn-primary_main">경로 생성하기</button>

@@ -1,0 +1,51 @@
+<!-- public/navermap-test.html -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Naver Maps Test</title>
+  <style>
+    html,body{height:100%;margin:0}
+    #map{width:100%;height:100%}
+    .note{position:fixed;top:8px;left:8px;background:#111;color:#fff;
+          padding:6px 10px;border-radius:8px;font:12px/1.4 system-ui;z-index:9999}
+  </style>
+  <script>
+    // 화면 배지
+    function note(msg, err){
+      const el=document.createElement('div');
+      el.className='note';
+      if(err) el.style.background='#b91c1c';
+      el.textContent=msg;
+      document.body.appendChild(el);
+    }
+
+    // 인증 실패 훅 (SDK 내부에서 호출)
+    window.navermap_authFailure = function(){
+      note('❌ navermap_authFailure (Client ID / Web URL / 제품 활성화 확인)', true);
+      console.error('[TEST] auth failure');
+    };
+
+    // SDK 콜백
+    window.__naver_ok = function(){
+      if(!(window.naver && window.naver.maps)){
+        note('❌ SDK loaded but naver.maps 없음', true);
+        return;
+      }
+      new naver.maps.Map('map', {
+        center:new naver.maps.LatLng(37.5665,126.9780),
+        zoom:11, mapDataControl:false, zoomControl:true
+      });
+      note('✅ Naver Maps SDK OK');
+      console.log('[TEST] map initialized');
+    };
+  </script>
+</head>
+<body>
+  <div id="map"></div>
+
+  <!-- ✅ 꼭 openapi 도메인 + ncpClientId(=Client ID) + callback -->
+  <script src="https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=YOUR_CLIENT_ID&callback=__naver_ok"></script>
+</body>
+</html>

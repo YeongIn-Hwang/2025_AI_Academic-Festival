@@ -1,4 +1,5 @@
 // src/pages/Journey.js
+/* global naver */
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { auth, db } from "../firebase";
@@ -8,12 +9,31 @@ import { throttle } from "lodash";
 import "../styles/Journey.css";
 import {RiArrowDropDownLine} from "react-icons/ri";
 
-const TRACK_HEIGHT = 800;   // 세로 트랙 높이(px)
+const TRACK_HEIGHT = 1600;   // 세로 트랙 높이(px)
 const DAY_COL_WIDTH = 360;
 const AXIS_COL_WIDTH = 72;  // 세로 타임라인 축 너비(px)
 
 const MIN_SLOT = 30; // 분
-const SNAP = 15;     // 분
+const SNAP = 30;     // 분
+
+function dayColor(dayNum) {
+  const colors = [
+    "#ef4444", // 1 빨
+    "#f97316", // 2 주
+    "#eab308", // 3 노
+    "#22c55e", // 4 초
+    "#3b82f6", // 5 파
+    "#6366f1", // 6 남
+    "#a855f7", // 7 보
+    "#b45309", // 8 황토
+    "#8b5e3c", // 9 갈
+    "#111827", // 10 검
+  ];
+  const idx = Math.max(1, Math.min(colors.length, Number(dayNum || 1))) - 1;
+  return colors[idx];
+}
+// 지도에 표시에서 제외할 타입
+const MAP_EXCLUDE_TYPES = new Set(["start","end"]); // 필요하면 ["accommodation"]도 추가
 
 export default function Journey() {
   const navigate = useNavigate();
@@ -56,6 +76,10 @@ export default function Journey() {
 
   // 일차 보기
   const [dayView, setDayView] = useState("all");
+
+  const mapDivRef = useRef(null);    // <div> 참조
+  const mapRef = useRef(null);       // naver.maps.Map 인스턴스
+  const mapOverlaysRef = useRef([]); // 마커/폴리라인 등 오버레이 목록
 
   // ⬇ “일차 번호”를 day 객체에 주입 (사이드바 i를 재활용)
   const displayedDays = useMemo(() => {
@@ -117,6 +141,217 @@ export default function Journey() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadTitle, loading]);
+// 네이버 지도 초기화 (1회) — SDK + 컨테이너 크기 준비 상태까지 대기
+useEffect(() => {
+  let poll;
+  const boot = () => {
+    const ready = !!window.__NAVER_MAPS_READY__;
+    const el = mapDivRef.current;
+    const hasSize = el && el.offsetWidth > 0 && el.offsetHeight > 0;
+
+    if (!ready || !hasSize || mapRef.current) {
+      poll = setTimeout(boot, 120);
+      return;
+    }
+
+    if (!(window.naver && window.naver.maps)) {
+      console.error("[NAVER] window.naver.maps 없음");
+      poll = setTimeout(boot, 120);
+      return;
+    }
+
+    // 🔹 지도 생성
+    const map = new naver.maps.Map(el, {
+      center: new naver.maps.LatLng(37.5665, 126.9780),
+      zoom: 11,
+      minZoom: 6,
+      zoomControl: true,
+      mapDataControl: false,
+    });
+    mapRef.current = map;
+
+    // 🔹 첫 프레임 이후 크기 반영 (flex 레이아웃일 때 필수)
+    setTimeout(() => {
+      try {
+        naver.maps.Event.trigger(map, "resize");
+      } catch {}
+    }, 0);
+
+    // 🔹 디버깅용 타일 로드 확인
+    naver.maps.Event.addListener(map, "tilesloaded", () => {
+      console.log("[NAVER] tilesloaded");
+    });
+
+    // 🔹 보이는지 테스트 마커 1개 (나중에 지워도 됨)
+    new naver.maps.Marker({
+      position: new naver.maps.LatLng(37.5665, 126.9780),
+      map,
+    });
+
+    console.log("[NAVER] map initialized");
+  };
+
+  boot();
+  return () => clearTimeout(poll);
+}, []);
+
+// 유틸: 이벤트 → 좌표 포인트로 변환(타입/좌표 유효성 검사 포함)
+function eventsToPoints(events = []) {
+  return (events || [])
+    .filter(e => e && e.title && typeof e.lat === "number" && typeof e.lng === "number")
+    .filter(e => !MAP_EXCLUDE_TYPES.has(e.type || "")) // start/end 제외
+    .map((e, i) => ({
+      idx: i + 1,
+      title: e.title,
+      lat: e.lat,
+      lng: e.lng,
+      type: e.type || "etc",
+    }));
+}
+function openKakaoDirections(from, to, mode = "car") {
+  // 카카오 링크 스펙: https://map.kakao.com/link/by/{mode}/{이름,위도,경도}/{이름,위도,경도}
+  const enc = (s) => encodeURIComponent(String(s || ""));
+  const seg = (p) => `${enc(p.title || "")},${p.lat},${p.lng}`;
+
+  // mode: 'car' | 'walk' | 'traffic' | 'bicycle'
+  const valid = new Set(["car","walk","traffic","bicycle"]);
+  const m = valid.has(mode) ? mode : "car";
+
+  const url = `https://map.kakao.com/link/by/${m}/${seg(from)}/${seg(to)}`;
+
+  // 팝업 차단 최소화: a 클릭
+  const a = document.createElement("a");
+  a.href = url; a.target = "_blank"; a.rel = "noopener noreferrer";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+function openGoogleMapsPlace(p) {
+  // 무조건 title 기반으로 검색
+  const q = String(p.title || "");
+  if (!q) return;
+
+  const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+// 타임라인 → 날짜별 라우트 덩어리 만들기
+const dayRoutes = useMemo(() => {
+  // displayedDays 는 이미 "all" 또는 특정 일차 하나만 반영된 배열
+  return (displayedDays || []).map((d) => ({
+    date: d.date,
+    color: dayColor(d._dayNum),   // ✅ 일차 번호 색깔과 동일하게
+    points: eventsToPoints(
+      [...(d.events || [])].sort((a,b) => {
+        const t = (x) => (x?.start || "00:00");
+        return t(a).localeCompare(t(b));
+      })
+    ),
+  }));
+}, [displayedDays]);
+
+// 지도에 경로/마커 렌더링
+useEffect(() => {
+  const map = mapRef.current;
+  if (!map || !window.naver || !window.naver.maps) return;
+
+  // 이전 오버레이 제거
+  mapOverlaysRef.current.forEach(ov => {
+    try { ov.setMap(null); } catch {}
+  });
+  mapOverlaysRef.current = [];
+
+  const bounds = new naver.maps.LatLngBounds();
+  let hasPoint = false;
+
+  dayRoutes.forEach(route => {
+    const { color, points } = route;
+    if (!points.length) return;
+
+    // 마커/라벨
+    points.forEach((p, i) => {
+      const pos = new naver.maps.LatLng(p.lat, p.lng);
+      bounds.extend(pos);
+      hasPoint = true;
+
+      const marker = new naver.maps.Marker({
+        position: pos,
+        map,
+        icon: {
+          content: `
+            <div style="
+              transform:translate(-50%,-50%);
+              display:flex;align-items:center;gap:6px;
+              background:${color};color:#fff;padding:4px 8px;border-radius:12px;
+              box-shadow:0 1px 4px rgba(0,0,0,.25);font-size:12px;white-space:nowrap;
+              cursor:pointer;" title="구글 지도로 열기">
+              ${String(i+1)}. ${p.title}
+            </div>
+          `
+        }
+      });
+      mapOverlaysRef.current.push(marker);
+
+      naver.maps.Event.addListener(marker, "mouseover", () => map.setCursor("pointer"));
+      naver.maps.Event.addListener(marker, "mouseout",  () => map.setCursor("auto"));
+      naver.maps.Event.addListener(marker, "click", () => openGoogleMapsPlace(p));
+   });
+
+    // 세그먼트 폴리라인 (클릭 → 이전→다음 구간 길찾기)
+    for (let i = 0; i < points.length - 1; i++) {
+      const a = points[i];
+      const b = points[i + 1];
+      const segPath = [
+        new naver.maps.LatLng(a.lat, a.lng),
+        new naver.maps.LatLng(b.lat, b.lng),
+      ];
+      const segLine = new naver.maps.Polyline({
+        map,
+        path: segPath,
+        strokeColor: color,
+        strokeOpacity: 0.9,
+        strokeWeight: 3,
+        clickable: true,
+        strokeLineCap: "round",
+        strokeLineJoin: "round",
+      });
+      const hitLine = new naver.maps.Polyline({
+        map,
+        path: segPath,
+        strokeColor: "#000000",
+        strokeOpacity: 0.0001,
+        strokeWeight: 18,     // 클릭 영역 넉넉
+        clickable: true,
+        zIndex: 999
+      });
+      const handleClick = () => {
+        const kakaoMode =
+          method === "1" ? "walk" :
+          method === "3" ? "car"  :
+                           "traffic";
+        openKakaoDirections(a, b, kakaoMode);
+      };
+      [segLine, hitLine].forEach(l => {
+        naver.maps.Event.addListener(l, "mouseover", () => map.setCursor("pointer"));
+        naver.maps.Event.addListener(l, "mouseout",  () => map.setCursor("auto"));
+        naver.maps.Event.addListener(l, "click", handleClick);
+      });
+      // 클릭 시 카카오 길찾기 열기 (method → kakao mode 매핑)
+      naver.maps.Event.addListener(segLine, "click", handleClick);
+      mapOverlaysRef.current.push(segLine, hitLine);
+    }
+  });
+
+  if (hasPoint) {
+    map.fitBounds(bounds);
+  }
+}, [dayRoutes, method]);
 
   // Firestore에 동일 title 존재 여부 확인
   const checkTripExists = async (uid, tripTitle) => {
@@ -494,7 +729,74 @@ export default function Journey() {
       setSaveMode(false); // ✅ 성공/실패 상관없이 항상 OFF
     }
   };
+  const buildSettingInitial = async () => {
+  const user = auth.currentUser;
+  let meta = { query: "", method: undefined, lodging: "" };
 
+  // 1) trips 문서에서 query / method / lodging 가져오기
+  if (user && title.trim()) {
+    try {
+      const ref = doc(db, "user_trips", user.uid, "trips", title.trim());
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        const d = snap.data() || {};
+        if (typeof d.query === "string") meta.query = d.query;
+        if (d.method != null) meta.method = String(d.method);
+        if (typeof d.lodging === "string") meta.lodging = d.lodging;
+      }
+    } catch (e) {
+      console.warn("[Journey] buildSettingInitial trips fetch error:", e);
+    }
+  }
+
+  // 2) 타임테이블에서 날짜/시간/위치 계산
+  const firstDay = timelineDays[0];
+  const lastDay  = timelineDays[timelineDays.length - 1];
+
+  const start_date = firstDay?.date ?? startDate;
+  const end_date   = lastDay?.date  ?? endDate;
+
+  // 모든 이벤트를 날짜+시작시간 기준으로 정렬
+  const allEvents = timelineDays.flatMap((d) =>
+    (d.events || []).map((ev) => ({ ...ev, _date: d.date }))
+  ).sort((a, b) => {
+    const dc = (a._date || "").localeCompare(b._date || "");
+    if (dc !== 0) return dc;
+    return (a.start || "00:00").localeCompare(b.start || "00:00");
+  });
+
+  const firstEv = allEvents[0];
+  const lastEv  = allEvents[allEvents.length - 1];
+
+  // 요구사항: 시작/종료 시간은 각각 "첫번째 일정의 끝 시간", "마지막 일정의 첫 시간"
+  const start_time = firstEv?.end   || startTime;
+  const end_time   = lastEv?.start  || endTime;
+
+  // 요구사항: 시작/종료 위치는 "첫 일정의 여행지 이름", "마지막 일정의 여행지 이름"
+  const start_location = firstEv?.title || startLocation;
+  const end_location   = lastEv?.title  || endLocation;
+
+  // 숙소: trips.lodging 우선, 없으면 타임테이블의 accommodation 첫 항목, 그래도 없으면 기존 상태
+  let lodgingPref = meta.lodging || lodging;
+  if (!lodgingPref) {
+    const acc = allEvents.find((e) => e?.type === "accommodation" && e?.title);
+    if (acc?.title) lodgingPref = acc.title;
+  }
+
+  return {
+    title,
+    query: meta.query || query,
+    method: meta.method || String(method),
+    start_date,
+    end_date,
+    start_time,
+    end_time,
+    start_location,
+    lodging: lodgingPref || "",
+    end_location,
+    focus_type: focusType,
+  };
+};
 
   const toggleEdit = () =>
       setEditMode((v) => {
@@ -549,7 +851,7 @@ export default function Journey() {
     const e = toMin(ev.end);
     if (e - s < 60) return alert("분할하려면 최소 60분 이상이어야 해요.");
 
-    let mid = roundTo((s + e) / 2, 15);
+    let mid = roundTo((s + e) / 2, 30);
     const leftMin = s + 30;
     const rightMin = e - 30;
     mid = Math.max(leftMin, Math.min(rightMin, mid));
@@ -777,10 +1079,16 @@ export default function Journey() {
 
                 <div className="mini-actions">
                   <button
-                      onClick={() => {
-                        setSettingMode(true);   // 클릭하면 검은색
-                        navigate("/journey/setting");
-                      }}
+   onClick={async () => {
+     const ok = window.confirm(
+       "설정 페이지로 이동하면 현재 변경한 경로는 저장되지 않습니다.\n계속 진행할까요?"
+     );
+     if (!ok) return; // 취소 시 아무 것도 안 함
+
+     setSettingMode(true); // 클릭하면 검은색
+     const initial = await buildSettingInitial();
+     navigate("/journey/setting", { state: { initial } });
+   }}
                       className={`mini-act ${settingMode ? "active" : "ghost"}`}
                       title="여행 정보 입력 페이지로 이동"
                   >
@@ -928,8 +1236,68 @@ export default function Journey() {
                 )}
               </section>
 
-              {/* 오른쪽: 비워둠 */}
-              <aside className="jr-right-empty" />
+{/* 오른쪽: 지도 패널 */}
+<aside className="jr-right-map" style={{ width: 720, minWidth: 420 }}>
+  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 12px" }}>
+    <div style={{ fontWeight: 700 }}>지도 미리보기</div>
+
+    {/* ✅ 클릭 가능한 레전드: 전체 / 일차 선택 */}
+    <div style={{ display:"flex", gap:6, flexWrap:"wrap", maxWidth:320 }}>
+      {/* 전체 보기 버튼 */}
+      <button
+        type="button"
+        onClick={() => setDayView("all")}
+        className="jr-chip"
+        aria-pressed={dayView === "all"}
+        title="전체 일정 보기"
+        style={{
+          border:"1px solid rgba(0,0,0,0.15)",
+          background: dayView === "all" ? "#111827" : "#fff",
+          color: dayView === "all" ? "#fff" : "#111827",
+          borderRadius:12, padding:"2px 10px", fontSize:12, lineHeight:1.6, cursor:"pointer"
+        }}
+      >
+        전체
+      </button>
+
+      {/* 일차별 버튼 */}
+      {timelineDays.map((d, i) => {
+        const color = dayColor(i + 1);
+        const isActive = dayView === i;
+        return (
+          <button
+            key={d.date || i}
+            type="button"
+            onClick={() => setDayView(i)}
+            className="jr-chip"
+            aria-pressed={isActive}
+            title={`${i + 1}일차 (${d.date || ""})`}
+            style={{
+              background: color,
+              color: "#fff",
+              opacity: isActive || dayView === "all" ? 1 : 0.35,
+              border: "none",
+              borderRadius: 12,
+              padding: "2px 10px",
+              fontSize: 12,
+              lineHeight: 1.6,
+              cursor: "pointer",
+              boxShadow: isActive ? "0 0 0 2px rgba(0,0,0,0.15) inset" : "none"
+            }}
+          >
+            {i + 1}일차
+          </button>
+        );
+      })}
+    </div>
+  </div>
+
+  <div
+    id="mapMain"
+    ref={mapDivRef}
+    style={{ width:"100%", height:"calc(100vh - 140px)", borderRadius:12, boxShadow:"0 1px 6px rgba(0,0,0,.12)" }}
+  />
+</aside>
             </div>
           </main>
         </div>
@@ -1100,7 +1468,8 @@ function Timeline({
   const [mergeSel, setMergeSel] = useState(null);
 
   const MIN_CARD_PX = 100; // 카드 최소 높이(px) - CSS의 min-height와 맞추세요
-  const MIN_GAP_PX  = 6;   // 인접 카드 사이 최소 간격(px)
+  //const MIN_GAP_PX  = 6;   // 인접 카드 사이 최소 간격(px)
+  const CARD_UNIT_MIN = 30;
 
   const toMin = (hm) => {
     const [h, m] = hm.split(":").map(Number);
@@ -1183,23 +1552,6 @@ function Timeline({
     window.addEventListener("mouseup", onUp, true);
   };
 
-  const dayColor = (dayNum) => {
-    const colors = [
-      "#ef4444", // 1 빨
-      "#f97316", // 2 주
-      "#eab308", // 3 노
-      "#22c55e", // 4 초
-      "#3b82f6", // 5 파
-      "#6366f1", // 6 남
-      "#a855f7", // 7 보
-      "#b45309", // 8 황토
-      "#8b5e3c", // 9 갈
-      "#111827", // 10 검
-    ];
-    const idx = Math.max(1, Math.min(10, Number(dayNum || 1))) - 1;
-    return colors[idx];
-  };
-
   return (
       <div className="tl-day-list">
         {days.map((day) => {
@@ -1228,36 +1580,15 @@ function Timeline({
           // --- 스케일(px/min) 계산: 겹침이 없도록 k를 충분히 키움
           let k = TRACK_HEIGHT / totalMin; // 기본 스케일
 
-          // 1) 각 카드의 최소 높이를 보장
-          for (let i = 0; i < events.length; i++) {
-            const d = Math.max(1, toMin(events[i].end) - toMin(events[i].start));
-            k = Math.max(k, MIN_CARD_PX / d);
-          }
-          // 2) 인접 일정의 시작-시작 간격이 (이전 카드 높이 + 최소 간격) 이상
-          for (let i = 0; i < events.length - 1; i++) {
-            const s0 = toMin(events[i].start);
-            const e0 = toMin(events[i].end);
-            const s1 = toMin(events[i + 1].start);
-
-            const startDiff = Math.max(1, s1 - s0);       // 분
-            const dur0 = Math.max(1, e0 - s0);            // 분
-            // 이전 카드 실제 px 높이 후보: max(MIN_CARD_PX, dur0 * k)
-            // 겹치지 않으려면: startDiff * k >= prevHeight + MIN_GAP_PX
-            // prevHeight가 아직 k에 의존 -> 보수적으로 MIN_CARD_PX 사용
-            k = Math.max(k, (MIN_CARD_PX + MIN_GAP_PX) / startDiff);
-          }
-
           // 최종 트랙 높이(px): 범위를 k로 환산 + 마지막 카드가 충분히 들어갈 여유
           const last = events[events.length - 1];
-          const lastTopPx = (toMin(last.start) - rangeStart) * k;
-          const lastHeightPx = Math.max(
-              MIN_CARD_PX,
-              (toMin(last.end) - toMin(last.start)) * k
-          );
-          const trackHeight = Math.max(
-              Math.ceil(k * totalMin),
-              Math.ceil(lastTopPx + lastHeightPx + 24)
-          );
+const lastTopPx = (toMin(last.start) - rangeStart) * k;
+const lastHeightPx = CARD_UNIT_MIN * k;
+
+const trackHeight = Math.max(
+  Math.ceil(k * totalMin),
+  Math.ceil(lastTopPx + lastHeightPx + 24)
+);
 
           return (
               <div key={day.date} className="day-block">
@@ -1281,7 +1612,7 @@ function Timeline({
                       const end = pv?.end || e.end;
 
                       const startPx = (toMin(start) - rangeStart) * k;
-                      const durPx = Math.max(2, (toMin(end) - toMin(start)) * k);
+                      const durPx = Math.max(2, CARD_UNIT_MIN * k);
 
                       const circleColor = dayColor(day._dayNum);
 
@@ -1333,6 +1664,7 @@ function Timeline({
                       const end = pv?.end || e.end;
 
                       const topPx = (toMin(start) - rangeStart) * k;
+                      const cardHeightPx = CARD_UNIT_MIN * k;
 
                       const lockType = ["start", "end", "accommodation"].includes(e.type);
                       const isEmpty = !e.title;
@@ -1341,36 +1673,56 @@ function Timeline({
                       return (
                           <div
                               key={`${e.start}-${e.end}-${idx}-card`}
-                              className={`ev-card ${isEmpty ? "is-empty" : ""} ${
-                                  lockType ? "is-locked" : ""
-                              }`}
-                              style={{ top: `${topPx}px` }}
+                              className={`ev-card ${isEmpty ? "is-empty" : ""} ${lockType ? "is-locked" : ""} ${
+   mergeable && mergeSel && mergeSel.date === day.date && mergeSel.idx === idx ? "is-selected" : ""
+ }`}
+                              style={{
+      top: `${topPx}px`,
+      height: `${cardHeightPx}px`,
+      // 카드 높이를 CSS 변수로 전달 (폰트/줄 높이 계산용)
+      "--card-h": `${cardHeightPx}px`,
+    }}
                               title={`${e.title || "(빈칸)"} (${start}~${end})`}
                               onClick={() => {
-                                if (mergeable) return;
-                                if (canPick) {
-                                  onPick?.(day.date, e);
-                                  return;
-                                }
-                                if (e.title && !lockType) {
-                                  const url = mapsUrlFromEvent(e);
-                                  window.open(url, "_blank", "noopener");
-                                }
-                              }}
+   if (mergeable) {
+     // 병합 모드: 첫 번째 선택 → 두 번째 선택 시 병합 시도
+     if (!mergeSel) {
+       setMergeSel({ date: day.date, idx });
+     } else {
+       // 같은 날짜 & 인접 여부 확인
+       if (mergeSel.date === day.date && Math.abs(mergeSel.idx - idx) === 1) {
+         onMerge?.(day.date, mergeSel.idx, idx);
+       }
+       // 병합 성공/실패와 무관히 선택 해제
+       setMergeSel(null);
+     }
+     return;
+   }
+   // 일반 클릭 동작
+   if (canPick) {
+     onPick?.(day.date, e);
+     return;
+   }
+   if (e.title && !lockType) {
+     const url = mapsUrlFromEvent(e);
+     window.open(url, "_blank", "noopener");
+   }
+ }}
                           >
-                            <div className="ev-body">
-                              <div className="ev-sub">
-                          <span className="ev-range">
-                            {start} ~ {end}
-                          </span>
-                                <span className="ev-type" style={{ color: typeColor(e.type) }}>
-                            {typeLabel(e.type)}
-                          </span>
-                              </div>
-                              <div className="ev-title">
-                                {e.title || "빈 슬롯 (클릭하여 추가)"}
-                              </div>
-                            </div>
+                            {/* 왼쪽: 시간 / 오른쪽: 타입 + 이름 */}
+<div className="ev-left">
+  <div className="ev-time">{start} ~ {end}</div>
+</div>
+
+<div className="ev-right">
+  <div className="ev-type" style={{ color: typeColor(e.type) }}>
+    {typeLabel(e.type)}
+  </div>
+  <div className="ev-title">
+    {e.title || "빈 슬롯 (클릭하여 추가)"}
+  </div>
+</div>
+
 
                             {!lockType && splitable && (
                                 <button
