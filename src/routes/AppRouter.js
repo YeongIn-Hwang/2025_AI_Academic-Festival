@@ -14,8 +14,11 @@ import DiaryView from "../pages/DiaryView";
 import Profile from "../pages/Profile";
 import SetPreferences from "../pages/SetPreferences";
 import JourneyList from "../pages/JourneyList";
+
+// ← 두 브랜치 모두의 추가분을 포함
 import Heart from "../pages/Heart";
 import Save_Travel from "../pages/Save_Travel";
+import JourneySetting from "../pages/JourneySetting";
 
 function AppRouter() {
   return (
@@ -32,11 +35,15 @@ function AppRouter() {
         <Route path="/diary/:region" element={<Diary />} />
         <Route path="/diaryview/:region" element={<DiaryView />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/hearts" element={<Heart />} />
+
         <Route path="/set-preferences" element={<SetPreferences />} />
         <Route path="/journey_list" element={<JourneyList />} />
         <Route path="/journey_list.js" element={<Navigate to="/journey_list" replace />} />
+
+        {/* 두 브랜치의 신규 라우트 모두 포함 */}
+        <Route path="/hearts" element={<Heart />} />
         <Route path="/save_travel" element={<Save_Travel />} />
+        <Route path="/journey/setting" element={<JourneySetting />} />
       </Routes>
     </BrowserRouter>
   );

@@ -85,6 +85,7 @@ function Home() {
                     <li onClick={() => navigate("/journey_list")}>AI 추천 경로</li>
                     <li onClick={() => navigate("/map")}>지도/일기장</li>
                     <li onClick={() => navigate("/news")}>뉴스&메거진</li>
+
                     <li onClick={() => navigate("/profile")}>내 프로필</li>
                 </ul>
                 {user && (

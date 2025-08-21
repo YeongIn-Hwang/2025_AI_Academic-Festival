@@ -1,0 +1,212 @@
+/* 페이지 전체 */
+.jr-setting {
+    min-height: 100vh;
+    background:
+            radial-gradient(1200px 600px at -10% -10%, rgba(56,132,255,.06), transparent 60%),
+            radial-gradient(800px 400px at 110% 0%, rgba(56,132,255,.05), transparent 55%),
+            #f6f8fc;   /* 전체 배경 */
+    display: flex;
+    justify-content: center;
+    padding: 56px 24px;
+    box-sizing: border-box;
+}
+
+/* 내부 컨테이너*/
+.jr-setting-inner {
+    width: 100%;
+    max-width: 1080px;  /* 너무 넓지 않게 제한 */
+    padding: 0 24px;    /* 좌우 여백 */
+    background: transparent;  /* 카드 배경 없앰 */
+    border-radius: 0;         /* 둥근 모서리 제거 */
+    box-shadow: none;         /* 그림자 제거 */
+}
+
+/* 셀렉트 래퍼: 아이콘을 오른쪽에 겹치기 위해 */
+.jr-select-wrapper{
+    position: relative;
+    display: inline-block;       /* 필요 시 block 으로 */
+    width: 100%;
+}
+
+/* 기본 셀렉트의 내장 화살표 제거 + 아이콘 자리 확보 */
+.jr-select{
+    -webkit-appearance: none;    /* Safari/Chrome */
+    -moz-appearance: none;       /* Firefox */
+    appearance: none;            /* 표준 */
+    background: transparent;     /* 배경 이미지 제거 */
+    padding-right: 2.25rem;      /* 아이콘 공간 확보(조절 가능) */
+    background-image: none;      /* 일부 브라우저 잔여 배경 제거 */
+}
+
+.jr-select-icon{
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    transform: translateY(-20%);
+    pointer-events: none; /* 클릭 막기 */
+    font-size: 24px;
+    color: #555; /* 색상은 필요에 맞게 */
+}
+
+/* IE/Edge(레거시)의 화살표 제거 */
+.jr-select::-ms-expand{
+    display: none;
+}
+
+.jr-select:focus + .jr-select-icon{
+    color: #111827;
+}
+.jr-select:hover + .jr-select-icon{
+    color: #374151;
+}
+
+.jr-label{
+    display: block;
+    padding-bottom: 8px;
+}
+
+/* 제목 */
+.jr-step-title {
+    margin: 0 0 40px 0;
+    font-size: 35px;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+/* 폼 레이아웃 */
+.jr-form-grid {
+    display: grid;
+    gap: 20px;
+}
+
+.jr-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+/* 라디오 버튼 전체 세트 */
+.jr-radio-set {
+    display: flex;
+    align-items: center;
+    gap: 8px;                          /* 원형 + 텍스트 간격 */
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 500;
+    color: #333;
+    user-select: none;
+
+    /* ✅ 칸처럼 보이도록 테두리 */
+    border: 1.5px solid #ddd;
+    border-radius: 10px;
+    padding: 10px 14px;
+    transition: all 0.2s ease;
+    background-color: #fff;
+}
+
+/* 실제 라디오 버튼 숨김 */
+.jr-radio-set input[type="radio"] {
+    display: none;
+}
+
+/* 커스텀 원형 표시 */
+.jr-radio-set span::before {
+    content: "";
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border: 2px solid #aaa;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+
+/* 선택된 경우 */
+.jr-radio-set input[type="radio"]:checked + span::before {
+    border-color: #2563eb;
+    background-color: #2563eb;
+    box-shadow: inset 0 0 0 4px #fff;
+}
+
+/* hover 시 효과 */
+.jr-radio-set:hover {
+    border-color: #2563eb;
+    background-color: #f9fbff;
+}
+
+/* 선택된 경우 칸 전체 강조 */
+.jr-radio-set input[type="radio"]:checked + span {
+    color: black;
+    font-weight: 600;
+}
+.jr-radio-set input[type="radio"]:checked + span::before {
+    border-color: #2563eb;
+}
+
+
+/* 날짜 입력 필드 글자 간격 조정 */
+.jr-input[type="date"] {
+    letter-spacing: 3px;
+}
+
+/* 인풋/셀렉트 기본 스타일 */
+.jr-input {
+    width: 100%;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 14px;
+    background: #fff;
+    transition: border-color .15s ease, box-shadow .15s ease;
+    margin-bottom: 7px;
+}
+.jr-input:focus {
+    outline: none;
+    border-color: #3884FF;
+    box-shadow: 0 0 0 3px rgba(56,132,255,.15);
+}
+
+/* 버튼 */
+.btn-primary_main {
+    width: 100%;
+    border: none;
+    border-radius: 18px;
+    background: #3884FF;
+    color: #fff;
+    padding: 15px 18px;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .15s ease;
+    margin-top: 5px;
+}
+.btn-primary_main:hover {
+    background: #2d6ad0;
+}
+
+.jr-hint{
+    margin-top: 100px;
+}
+
+.linklike {
+    background: none;
+    border: none;
+    color: #3884FF;         /* 테마색 */
+    font-weight: 600;       /* 살짝 두껍게 */
+    font-size: 14px;
+    cursor: pointer;
+    padding-left: 10px;
+    position: relative;
+}
+
+.linklike::after {
+    content: "";
+    display: block;
+    width: 100%;
+    height: 2px;             /* 밑줄 두께 */
+    background-color: #3884FF;
+    margin-top: 2px;
+}
+

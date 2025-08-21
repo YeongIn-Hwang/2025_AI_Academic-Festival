@@ -1,0 +1,562 @@
+/* =========================
+   기본 레이아웃 (헤더 제거 버전)
+   ========================= */
+
+:root{
+    --topbar-h: 0px; /* 상단 헤더 없음 */
+}
+
+/* 페이지 래퍼 */
+.jr-wrap{
+    display: block;
+    min-height: 100vh;
+    background: #f7f7f8;
+    position: relative;
+}
+
+/* 메인 */
+.jr-main{
+    background: #fff;
+}
+
+/* 공통 제목/텍스트 유틸 */
+.jr-header-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:10px;
+    flex-wrap:wrap;
+    gap:8px;
+}
+.jr-title-lg{
+    font-size:28px;
+    font-weight:700;
+    margin-left: 35px;
+    margin-bottom:10px;
+}
+.jr-subtle{ color:#666; }
+
+/* =========================
+   버튼 기본 (타임라인 내부용 작은 버튼들)
+   ========================= */
+.btn{
+    padding:12px 14px; border-radius:12px; border:none; background:#111; color:#fff; cursor:pointer; font-weight:700;
+}
+.btn-ghost{ padding:12px 14px; border: none; background:#fff; cursor:pointer; }
+.btn-primary{ background:none; border-radius:30px; color:black; }
+.btn-primary_main {
+    width:100%;
+    background-color: #3884FF;
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 10px;
+    border: none;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    margin-top: 20%;
+}
+.btn-delete{
+    font-size:11px;
+    border:1px solid #ef4444!important;
+    background:none;
+    color:#991b1b;
+    border-radius:6px;
+    padding:4px 7px;
+    cursor:pointer;
+    margin-right: 10px;
+}
+.btn-split{
+    font-size:11px;
+    border:1px solid #7c3aed!important;
+    background:none;
+    color:#5b21b6;
+    border-radius:6px;
+    padding:4px 7px;
+    cursor:pointer;
+    margin-right: 10px;
+}
+
+.trip-summary{
+    display:flex;
+    align-items:baseline;
+    gap:12px;
+    padding: 18px 4px 8px;
+}
+.trip-place{
+    font-size:25px;
+    font-weight:800;
+    color:#0f172a;
+}
+.trip-dates{
+    font-size:14px;
+    color:#475569;
+}
+
+/* =========================
+   2분할 스테이지
+   ========================= */
+
+.jr-stage-flex{
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    min-height: 100vh;
+}
+
+/* 가운데 메인 카드 */
+.jr-stage-card{
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    background:#fff;
+    border:none;
+    padding:10px;
+    overflow: hidden;
+}
+
+/* 오른쪽 비어있는 컬럼 */
+.jr-right-empty{
+    flex: 0 0 520px;
+    background: transparent;
+    border: none;
+}
+@media (max-width: 1100px){
+    .jr-right-empty{ flex-basis: 320px; }
+}
+@media (max-width: 900px){
+    .jr-right-empty{ display: none; }
+}
+
+/* =========================
+   카드/컨테이너 & 패널
+   ========================= */
+.jr-note{ margin-bottom:10px; color:#444; }
+.placeholder{
+    border:1px dashed #ccc; border-radius:12px; padding:24px; text-align:center; color:#888; background:#fafafa;
+}
+.day-block{
+    background:#fff;
+    border:none;
+    padding:5px;
+    width:50%;
+}
+.day-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.day-num {
+    font-weight: 800;
+    font-size: 18px;
+    color: #111;
+}
+.day-date {
+    font-weight: 600;
+    color: #444;
+}
+.day-wd {
+    color: #888;
+    font-size: 15px;
+}
+
+/* 후보 패널 */
+.panel{
+    border:1px solid #eee;
+    background:#fff;
+    border-radius:12px;
+    padding:17px;
+    margin-top:20px;
+    margin-bottom:10px;
+    height:fit-content;
+    max-height:520px;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    position:sticky;
+    top:24px;
+}
+
+.fw-700{
+    font-weight: 700;
+    font-size: 20px;
+    padding: 10px;
+
+}
+.panel-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:8px;
+}
+.panel-close{
+    border:1px solid #e5e7eb; background:#f9fafb; border-radius:8px; padding:6px 10px; cursor:pointer; color:#111;
+}
+.panel-label{
+    display:block;
+    font-size:12px;
+    color:#555;
+    margin-bottom:7px;
+    padding-left: 8px;
+    margin-top: 3px;
+    font-weight:800;
+}
+
+.panel-count{
+    display:block;
+    font-size:12px;
+    color:#555;
+    margin-bottom:5px;
+    padding-left: 8px;
+    margin-top: 9px;
+    font-weight:800;
+}
+
+.panel-list{ overflow-y:auto; padding:2px; display:grid; gap:8px; }
+.panel-item{
+    text-align:left; border:1px solid #e5e7eb; background:#fff; border-radius:10px; padding:10px 12px; cursor:pointer; position:relative;
+}
+.panel-item-top{ display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
+.panel-item-name{
+    font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:75%; color:#111;
+}
+.panel-item-mid{ display:flex; align-items:center; gap:8px; margin-top:4px; }
+.panel-text-sm{ font-size:12px; color:#777; }
+.panel-vicinity{ margin-top:4px; font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.panel-scores{ margin-top:6px; font-size:11px; color:#6b7280; }
+.panel-detail-btn{
+    position:absolute;
+    top:13px;
+    right:14px;
+    font-size:11px;
+    border:1px solid #2563eb;
+    background:#3b82f6;
+    color:#fff;
+    border-radius:999px;
+    padding:2px 10px;
+    cursor:pointer;
+    line-height:1.6;
+    z-index:10;
+}
+
+.jr-input {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width: 100%;
+    padding-right: 32px; /* 아이콘 들어갈 공간 확보 */
+    box-sizing: border-box;
+}
+
+/* 커스텀 아이콘 */
+.jr-select-icon-2 {
+    position: absolute;
+    top: 55px;
+    right: 25px;
+    transform: translateY(-20%);
+    pointer-events: none; /* 클릭 막기 */
+    font-size: 24px;
+    color: #555; /* 색상은 필요에 맞게 */
+}
+
+/* =========================
+   타임라인 (가로 스크롤)
+   ========================= */
+.tl-scroll{
+    height: 100%;
+    overflow-x: auto;
+    overflow-y: auto;
+    margin-left: 10px;
+    margin-top: 20px;
+}
+
+.tl-day-list{
+    display:flex;
+    overflow-x:auto;
+    padding-bottom:8px;
+}
+
+/* 한 날짜 블럭 안의 레이아웃: 세로축 + 카드 */
+.tl-row{
+    position:relative;
+    display:flex;
+    gap:16px;
+    align-items:flex-start;
+    margin-top: 25px;
+}
+.tl-axis{
+    position:relative;
+    height: 100%;
+}
+.axis-line{
+    position:absolute;
+    left: calc(50% - 1px);
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #e5e7eb; /* 회색 세로 라인 */
+    border-radius: 2px;
+}
+.axis-bullet{
+    position:absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 22px;
+    height: 22px;
+    line-height: 22px;
+    text-align: center;
+    color: #fff;
+    font-weight: 800;
+    font-size: 12px;
+    border-radius: 999px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.12);
+    z-index: 2;
+}
+
+/* 1) 선: 얇게, 스태킹 컨텍스트 만들지 않음 (z-index 제거) */
+.axis-span{
+    position: absolute;
+    left: calc(50% - 2px);
+    width: 4px;
+    background: #d1d5db;
+    border-radius: 2px;
+    /* z-index: auto (기본) */
+    cursor: ns-resize;
+}
+
+/* 2) 핸들: 선보다 크게(히트영역), 최상단으로 올림 */
+.axis-handle{
+    position: absolute;
+    left: -10px;
+    right: -10px;
+    height: 16px;
+    background: transparent;
+    cursor: ns-resize;
+    z-index: 50;                /* 카드/다른 요소보다 위 */
+}
+.axis-handle-top{ top: -7px; }
+.axis-handle-bottom{ bottom: -7px; }
+
+/* 3) 드래그 중 텍스트 선택 방지 */
+body.dragging, body.dragging *{
+    user-select: none !important;
+    cursor: ns-resize !important;
+}
+
+/* 4) 번호 원(동그라미)은 항상 보이되, 클릭은 통과시킴 */
+.axis-label,
+.slot-index,
+.slot-index-dot{
+    position: relative;
+    z-index: 60;                /* 시각적으로 위 */
+    pointer-events: none;       /* 이벤트는 아래 핸들로 전달 */
+    background: #fff;           /* 필요 시 선 가림 */
+    border-radius: 999px;
+}
+
+/* (참고) 카드가 z-index를 강하게 갖고 있다면 낮춰주세요 */
+.slot-card, .tl-slot{
+    z-index: 10;
+}
+
+/* 세로 라인 자체는 아래로 */
+.axis-line{
+    z-index: 1;
+}
+
+/* 카드 컬럼 */
+.tl-cards{
+    position:relative;
+    height: 100%;
+    overflow-y: auto;
+    padding-right: 4px;       /* 스크롤바 공간 */
+
+}
+
+.ev-card{
+    position:absolute;
+    left: 0;
+    right: 0;
+    background:#fff;
+    border: none;
+    padding: 0px 12px 12px 8px;
+    display:flex;
+    align-items:center;
+
+    /* ✅ 최소 카드 높이 */
+    min-height: 100px;
+    max-height: 200px;
+    box-sizing: border-box;
+    z-index: 5;
+    transform: translateY(-12px); /* ← 살짝 위로 올리기 */
+}
+
+.ev-card.is-empty{
+    opacity: .85;
+    border:none;
+}
+.ev-card.is-locked{
+    opacity: 1;
+    min-height: 60px;
+}
+.ev-time{
+    font-weight: 800;
+    color: #0f172a;
+    min-width: 46px;
+}
+.ev-body{
+    flex:1;
+    min-width: 0;
+}
+
+.ev-title{
+    font-weight: 700;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 5px;
+    font-size: 18px;
+}
+.ev-sub{
+    margin-top: 0px;
+    font-size: 14px;
+    color: #64748b;
+    display: flex;
+    flex-direction: column;  /* ✅ 세로 쌓기 */
+    align-items: flex-start; /* 왼쪽 정렬 */
+    gap:6px;
+}
+.ev-type{
+    font-weight: 700;
+    margin-top: 3px;
+    margin-bottom: 3px;}
+/* =========================
+   작은 일차 네비게이션 + 하단 액션 버튼
+   ========================= */
+
+.jr-mini-sidenav{
+    flex: 0 0 180px;
+    padding: 12px 10px 12px 12px;
+    background: #f8fafc;
+    border-right: 1px solid #eef0f3;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.Journey-logo{
+    border:none;
+    background-color: transparent;
+    cursor: pointer;
+    color: black;
+    font-weight: Bold;
+    font-size: 27px;
+    margin-top: 15px;
+}
+.mini-list{
+    flex: 1 1 auto;
+    overflow-y: auto;
+    margin-top: 15%;
+    align-items: center;
+    padding: 0px 7px;
+}
+.mini-btn{
+    width: 100%;
+    text-align: center;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    color: #111;
+    border-radius: 12px;
+    padding: 20px 12px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-bottom: 20px;
+    transition: background .15s ease, border-color .15s ease, transform .03s ease, box-shadow .15s ease;
+}
+.mini-btn:hover{ background: #f9fafb; border-color: #d1d5db; }
+.mini-btn.is-active{
+    border-color: #3884FF;
+    background-color: #3884FF;
+    color: #fff;
+    box-shadow: 0 0 0 2px rgba(56,132,255,0.12) inset;
+}
+.mini-daynum{
+    display: block;
+    align-items: center;
+    font-size: 14px;
+    line-height: 1.2;
+}
+
+/* 하단 액션 버튼 그룹 */
+.mini-actions{
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 8px;
+    border-top: 1px dashed #e5e7eb;
+    padding: 10px 7px !important;
+    margin-bottom: 2px;
+}
+
+.mini-act span {
+    display: inline-block;         /* inline-flex → inline-block */
+    white-space: nowrap;           /* 줄바꿈 금지 */
+    word-break: keep-all;          /* 한국어 글자 단위 줄바꿈 방지 */
+    flex: 0 0 auto;                /* 줄어들지 않음 */
+    line-height: 1.4;
+    text-align: center;
+    padding: 0 8px;
+}
+
+.mini-act {
+    width: 100%;
+    border: none;
+    background: #b8b7b7;
+    border-radius: 12px;
+    padding: 14px 30px;
+
+    display: inline-flex;                  /* Flex 레이아웃 */
+    justify-content: space-between; /* 좌-우 끝으로 배치 */
+    align-items: center;            /* 세로 중앙 정렬 */
+
+    font-weight: 700;
+    cursor: pointer;
+    color: white;
+    transition: color .15s ease, transform .03s ease;
+}
+
+/* 기존 클래스가 남아 있어도 외형 변화 없도록 무력화 */
+.mini-act.primary,
+.mini-act.danger-outline,
+.mini-act.ghost{
+    border: none !important;
+    background: #b8b7b7;
+    color: #fff;
+    padding: 14px 30px;
+}
+
+.mini-act.active-outline,
+.mini-act.active,
+.mini-act.ghost.active{
+    padding:14px 16px;
+    color: white;
+    background-color: black;
+}
+
+/* 활성화 컬러만 바꾸는 유틸 클래스들 */
+.mini-act.is-red{  color: white;  background-color: #ef4444; padding:14px 16px!important; }  /* 삭제 모드 */
+.mini-act.is-purple{ color: white; background-color: #7c3aed; padding:14px 16px!important;}  /* 분할 모드 */
+.mini-act.is-yellow{ color: white; background-color: #f59e0b; padding:14px 16px!important;}  /* 병합 모드 */
+
+
+/* 반응형: 폭 작아지면 사이드 숨김 */
+@media (max-width: 1000px){
+    .jr-mini-sidenav{ display: none; }
+}
+
+

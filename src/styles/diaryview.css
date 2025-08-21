@@ -11,20 +11,28 @@
     font-family: 'Noto Sans KR', sans-serif;
 }
 
+/* ✅ 제목 스타일 */
+.diaryview-container h1 {
+    font-size: 35px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
 /* ===== 풀스크린 배경 (JS에서 <div class="dv-bg">로 주입) ===== */
-.dv-bg{
+.dv-bg {
     position: fixed;                /* 스크롤해도 고정 */
     inset: 0;
     background-position: center;
     background-size: cover;
     background-repeat: no-repeat;
-    opacity: .55;                    /* 필요 시 0.4~0.7로 조절 */
+    opacity: .55;                   /* 필요 시 0.4~0.7로 조절 */
     pointer-events: none;
     z-index: -1;
 }
 
 /* ===== 상단 고정 헤더 ===== */
-.dv-topbar{
+.dv-topbar {
     position: fixed; top:0; left:0; width:100%; height:56px;
     display:flex; align-items:center; padding:0 20px;
     background: transparent;        /* 사진이 Boyage 뒤까지 덮이게 */
@@ -46,16 +54,25 @@
     font-weight: 700;
     text-align: left;
     margin: 0 0 8px;
-    margin-left: var(--head-offset);   /* ← 제목을 좀 더 왼쪽으로 */
+    margin-left: var(--head-offset);
 }
-
-.dv-dates{
+.dv-dates {
     text-align: left;
     font-size: 25px;
     color: #334155;
     font-weight: 700;
     margin: 0 0 30px;
-    margin-left: var(--head-offset);   /* ← 날짜도 같은 라인 */
+    margin-left: var(--head-offset);
+}
+
+/* ✅ 상단 헤더 배경 */
+.diaryview-header {
+    width: 100vw;
+    height: 10vh;
+    background-color: #EAF2FF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* ===== 비어있을 때 ===== */
@@ -65,55 +82,51 @@
     color: #777;
 }
 
-/* ===== 카드 그리드 (제목/날짜와 라인 맞춤 + 살짝 컴팩트) ===== */
+/* ✅ 카드 그리드 */
 .diary-cards {
     display: grid;
-    margin-left: var(--head-offset);                     /* ← 그리드 시작선을 제목/날짜와 맞춤 */
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); /* 240 → 220 */
-    gap: 14px;                                           /* 16 → 14 */
+    margin-left: var(--head-offset);
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
 }
 
-/* ===== 카드 ===== */
-.place-card{
-    position:relative;
-    padding:12px;                 /* 14 → 12 */
-    border-radius:14px;           /* 16 → 14 */
-    background: rgba(255,255,255,.65);
-    backdrop-filter: blur(8px);
-    border:1px solid rgba(255,255,255,.5);
-    box-shadow:
-            0 10px 28px rgba(13,27,42,.18),
-            inset 0 1px 0 rgba(255,255,255,.35);
-    transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+/* ✅ 카드 (dayoung 스타일 살리되 기존 효과 보존) */
+.place-card {
+    position: relative;
+    padding: 12px;
+    border-radius: 14px;
+    background: #fff;
+    border: 2px solid #3884FF;
+    text-align: center;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
 }
-.place-card:hover{
+.place-card:hover {
     transform: translateY(-2px);
-    box-shadow:
-            0 16px 36px rgba(13,27,42,.24),
-            inset 0 1px 0 rgba(255,255,255,.4);
-    background: rgba(255,255,255,.71);
+    box-shadow: 0 16px 36px rgba(13,27,42,.24),
+                inset 0 1px 0 rgba(255,255,255,.4);
+    background: rgba(255,255,255,.92);
 }
 
 /* 사진 */
-.place-photo{
+.place-photo {
     width: 100%;
-    height: 150px;                /* 160 → 150 */
+    height: 150px;
     object-fit: cover;
-    border-radius: 10px;          /* 12 → 10 */
-    margin: 6px 0 8px;            /* 아래 여백 살짝 축소 */
+    border-radius: 10px;
+    margin: 6px 0 8px;
     box-shadow: 0 6px 16px rgba(0,0,0,.16);
 }
 
 /* 제목 + 하트 한 줄 */
-.place-header{
+.place-header {
     display:flex;
     align-items:center;
     gap:10px;
     margin: 0 0 6px;
 }
-.place-name{
+.place-name {
     margin:0;
-    font-size:17px;               /* 18 → 17 */
+    font-size:17px;
     font-weight:800;
     color:#031765;
     letter-spacing:.2px;
@@ -121,14 +134,14 @@
 }
 
 /* 라인 하트 버튼 */
-.heart-icon{
+.heart-icon {
     border:none;
     background:transparent;
     padding:4px;
     line-height:0;
     cursor:pointer;
 }
-.icon-line-heart{
+.icon-line-heart {
     width:22px;
     height:22px;
     fill:none;
@@ -138,17 +151,17 @@
     stroke-linejoin:round;
     transition: transform .15s ease, stroke .15s ease, fill .15s ease;
 }
-.heart-icon:hover .icon-line-heart{
+.heart-icon:hover .icon-line-heart {
     transform: scale(1.06);
     stroke:#5b82c5;
 }
-.heart-icon.is-active .icon-line-heart{
+.heart-icon.is-active .icon-line-heart {
     fill:#ff3b57;
     stroke:#ff3b57;
 }
 
 /* 메모 */
-.place-review{
+.place-review {
     margin: 0;
     font-size: 14.5px;
     line-height: 1.55;
@@ -156,30 +169,30 @@
 }
 
 /* 별점 + 지도보기 */
-.place-footer{
+.place-footer {
     margin-top: 8px;
     display: flex;
     align-items: center;
     justify-content: space-between;
 }
-.map-link{
-    font-size: 12.5px;            /* 13 → 12.5 */
+.map-link {
+    font-size: 12.5px;
     font-weight: 700;
     color: #3884FF;
     border: 1.5px solid #3884FF;
     border-radius: 6px;
-    padding: 3px 9px;             /* 4x10 → 3x9 */
+    padding: 3px 9px;
     background: #fff;
     text-decoration: none;
     transition: all .18s ease;
 }
-.map-link:hover{ background:#3884FF; color:#fff; }
+.map-link:hover { background:#3884FF; color:#fff; }
 
 /* ===== 별점 (읽기 전용) ===== */
 .rating-block { display:inline-flex; flex-direction:column; gap:6px; }
 .stars-row{ display:inline-flex; gap:6px; --star-size:18px; }
 .stars-row[role="img"] { cursor: default; }
-.star{
+.star {
     position: relative;
     font-size: var(--star-size);
     line-height: 1;
@@ -187,7 +200,7 @@
     text-shadow: 0 1px 0 rgba(0,0,0,0.04);
     transform-origin: center;
 }
-.star::after{
+.star::after {
     content: "★";
     position: absolute;
     inset: 0;
@@ -198,7 +211,7 @@
 @keyframes pop { 0%{transform:scale(.8)} 60%{transform:scale(1.12)} 100%{transform:scale(1)} }
 .star.filled { animation: pop 180ms ease; }
 
-/* ===== 반응형: 작은 화면에서 안전하게 정렬 ===== */
+/* ===== 반응형 ===== */
 @media (max-width: 1024px){
     .diaryview-container{ --head-offset: -140px; }
 }
