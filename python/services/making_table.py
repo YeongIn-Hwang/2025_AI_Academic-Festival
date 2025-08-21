@@ -122,6 +122,100 @@ def place_location_info(place_name, api_key):
     _dbg("place_location_info: top=", name, lat, lng)
     return {"name": name, "lat": lat, "lng": lng}
 
+def place_location_info_lodging(place_name, api_key, *, bias=None, radius=5000, lenient=True):
+    """
+    숙소(lodging) 전용 검색 (유연한 폴백 내장)
+    - bias = (lat, lng) 주면 해당 중심 반경(radius m) 안에서 랭킹 가산
+    - 순서:
+      1) Text Search(type=lodging, region=kr, [location+radius])
+      2) (lenient) Nearby Search(type=lodging, [location+radius])
+      3) (lenient) Text Search(query='... 호텔', region=kr, [location+radius]) 후 lodging/hotel 타입만 선택
+      4) (lenient) 일반 Text Search 후 lodging/hotel 타입만 선택
+    - 모두 실패 시 None
+    """
+    _dbg("place_location_info_lodging:", place_name, "bias=", bias, "radius=", radius, "lenient=", lenient)
+
+    TEXT_URL   = "https://maps.googleapis.com/maps/api/place/textsearch/json"
+    NEARBY_URL = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+
+    def _text_search(query, extra=None):
+        params = {"query": query, "key": api_key, "language": "ko", "region": "kr"}
+        if extra:
+            params.update(extra)
+        if bias:
+            lat, lng = bias
+            params["location"] = f"{lat},{lng}"
+            params["radius"] = radius
+        res = requests.get(TEXT_URL, params=params, timeout=8)
+        _dbg("textsearch:", res.status_code, params)
+        res.raise_for_status()
+        return (res.json().get("results") or [])
+
+    def _nearby_search(extra=None):
+        if not bias:
+            return []
+        lat, lng = bias
+        params = {"key": api_key, "language": "ko", "location": f"{lat},{lng}", "radius": radius}
+        if extra:
+            params.update(extra)
+        res = requests.get(NEARBY_URL, params=params, timeout=8)
+        _dbg("nearby:", res.status_code, params)
+        res.raise_for_status()
+        return (res.json().get("results") or [])
+
+    def _pick_basic(results):
+        if not results:
+            return None
+        r = results[0]
+        loc = (r.get("geometry") or {}).get("location") or {}
+        return {"name": r.get("name"), "lat": loc.get("lat"), "lng": loc.get("lng")}
+
+    def _pick_by_types(results, wanted={"lodging", "hotel"}):
+        for r in results:
+            types = set(r.get("types") or [])
+            if types & wanted:
+                loc = (r.get("geometry") or {}).get("location") or {}
+                return {"name": r.get("name"), "lat": loc.get("lat"), "lng": loc.get("lng")}
+        return None
+
+    # 1) Text Search: type=lodging
+    r1 = _text_search(place_name, {"type": "lodging"})
+    if r1:
+        p = _pick_by_types(r1) or _pick_basic(r1)
+        if p:
+            _dbg("picked by text(type=lodging):", p)
+            return p
+
+    if not lenient:
+        _dbg("no results and lenient=False -> None")
+        return None
+
+    # 2) Nearby Search: type=lodging (bias가 있어야 효과적)
+    r2 = _nearby_search({"type": "lodging"})
+    if r2:
+        p = _pick_by_types(r2) or _pick_basic(r2)
+        if p:
+            _dbg("picked by nearby(type=lodging):", p)
+            return p
+
+    # 3) Text Search: '호텔' 키워드 추가
+    r3 = _text_search(f"{place_name} 호텔")
+    p3 = _pick_by_types(r3)
+    if p3:
+        _dbg("picked by text('호텔' keyword):", p3)
+        return p3
+
+    # 4) 일반 Text Search → lodging/hotel 타입만 골라서
+    r4 = _text_search(place_name)
+    p4 = _pick_by_types(r4)
+    if p4:
+        _dbg("picked by text(general, types filtered):", p4)
+        return p4
+
+    _dbg("no lodging result found -> None")
+    return None
+
+
 def create_empty_daily_tables(API_KEY, start_date_str, end_date_str, 
                               first_day_start_time, last_day_end_time, 
                               start_location, final_end_location,
@@ -159,7 +253,7 @@ def create_empty_daily_tables(API_KEY, start_date_str, end_date_str,
         # 위치 조회 (현재 로직 유지)
         table_place_info["시작위치"] = place_location_info(start_location, API_KEY)
         table_place_info["종료위치"] = place_location_info(final_end_location, API_KEY)
-        table_place_info["숙소"]   = place_location_info(accommodation_location, API_KEY)
+        table_place_info["숙소"]   = place_location_info_lodging(accommodation_location, API_KEY)
 
         # 디버그 가드: None 이면 어디가 None인지 즉시 알기
         if is_first_day and table_place_info["시작위치"] is None:
