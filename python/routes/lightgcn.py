@@ -42,39 +42,76 @@ class LightGCN(nn.Module):
 # ====== (1) Firestore → 엣지/인덱스 ======
 def _fetch_edges_from_trips() -> Tuple[List[Tuple[str,str,float]], Dict[str,int], Dict[str,int]]:
     """
-    trips_log 전 유저/여행제목을 순회해서 (user_id, item_name, rating) 엣지로 수집.
-    item은 '장소명' title 기준(같은 이름이면 같은 item으로 취급).
+    모든 users의 trips_log/{title}/days/{date} 문서를 collection_group('days')로 한 번에 순회해서
+    (uid, item_name, rating) 엣지를 수집한다.
     """
-    edges: List[Tuple[str,str,float]] = []
+    edges: List[Tuple[str, str, float]] = []
     user_ids: set[str] = set()
     item_names: set[str] = set()
 
-    users_col = db.collection("user_trips").stream()
-    for user_doc in users_col:
-        uid = user_doc.id
-        # 각 유저별 모든 trips_log 하위 제목들
-        titles = db.collection("user_trips").document(uid).collection("trips_log").stream()
-        for tdoc in titles:
-            days_col = tdoc.reference.collection("days").stream()
-            for day in days_col:
-                d = day.to_dict() or {}
-                sched = d.get("schedule", [])
-                if not isinstance(sched, list):
-                    continue
-                # 각 슬롯 중 user_rating 있는 것만 edge로 수집
-                for s in sched:
-                    r = s.get("user_rating")
-                    name = (s.get("title") or "").strip()
-                    if r is None or not name:
-                        continue
-                    edges.append((uid, name, float(r)))
-                    user_ids.add(uid)
-                    item_names.add(name)
+    # 디버그: 현재 프로젝트/DB/에뮬레이터 확인
+    import os
+    try:
+        client = firestore.client()
+        proj = getattr(client, "project", None)
+        dbstr = getattr(client, "_database_string", None)
+        print(f"[LGN-DEBUG] Firestore project={proj} database={dbstr} EMULATOR={os.getenv('FIRESTORE_EMULATOR_HOST')}", flush=True)
+    except Exception as e:
+        print(f"[LGN-DEBUG] client introspection failed: {e}", flush=True)
 
-    # 인덱스 매핑
-    uid2idx = {u:i for i,u in enumerate(sorted(user_ids))}
-    item2idx = {it:i for i,it in enumerate(sorted(item_names))}
+    days_iter = db.collection_group("days").stream()
+    day_count = 0
+    sched_total = 0
+    sched_with_rating = 0
+
+    for day_doc in days_iter:
+        day_count += 1
+        data = day_doc.to_dict() or {}
+        sched = data.get("schedule", [])
+        if not isinstance(sched, list):
+            continue
+        sched_total += len(sched)
+
+        # 경로: user_trips/{uid}/trips_log/{title}/days/{date}
+        # day_doc.reference.parent == Collection('days')
+        # parent.parent == Document('trips_log/{title}')
+        # parent.parent.parent == Collection('trips_log')
+        # parent.parent.parent.parent == Document('user_trips/{uid}')
+        try:
+            uid = day_doc.reference.parent.parent.parent.parent.id
+        except Exception:
+            # 혹시 구조가 다르면 스킵
+            continue
+
+        for s in sched:
+            if "user_rating" in s:
+                sched_with_rating += 1
+            r = s.get("user_rating")
+            name = (s.get("title") or "").strip()
+            if r is None or not name:
+                continue
+            try:
+                rr = float(r)
+            except Exception:
+                print(f"[LGN-DEBUG] non-float user_rating: uid={uid} title={name} raw={r}", flush=True)
+                continue
+
+            edges.append((uid, name, rr))
+            user_ids.add(uid)
+            item_names.add(name)
+
+    print(
+        f"[LGN-DEBUG] days={day_count} sched_total={sched_total} sched_with_rating={sched_with_rating} "
+        f"edges={len(edges)} unique_users={len(user_ids)} unique_items={len(item_names)}",
+        flush=True
+    )
+
+    uid2idx = {u: i for i, u in enumerate(sorted(user_ids))}
+    item2idx = {it: i for i, it in enumerate(sorted(item_names))}
+    print(f"[LGN] edges={len(edges)} users={len(uid2idx)} items={len(item2idx)}", flush=True)
     return edges, uid2idx, item2idx
+
+
 
 # ====== (2) 그래프 정규화 인접행렬 ======
 def _build_norm_adj(edges, uid2idx, item2idx):
@@ -199,26 +236,40 @@ def _save_artifacts_to_storage(users_emb: np.ndarray, items_emb: np.ndarray,
 
     # 파이어스토어에도 버전 기록(선택)
     db.collection("lightgcn").document("meta").set(meta, merge=True)
+    
+    try:
+        _load_artifacts_from_storage.cache_clear()
+    except Exception:
+        pass
 
 # ====== 엔드포인트 ======
 
 @router.post("/build_from_log")
+@router.post("/build_from_log")
 def build_from_log():
+    print("[LGN] build_from_log called", flush=True)
     edges, uid2idx, item2idx = _fetch_edges_from_trips()
+    print(f"[LGN] after fetch: edges={len(edges)} users={len(uid2idx)} items={len(item2idx)}", flush=True)
+
     if not edges:
+        print("[LGN] no edges -> 400", flush=True)
         raise HTTPException(400, "엣지가 없습니다. (user_rating 없음)")
 
     A_hat, num_u, num_i = _build_norm_adj(edges, uid2idx, item2idx)
+    print(f"[LGN] adj built: U={num_u} I={num_i} nnz={A_hat._nnz()}", flush=True)
+
     model = LightGCN(num_u, num_i, embedding_dim=32, n_layers=2)
-
     model = _train(model, A_hat, edges, uid2idx, item2idx, epochs=50, lr=1e-2)
-    users, items = model(A_hat)
+    print("[LGN] train finished", flush=True)
 
-    # numpy 변환
+    users, items = model(A_hat)
     users_np = users.detach().cpu().numpy()
     items_np = items.detach().cpu().numpy()
+    print(f"[LGN] emb shapes: users={users_np.shape} items={items_np.shape}", flush=True)
 
     _save_artifacts_to_storage(users_np, items_np, uid2idx, item2idx)
+    print("[LGN] artifacts saved to storage", flush=True)
+
     return {"ok": True, "users": int(users_np.shape[0]), "items": int(items_np.shape[0]), "dim": int(users_np.shape[1])}
 
 @router.post("/warm_start")  # 서버 기동시 백그라운드 호출용
@@ -238,3 +289,64 @@ def status():
     if snap.exists:
         return {"ok": True, "meta": snap.to_dict()}
     return {"ok": False, "meta": None}
+
+from functools import lru_cache
+from pydantic import BaseModel
+
+@lru_cache(maxsize=1)
+def _load_artifacts_from_storage():
+    """Firebase Storage에서 인덱스/임베딩을 읽어 메모리에 캐시."""
+    b = storage.bucket()
+    uidx_blob = b.blob("lightgcn/user_index.json")
+    iidx_blob = b.blob("lightgcn/item_index.json")
+    uemb_blob = b.blob("lightgcn/users_emb.npy")
+    iemb_blob = b.blob("lightgcn/items_emb.npy")
+    if not (uidx_blob.exists() and iidx_blob.exists() and uemb_blob.exists() and iemb_blob.exists()):
+        raise RuntimeError("artifacts not found in storage")
+    uid2idx = json.loads(uidx_blob.download_as_text())["uid2idx"]
+    item2idx = json.loads(iidx_blob.download_as_text())["item2idx"]
+    u_bytes = io.BytesIO(uemb_blob.download_as_bytes())
+    i_bytes = io.BytesIO(iemb_blob.download_as_bytes())
+    users_emb = np.load(u_bytes)
+    items_emb = np.load(i_bytes)
+    return uid2idx, item2idx, users_emb, items_emb
+
+class ScoreReq(BaseModel):
+    uid: str
+
+    items: list[str]   # 장소 이름 리스트 (trips/{uid}/trips/{title}/places 의 name 기준)
+    
+@router.post("/score")
+def score_items(payload: ScoreReq):
+    """
+    입력된 items(이름)들에 대해 유저/아이템 임베딩 내적 점수 반환.
+    매칭되는 아이템이 없으면 score=None.
+    """
+    try:
+        uid2idx, item2idx, users_emb, items_emb = _load_artifacts_from_storage()
+    except Exception as e:
+        return {"ok": False, "reason": f"artifacts not ready: {e}", "scores": []}
+
+    if payload.uid not in uid2idx:
+        # 학습셋에 없는 유저
+        return {"ok": True, "scores": [], "reason": "user not in model"}
+
+    # (선택) 이름 정규화 키 – 공백 trim/소문자
+    norm = lambda s: (s or "").strip().lower()
+    item2idx_norm = {norm(k): v for k, v in item2idx.items()}
+
+    uvec = users_emb[uid2idx[payload.uid]]
+    out = []
+    for name in payload.items:
+        idx = item2idx.get(name)
+        if idx is None:
+            # 정규화 매칭 시도
+            idx = item2idx_norm.get(norm(name))
+        if idx is None:
+            out.append({"name": name, "score": None})
+            continue
+        ivec = items_emb[idx]
+        score = float(np.dot(uvec, ivec))  # 필요시 cosine으로 변경 가능
+        out.append({"name": name, "score": score})
+
+    return {"ok": True, "scores": out}

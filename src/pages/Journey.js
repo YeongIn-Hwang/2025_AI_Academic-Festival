@@ -71,6 +71,15 @@ export default function Journey() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerTarget, setPickerTarget] = useState(null); // {date,start,end}
   const [placeTypeFilter, setPlaceTypeFilter] = useState("all");
+
+  // 추가 패널 검색어
+  const [placeSearch, setPlaceSearch] = useState("");
+  // LightGCN 별도 패널
+  const [lgnOpen, setLgnOpen] = useState(false);
+  const [lgnLoading, setLgnLoading] = useState(false);
+  const [lgnList, setLgnList] = useState([]);
+  const [lgnMsg, setLgnMsg] = useState("");
+
   const [placeOptions, setPlaceOptions] = useState([]);
   const [loadingPlaces, setLoadingPlaces] = useState(false);
 
@@ -241,6 +250,38 @@ function openGoogleMapsPlace(p) {
   a.click();
   a.remove();
 }
+
+const fetchLightGCNScores = async (rows) => {
+  const user = auth.currentUser;
+  if (!user) return null;
+  try {
+    const res = await fetch(`${API_BASE}/api/lightgcn/score`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        uid: user.uid,
+        items: rows.map(r => r.name),
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data?.ok) return null;
+    const map = new Map();
+    for (const s of data.scores || []) map.set(s.name, s.score);
+    return map;
+  } catch {
+    return null;
+  }
+};
+
+const handleChoosePlace = (place) => {
+    if (pickerTarget) {
+      handleApplyPlaceToSlot(place);
+    } else {
+      window.open(mapsSearchUrl(place.name, place.vicinity), "_blank", "noopener");
+    }
+  };
+
 // 타임라인 → 날짜별 라우트 덩어리 만들기
 const dayRoutes = useMemo(() => {
   // displayedDays 는 이미 "all" 또는 특정 일차 하나만 반영된 배열
@@ -886,6 +927,8 @@ useEffect(() => {
     if (!user || !title.trim()) return;
     try {
       setLoadingPlaces(true);
+      setLgnMsg("");
+
       const col = collection(db, "user_trips", user.uid, "trips", title.trim(), "places");
       const snap = await getDocs(col);
       let rows = snap.docs.map((d) => {
@@ -914,10 +957,18 @@ useEffect(() => {
       });
 
       if (placeTypeFilter !== "all") {
-        rows = rows.filter((r) => r.type === placeTypeFilter);
-      }
-
-      rows.sort((a, b) => (b.totalScore ?? -1e9) - (a.totalScore ?? -1e9));
+    rows = rows.filter((r) => r.type === placeTypeFilter);
+  }
+  // 🔍 간단 검색(이름/주소)
+  if (placeSearch.trim()) {
+    const q = placeSearch.trim().toLowerCase();
+    rows = rows.filter(r =>
+     r.name.toLowerCase().includes(q) ||
+     (r.vicinity || "").toLowerCase().includes(q)
+    );
+  }
+  // 기본: 내부 추천 점수 기준
+  rows.sort((a, b) => (b.totalScore ?? -1e9) - (a.totalScore ?? -1e9));
       setPlaceOptions(rows);
     } catch (e) {
       console.warn("[Journey] loadPlaces error:", e);
@@ -927,10 +978,63 @@ useEffect(() => {
     }
   };
 
+  const loadLgnList = async () => {
+  const user = auth.currentUser;
+  if (!user || !title.trim()) return;
+  try {
+    setLgnLoading(true);
+    setLgnMsg("");
+    const col = collection(db, "user_trips", user.uid, "trips", title.trim(), "places");
+    const snap = await getDocs(col);
+    let rows = snap.docs.map((d) => {
+      const p = d.data() || {};
+      return {
+        id: d.id,
+        place_id: p.place_id ?? null,
+        name: p.name ?? "(이름 없음)",
+        type: p.type || "etc",
+        lat: p.lat ?? null,
+        lng: p.lng ?? null,
+        vicinity: p.vicinity ?? "",
+        rating: typeof p.rating === "number" ? p.rating : null,
+        user_ratings_total: typeof p.user_ratings_total === "number" ? p.user_ratings_total : null,
+      };
+    });
+    if (rows.length < 1) {
+      setLgnList([]); setLgnMsg("추천할 후보가 없어요.");
+      return;
+    }
+    const scoreMap = await fetchLightGCNScores(rows);
+    if (!scoreMap) {
+      setLgnList([]); setLgnMsg("LightGCN 점수를 불러올 수 없어요.");
+      return;
+    }
+    rows = rows.map(r => ({ ...r, lgn_score: scoreMap.get(r.name) ?? null }));
+    const any = rows.some(r => r.lgn_score != null);
+    if (!any) setLgnMsg("모델에 사용자 데이터가 없거나 매칭된 항목이 없습니다");
+    rows.sort((a, b) => {
+      const A = (a.lgn_score == null) ? -1e18 : a.lgn_score;
+      const B = (b.lgn_score == null) ? -1e18 : b.lgn_score;
+      return B - A;
+    });
+    setLgnList(rows);
+  } catch (e) {
+    console.warn("[Journey] loadLgnList error:", e);
+    setLgnList([]); setLgnMsg("추천을 불러오는 중 오류가 발생했습니다");
+  } finally {
+    setLgnLoading(false);
+  }
+};
+
+useEffect(() => {
+  if (lgnOpen) loadLgnList();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [lgnOpen, title]);
+
   useEffect(() => {
-    if (pickerOpen) loadPlaces();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pickerOpen, placeTypeFilter, title]);
+  if (pickerOpen) loadPlaces();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [pickerOpen, placeTypeFilter, placeSearch, title]);
   useEffect(() => {
     setSettingMode(false);  // 라우트 변경될 때마다 초기화
   }, [location.pathname]);
@@ -1079,16 +1183,16 @@ useEffect(() => {
 
                 <div className="mini-actions">
                   <button
-   onClick={async () => {
-     const ok = window.confirm(
-       "설정 페이지로 이동하면 현재 변경한 경로는 저장되지 않습니다.\n계속 진행할까요?"
-     );
-     if (!ok) return; // 취소 시 아무 것도 안 함
+          onClick={async () => {
+            const ok = window.confirm(
+            "설정 페이지로 이동하면 현재 변경한 경로는 저장되지 않습니다.\n계속 진행할까요?"
+          );
+          if (!ok) return; // 취소 시 아무 것도 안 함
 
-     setSettingMode(true); // 클릭하면 검은색
-     const initial = await buildSettingInitial();
-     navigate("/journey/setting", { state: { initial } });
-   }}
+          setSettingMode(true); // 클릭하면 검은색
+            const initial = await buildSettingInitial();
+          navigate("/journey/setting", { state: { initial } });
+            }}
                       className={`mini-act ${settingMode ? "active" : "ghost"}`}
                       title="여행 정보 입력 페이지로 이동"
                   >
@@ -1223,21 +1327,23 @@ useEffect(() => {
                       />
 
                       {pickerOpen && (
-                          <AddPlacePanel
-                              placeTypeFilter={placeTypeFilter}
-                              setPlaceTypeFilter={setPlaceTypeFilter}
-                              loading={loadingPlaces}
-                              places={placeOptions}
-                              onClose={() => { setPickerOpen(false); setPickerTarget(null); }}
-                              onChoose={handleApplyPlaceToSlot}
-                          />
-                      )}
+    <AddPlacePanel
+      placeTypeFilter={placeTypeFilter}
+      setPlaceTypeFilter={setPlaceTypeFilter}
+      search={placeSearch}
+      setSearch={setPlaceSearch}
+      loading={loadingPlaces}
+      places={placeOptions}
+      onClose={() => { setPickerOpen(false); setPickerTarget(null); }}
+      onChoose={handleChoosePlace}
+    />
+  )}
                     </div>
                 )}
               </section>
 
 {/* 오른쪽: 지도 패널 */}
-<aside className="jr-right-map" style={{ width: 720, minWidth: 420 }}>
+<aside className="jr-right-map" style={{ width: 720, minWidth: 420, position: "relative" }}>
   <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 12px" }}>
     <div style={{ fontWeight: 700 }}>지도 미리보기</div>
 
@@ -1301,14 +1407,117 @@ useEffect(() => {
             </div>
           </main>
         </div>
+        {lgnOpen && (
+  <LgnPanel
+    loading={lgnLoading}
+    items={lgnList}
+    msg={lgnMsg}
+    onClose={() => setLgnOpen(false)}
+    onChoose={handleChoosePlace}
+  />
+  
+)}
+{/* 🔵 LightGCN 추천: 화면 고정(FAB) */}
+<button
+  type="button"
+  onClick={() => setLgnOpen(true)}
+  title="유사 사용자 추천 (LightGCN)"
+  aria-label="유사 사용자 추천 열기"
+  style={{
+    position: "fixed",
+    right: 16,
+    bottom: 16,
+    padding: "10px 14px",
+    borderRadius: 12,
+    border: "1px solid rgba(0,0,0,.12)",
+    background: "#111827",
+    color: "#fff",
+    cursor: "pointer",
+    boxShadow: "0 2px 8px rgba(0,0,0,.2)",
+    zIndex: 1100
+  }}
+>
+  유사 사용자 추천
+</button>
       </>
   );
 }
 
+function LgnPanel({ loading, items, msg, onClose, onChoose }) {
+  return (
+    <aside
+      style={{
+        position:"fixed", right:16, bottom:72, width:360,
+        maxHeight:"70vh", overflow:"auto",
+        background:"#fff", border:"1px solid rgba(0,0,0,.12)",
+        borderRadius:12, boxShadow:"0 8px 24px rgba(0,0,0,.2)",
+        padding:12, zIndex:1000
+      }}
+    >
+      <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8}}>
+        <div style={{fontWeight:700}}>유사 사용자 추천 (LightGCN)</div>
+        <button onClick={onClose} className="jr-chip" style={{cursor:"pointer"}}>닫기</button>
+      </div>
+      {loading ? (
+        <div className="placeholder">불러오는 중…</div>
+      ) : items.length === 0 ? (
+        <div className="placeholder">{msg || "추천 결과가 없습니다."}</div>
+      ) : (
+        <div className="panel-list">
+          {msg && <div className="panel-note" style={{marginBottom:8, color:"#b45309"}}>{msg}</div>}
+          {items.map(p => (
+            <div
+              key={p.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => onChoose?.(p)}
+              onKeyDown={(e) => { if (e.key === "Enter") onChoose?.(p); }}
+              className="panel-item"
+              title={`${p.name} · LGN ${p.lgn_score != null ? p.lgn_score.toFixed(2) : "N/A"}`}
+            >
+              <button
+                type="button"
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  window.open(mapsSearchUrl(p.name, p.vicinity), "_blank", "noopener");
+                }}
+                className="panel-detail-btn"
+                title="Google 지도에서 보기"
+                aria-label="Google 지도에서 보기"
+              >
+                상세
+              </button>
+              <div className="panel-item-top">
+                <div className="panel-item-name">{p.name}</div>
+              </div>
+              <div className="panel-item-mid">
+                <StarRating value={p.rating} />
+                <div className="panel-text-sm">{p.rating ? p.rating.toFixed(1) : "N/A"}</div>
+                <div className="panel-text-sm">· 리뷰 {p.user_ratings_total ?? 0}</div>
+              </div>
+              <div className="panel-scores">LightGCN {p.lgn_score != null ? p.lgn_score.toFixed(2) : "N/A"}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </aside>
+  );
+}
+
 /* ---------- 우측 후보 패널 ---------- */
-function AddPlacePanel({ placeTypeFilter, setPlaceTypeFilter, loading, places, onClose, onChoose }) {
+function AddPlacePanel({ placeTypeFilter, setPlaceTypeFilter, search, setSearch, loading, places, onClose, onChoose }) {
   return (
       <aside className="panel">
+      {/* 🔍 검색 */}
+    <div className="mb-8">
+      <label className="panel-label">검색</label>
+      <input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="jr-input"
+        placeholder="장소명/주소 검색"
+      />
+    </div>
         <div className="mb-8">
           <label className="panel-label">타입 필터</label>
           <select
@@ -1377,8 +1586,8 @@ function AddPlacePanel({ placeTypeFilter, setPlaceTypeFilter, loading, places, o
                         </div>
                     )}
                     <div className="panel-scores">
-                      희망 {fmtScore(p.hope_score)} · 비희망 {fmtScore(p.nonhope_score)}
-                    </div>
+   희망 {fmtScore(p.hope_score)} · 비희망 {fmtScore(p.nonhope_score)}
+ </div>
                   </div>
               ))
           )}
