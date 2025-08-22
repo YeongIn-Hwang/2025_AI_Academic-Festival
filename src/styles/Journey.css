@@ -164,22 +164,27 @@
     background:#fff;
     border:none;
     padding:5px;
-    width:50%;
+    width:80%;
 }
 .day-header {
     display: flex;
     align-items: baseline;
     gap: 8px;
     margin-bottom: 8px;
+    flex-wrap:nowrap;
 }
 .day-num {
     font-weight: 800;
     font-size: 18px;
     color: #111;
+    white-space:nowrap;         /* 공백/개행 있어도 줄바꿈 금지 */
+    word-break:keep-all;
 }
 .day-date {
     font-weight: 600;
     color: #444;
+    white-space:nowrap;         /* 공백/개행 있어도 줄바꿈 금지 */
+    word-break:keep-all;
 }
 .day-wd {
     color: #888;
@@ -398,13 +403,14 @@ body.dragging, body.dragging *{
 
 }
 
-.ev-card{
+.ev-card,
+.ev-card.is-locked{
   position:absolute;
   left: 0;
   right: 0;
   background:#fff;
   border: none;
-  display: block;
+  display: inline-block;
   align-items:stretch;
   gap: 10px;
   padding: 4px 4px;
@@ -495,10 +501,7 @@ body.dragging, body.dragging *{
     opacity: .85;
     border:none;
 }
-.ev-card.is-locked{
-    opacity: 1;
-    min-height: 0;
-}
+
 .ev-body{
     flex:1;
     min-width: 0;
@@ -722,6 +725,72 @@ body.modal-open{
 .jr-stage-flex.is-singleday .jr-right-map {
     flex: 1 1 auto;    /* 나머지 가로 공간을 전부 차지 */
     min-width: 560px;  /* 너무 좁아지지 않도록 안전망 */
+}
+
+/* 잠금 카드도 일반 카드와 동일하게 '수평' 텍스트 강제 */
+.ev-card.is-locked,
+.ev-card.is-locked * {
+    writing-mode: horizontal-tb !important;
+    text-orientation: mixed !important;
+    white-space: normal;         /* 줄바꿈 허용 */
+    transform: none;             /* 혹시 회전이 있었다면 무력화 */
+}
+
+/* 레이아웃은 그대로(block) — 텍스트만 수평 */
+.ev-card.is-locked {
+    display: block;              /* 기존 정책 유지 */
+    /* 시각 효과만 원하면 여기서만 조절: opacity, cursor 등 */
+    /* opacity: .85; cursor: not-allowed; 등 */
+}
+
+/* 텍스트 유닛들이 수평으로 흘러가도록 한번 더 안전망 */
+.ev-card.is-locked .ev-row,
+.ev-card.is-locked .ev-type,
+.ev-card.is-locked .ev-title,
+.ev-card.is-locked .ev-time,
+.ev-card.is-locked .ev-name {
+    writing-mode: horizontal-tb !important;
+    white-space: nowrap;         /* 한 줄 유지 + */
+    overflow: hidden;            /* 넘치면 말줄임 */
+    text-overflow: clip !important;
+}
+
+/* ==== 얇은 스크롤 공통 적용 ==== */
+/* Firefox */
+.jr-stage-card,
+.tl-scroll,
+.tl-cards,
+.panel-list,
+.mini-list {
+    scrollbar-width: thin;                 /* auto | thin | none */
+    scrollbar-color: #cbd5e1 transparent;  /* thumb, track */
+}
+
+/* Chrome / Safari / Edge (WebKit 계열) */
+.jr-stage-card::-webkit-scrollbar,
+.tl-scroll::-webkit-scrollbar,
+.tl-cards::-webkit-scrollbar,
+.panel-list::-webkit-scrollbar,
+.mini-list::-webkit-scrollbar {
+    width: 6px;    /* 세로 스크롤 두께 */
+    height: 6px;   /* 가로 스크롤 두께 */
+}
+
+.jr-stage-card::-webkit-scrollbar-thumb,
+.tl-scroll::-webkit-scrollbar-thumb,
+.tl-cards::-webkit-scrollbar-thumb,
+.panel-list::-webkit-scrollbar-thumb,
+.mini-list::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 999px;
+}
+
+.jr-stage-card::-webkit-scrollbar-track,
+.tl-scroll::-webkit-scrollbar-track,
+.tl-cards::-webkit-scrollbar-track,
+.panel-list::-webkit-scrollbar-track,
+.mini-list::-webkit-scrollbar-track {
+    background: transparent;  /* 필요하면 #f1f5f9 등으로 */
 }
 
 
