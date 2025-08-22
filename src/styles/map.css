@@ -5,9 +5,28 @@
     align-items: flex-start;
     width: 100%;
     min-height: 100vh;
-    background: #ffffff;
+    background: #8fbfff;
     padding: 40px 80px;
     gap: 50px;
+}
+
+/* ===== 상단 로고 ===== */
+.map-topbar{
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 1000; /* 지도 위로 */
+}
+
+.map-logo{
+    font-size: 30px;
+    font-weight: 800;
+    line-height: 1;
+    padding-top: 30px;
+    padding-left: 40px;
+    border-radius: 12px;
+    cursor: pointer;
+    user-select: none;
 }
 
 /* ✅ SVG 지도 */
@@ -154,7 +173,7 @@
     flex: 1;
     padding: 14px 20px;  /* ✅ 버튼 높이에 맞춤 */
     font-size: 17px;
-    background: rgba(255, 255, 255, 0.4);
+    background: #f6f6f6;
     backdrop-filter: blur(6px);
     border: 1px solid rgba(255, 255, 255, 0.5);
     border-radius: 8px;
@@ -197,6 +216,7 @@
     text-align: center;
     padding: 12px 60px;
     border: 2px solid #2E86FF;
+    background: #f6f6f6;
     border-radius: 30px;
     margin-left: 50px;
     margin-top: 400px;

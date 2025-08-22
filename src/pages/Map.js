@@ -19,6 +19,11 @@ export default function Map() {
     const searchParams = new URLSearchParams(location.search);
     const newlyVisited = searchParams.get("region");
 
+    const goHome = (e) => {
+        e?.preventDefault();
+        navigate("/home");
+    };
+
     const decodeId = (raw) => {
         if (!raw) return "";
         try { return JSON.parse(`"${raw}"`); } catch { return raw; }
@@ -92,6 +97,18 @@ export default function Map() {
 
     return (
         <div className="map-container">
+            <header className="map-topbar">
+                <h2
+                    className="map-logo"
+                    role="link"
+                    tabIndex={0}
+                    onClick={goHome}
+                    onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && goHome(e)}
+                    title="홈으로 이동"
+                >
+                    Boyage
+                </h2>
+            </header>
             <div className="map-left">
                 <h1>나만의 여행 발자취</h1>
                 <h3>"떠난 만큼, 기억은 선명해진다."</h3>
