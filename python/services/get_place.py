@@ -47,7 +47,7 @@ def get_reviews_and_business_info(place_id, api_key):
     weekday_text = opening_hours.get("weekday_text", [])
     return texts, latest_time, business_status, open_now, weekday_text
 
-def search_places_basic(lat, lng, radius, place_type, api_key):
+def search_places_basic(lat, lng, radius, place_type, api_key, limit=20):
     url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
     params = {
         "location": f"{lat},{lng}",
@@ -58,35 +58,34 @@ def search_places_basic(lat, lng, radius, place_type, api_key):
     }
 
     candidates = []
-    for _ in range(2):
-        res = requests.get(url, params=params).json()
-        results = res.get("results", [])
-        for place in results:
-            rating = place.get("rating", 0)
-            user_ratings_total = place.get("user_ratings_total", 0)
-            if user_ratings_total < 1 or rating < 3.5:
-                continue
-            location = place.get("geometry", {}).get("location", {})
-            candidates.append({
-                "place_id": place.get("place_id"),
-                "name": place.get("name"),
-                "vicinity": place.get("vicinity", "주소 없음"),
-                "rating": rating,
-                "user_ratings_total": user_ratings_total,
-                "trust_score": compute_trust_score(rating, user_ratings_total),
-                "type": place_type,
-                "lat": location.get("lat"),
-                "lng": location.get("lng"),
-                "weekday_text": place.get("weekday_text", []),  
-            })
-        token = res.get("next_page_token")
-        if not token:
+    # ✅ 첫 페이지(최대 20개)만 사용
+    res = requests.get(url, params=params).json()
+    results = res.get("results", [])
+
+    for place in results:
+        rating = place.get("rating", 0)
+        user_ratings_total = place.get("user_ratings_total", 0)
+        if user_ratings_total < 1 or rating < 3.5:
+            continue
+        location = place.get("geometry", {}).get("location", {})
+        candidates.append({
+            "place_id": place.get("place_id"),
+            "name": place.get("name"),
+            "vicinity": place.get("vicinity", "주소 없음"),
+            "rating": rating,
+            "user_ratings_total": user_ratings_total,
+            "trust_score": compute_trust_score(rating, user_ratings_total),
+            "type": place_type,
+            "lat": location.get("lat"),
+            "lng": location.get("lng"),
+            "weekday_text": place.get("weekday_text", []),  
+        })
+        if len(candidates) >= limit:
             break
-        tm.sleep(2)
-        params = {"pagetoken": token, "key": api_key, "language": "ko"}
 
     candidates.sort(key=lambda x: x["trust_score"], reverse=True)
-    return candidates[:30]
+    return candidates[:limit]
+
 
 def fetch_trusted_places(query: str, method: int, api_key: str, place_types: list) -> list:
     radius = {1: "3000", 2: "15000", 3: "30000"}.get(method)

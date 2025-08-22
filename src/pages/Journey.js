@@ -90,6 +90,7 @@ export default function Journey() {
   const mapRef = useRef(null);       // naver.maps.Map 인스턴스
   const mapOverlaysRef = useRef([]); // 마커/폴리라인 등 오버레이 목록
 
+  const generating = preparing || optimizing;
   const displayTitle = useMemo(() => {
   const t  = (title || "").trim();       // 상태에 있는 제목
   const q  = (query || "").trim();       // 검색/설정에서 온 질의
@@ -552,6 +553,8 @@ useEffect(() => {
     try {
       const filled = { ...payload, uid: user.uid };
 
+      setPreparing(true);
+
       // 새 trip이면 places 저장
       const already = await checkTripExists(user.uid, filled.title);
       if (!already) {
@@ -572,8 +575,6 @@ useEffect(() => {
         await r1.text().catch(()=> "");
       }
 
-      // 기본 테이블
-      setPreparing(true);
       const r2 = await fetch(`${API_BASE}/routes/prepare_basic`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2048,7 +2049,56 @@ const trackHeight = Math.max(
       </div>
   );
 }
-
+{generating && (
+  <div
+    role="alert"
+    aria-live="polite"
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(255,255,255,0.6)",
+      backdropFilter: "blur(2px)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 4000
+    }}
+  >
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        background: "#111827",
+        color: "#fff",
+        padding: "12px 16px",
+        borderRadius: 12,
+        boxShadow: "0 6px 20px rgba(0,0,0,.25)",
+        fontWeight: 700
+      }}
+    >
+      <span
+        style={{
+          width: 10,
+          height: 10,
+          borderRadius: "50%",
+          background: "#fff",
+          opacity: 0.9,
+          animation: "pulse 1s infinite ease-in-out"
+        }}
+      />
+      <span>경로 생성 중…</span>
+    </div>
+    {/* 간단한 키프레임을 inline <style>로 주입 */}
+    <style>{`
+      @keyframes pulse {
+        0% { transform: scale(1); opacity: .6; }
+        50% { transform: scale(1.4); opacity: 1; }
+        100% { transform: scale(1); opacity: .6; }
+      }
+    `}</style>
+  </div>
+)}
 function LgnSuggestPanel({ loading, items, msg, onChoose }) {
   return (
     <aside
