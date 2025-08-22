@@ -176,13 +176,6 @@
     animation-delay: 900ms;
 }
 
-/* 오른쪽 이미지/오버레이는 부드럽게 */
-.map-section-wrapper.in-view .reveal-map.image {
-    animation-name: mapFadeUpSoft;
-    animation-duration: 900ms;
-    animation-delay: 780ms;
-    animation-fill-mode: forwards;
-}
 .map-section-wrapper.in-view .reveal-map.overlay {
     animation-name: mapFadeUpSoft;
     animation-duration: 900ms;
