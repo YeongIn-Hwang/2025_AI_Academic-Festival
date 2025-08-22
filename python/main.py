@@ -21,7 +21,7 @@ def _init_firebase_app():
     """
     service_account.json에서 project_id를 읽어 기본 Storage 버킷을 자동 설정.
     - 환경변수 FIREBASE_BUCKET 이 있으면 그 값을 우선 사용.
-    - 없으면 <project_id>.appspot.com 으로 추론.
+    - 없으면 <project_id>.firebasestorage.app 으로 추론.
     """
     if firebase_admin._apps:
         app = firebase_admin.get_app()
@@ -32,6 +32,7 @@ def _init_firebase_app():
         logging.info(f"[FB] already initialized. bucket={bucket}")
         return app
 
+    # Render Secret Files 등을 고려: 절대경로나 파일명 모두 허용
     sa_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "service_account.json")
     cred = credentials.Certificate(sa_path)
 
@@ -60,9 +61,12 @@ _init_firebase_app()
 from routes import user, prefs, places, prepare, travel_log, geocode, update_user_params, lightgcn
 
 # =========================
-# SBERT 로딩
+# SBERT 로딩 (가벼운 기본값으로 변경)
 # =========================
-SBERT_NAME = os.getenv("SBERT_NAME", "snunlp/KR-SBERT-V40K-klueNLI-augSTS")
+SBERT_NAME = os.getenv(
+    "SBERT_NAME",
+    "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+)
 
 def load_sbert():
     model = SentenceTransformer(SBERT_NAME)
@@ -100,22 +104,52 @@ app = FastAPI(lifespan=lifespan)
 
 # =========================
 # CORS
+# - 환경변수 CORS_ORIGINS: 콤마(,)로 여러 개
+# - 자동 추론: RENDER/VERCEL/프론트 개발용 로컬
+# - 정규식: *.vercel.app, *.onrender.com 허용
 # =========================
-origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
-if not origins:
-    origins = ["http://localhost:5173", "http://localhost:3000"]
+def build_allowed_origins():
+    env_list = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
+
+    # Render가 제공하는 서비스 URL (예: https://voyage-xxxx.onrender.com) — 프런트에서 API 직접 칠 수 있으면 필요
+    render_url = os.getenv("RENDER_EXTERNAL_URL")
+    if render_url:
+        env_list.append(render_url)
+
+    # 사용자가 별도로 지정할 수도 있는 프론트 URL
+    frontend_url = os.getenv("FRONTEND_URL") or os.getenv("VERCEL_FRONTEND_URL")
+    if frontend_url:
+        env_list.append(frontend_url)
+
+    # 로컬 개발 기본값
+    defaults = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+    ]
+    # 중복 제거
+    out = []
+    for x in env_list + defaults:
+        if x and x not in out:
+            out.append(x)
+    return out
+
+origins = build_allowed_origins()
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_origin_regex=r"^http://(localhost|127\.0\.0\.1):\d+$",
+    # Vercel/Render의 프리뷰/프로덕션 도메인 전체 허용 (https 전용)
+    allow_origin_regex=r"^https://([a-zA-Z0-9-]+\.)*(vercel\.app|onrender\.com)$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+logging.info(f"[CORS] allow_origins={origins}")
 
 # =========================
-# 유틸
+# 유틸 & 헬스체크
 # =========================
 def get_sbert(request: Request):
     m = getattr(request.app.state, "sbert", None)
@@ -123,6 +157,14 @@ def get_sbert(request: Request):
         request.app.state.sbert = load_sbert()
         m = request.app.state.sbert
     return m
+
+@app.get("/")
+def root():
+    return {"ok": True, "service": "voyage-api"}
+
+@app.get("/healthz")
+def healthz():
+    return {"status": "ok", "sbert": SBERT_NAME}
 
 @app.get("/test_sbert")
 def test_sbert(request: Request):
