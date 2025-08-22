@@ -428,11 +428,6 @@ export default function Save_Travel() {
     if (!uid) return alert("로그인이 필요합니다.");
     if (!days.length) return alert("저장할 일정이 없습니다.");
 
-    // ✅ 저장 전에 전 슬롯 별점 검증
-    if (!validateAllRatingsFilled(days, reviews)) {
-      return; // 저장 중단
-    }
-
     try {
       const startDate = days[0].date || "";
       const endDate = days[days.length - 1].date || "";
@@ -465,6 +460,9 @@ export default function Save_Travel() {
 
           const key = `${dayIdx}-${slotIdx}`;
           const userReview = reviews[key]?.note || "";
+          const rating = reviews[key]?.rating || 0;
+           if (!rating) return;
+
           const photoUrls = urlsMap[key] || [];
           const searchQ = [s.title, s.address].filter(Boolean).join(" ");
           places.push({
@@ -546,30 +544,23 @@ export default function Save_Travel() {
 
       // user_params 업데이트 트리거
       try {
-        const res = await fetch(`${API_BASE}/api/user_params/update_from_log`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: uid, title: loadTitle }),
-        });
-        if (!res.ok) {
-          console.warn("[user_params] 업데이트 실패", await res.text());
-        } else {
-          console.log("[user_params] 업데이트 완료");
-        }
-        // LightGCN 상호작용 문서 생성
-        const gcn = await fetch(`${API_BASE}/api/lightgcn/build_from_log`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: uid, title: loadTitle }),
-        });
-        if (!gcn.ok) {
-          console.warn("[lightgcn] 빌드 실패", await gcn.text());
-        } else {
-          console.log("[lightgcn] 빌드 완료");
-        }
-      } catch (e) {
-        console.warn("[user_params] 호출 에러", e);
-      }
+  const res = await fetch(`${API_BASE}/api/user_params/update_from_log`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: uid, title: loadTitle }),
+  });
+  if (!res.ok) {
+    console.warn("[user_params] 업데이트 실패", await res.text());
+  } else {
+    console.log("[user_params] 업데이트 완료");
+  }
+
+  // LightGCN 호출 부분은 제거했습니다.
+} catch (e) {
+  console.warn("[user_params] 호출 에러", e);
+}
+
+alert("저장되었습니다.");
 
       alert("저장되었습니다.");
     } catch (err) {

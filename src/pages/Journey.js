@@ -243,6 +243,20 @@ function eventsToPoints(events = []) {
       type: e.type || "etc",
     }));
 }
+
+function buildExistingPlaceSets(timelineDays = []) {
+  const nameSet = new Set();
+  const pidSet = new Set();
+  for (const d of timelineDays || []) {
+    for (const e of d.events || []) {
+      const nm = (e?.title || "").trim().toLowerCase();
+      if (nm) nameSet.add(nm);
+      const pid = e?.place_id;
+      if (pid) pidSet.add(pid);
+    }
+  }
+  return { nameSet, pidSet };
+}
 function openKakaoDirections(from, to, mode = "car") {
   // 카카오 링크 스펙: https://map.kakao.com/link/by/{mode}/{이름,위도,경도}/{이름,위도,경도}
   const enc = (s) => encodeURIComponent(String(s || ""));
@@ -1010,6 +1024,7 @@ useEffect(() => {
   try {
     setLgnLoading(true);
     setLgnMsg("");
+
     const col = collection(db, "user_trips", user.uid, "trips", title.trim(), "places");
     const snap = await getDocs(col);
     let rows = snap.docs.map((d) => {
@@ -1026,27 +1041,48 @@ useEffect(() => {
         user_ratings_total: typeof p.user_ratings_total === "number" ? p.user_ratings_total : null,
       };
     });
+
     if (rows.length < 1) {
-      setLgnList([]); setLgnMsg("추천할 후보가 없어요.");
+      setLgnList([]);
+      setLgnMsg("추천할 후보가 없어요.");
       return;
     }
+
+    // LightGCN 점수 요청
     const scoreMap = await fetchLightGCNScores(rows);
     if (!scoreMap) {
-      setLgnList([]); setLgnMsg("LightGCN 점수를 불러올 수 없어요.");
+      setLgnList([]);
+      setLgnMsg("LightGCN 점수를 불러올 수 없어요.");
       return;
     }
+
     rows = rows.map(r => ({ ...r, lgn_score: scoreMap.get(r.name) ?? null }));
+
+    // 🔧 현재 일정에 들어간 애들 제외 (이름 또는 place_id 기준)
+    const { nameSet, pidSet } = buildExistingPlaceSets(timelineDays);
+    rows = rows.filter(r => {
+      const nameKey = (r.name || "").trim().toLowerCase();
+      if (nameKey && nameSet.has(nameKey)) return false;
+      if (r.place_id && pidSet.has(r.place_id)) return false;
+      return true;
+    });
+
+    // 점수 없는 경우 메시지
     const any = rows.some(r => r.lgn_score != null);
-    if (!any) setLgnMsg("모델에 사용자 데이터가 없거나 매칭된 항목이 없습니다");
+    if (!any) setLgnMsg("데이터 부족");
+
+    // 정렬
     rows.sort((a, b) => {
       const A = (a.lgn_score == null) ? -1e18 : a.lgn_score;
       const B = (b.lgn_score == null) ? -1e18 : b.lgn_score;
       return B - A;
     });
+
     setLgnList(rows);
   } catch (e) {
     console.warn("[Journey] loadLgnList error:", e);
-    setLgnList([]); setLgnMsg("추천을 불러오는 중 오류가 발생했습니다");
+    setLgnList([]);
+    setLgnMsg("추천을 불러오는 중 오류가 발생했습니다");
   } finally {
     setLgnLoading(false);
   }
@@ -1058,7 +1094,10 @@ useEffect(() => {
 }, [lgnOpen, title]);
 
   useEffect(() => {
-  if (pickerOpen) loadPlaces();
+  if (pickerOpen) {
+    loadPlaces();
+  loadLgnList();
+  }
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [pickerOpen, placeTypeFilter, placeSearch, title]);
   useEffect(() => {
@@ -1353,25 +1392,44 @@ useEffect(() => {
                       />
 
                       {pickerOpen && (
-                          <div
-                              className="modal-overlay"
-                              onClick={() => { setPickerOpen(false); setPickerTarget(null); }}
-                          >
-                            <AddPlacePanel
-                                modal                                        // ⬅️ 모달 모드
-                                placeTypeFilter={placeTypeFilter}
-                                setPlaceTypeFilter={setPlaceTypeFilter}
-                                search={placeSearch}
-                                setSearch={setPlaceSearch}
-                                loading={loadingPlaces}
-                                places={placeOptions}
-                                onClose={() => { setPickerOpen(false); setPickerTarget(null); }}
-                                onChoose={handleChoosePlace}
-                                /* 패널 자체 클릭 시 닫힘 방지 */
-                                onClick={(e) => e.stopPropagation()}
-                            />
-                          </div>
-                      )}
+  <div
+    className="modal-overlay"
+    onClick={() => { setPickerOpen(false); setPickerTarget(null); }}
+  >
+    {/* 🔧 두 패널을 나란히 배치 */}
+    <div
+      style={{
+        display: "flex",
+        gap: 12,
+        alignItems: "flex-start",
+        // overlay 클릭으로 닫히는 걸 막기 위해 내부는 클릭 이벤트 중단
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* 기존 왼쪽: 수동 선택 패널 */}
+      <AddPlacePanel
+        modal
+        placeTypeFilter={placeTypeFilter}
+        setPlaceTypeFilter={setPlaceTypeFilter}
+        search={placeSearch}
+        setSearch={setPlaceSearch}
+        loading={loadingPlaces}
+        places={placeOptions}
+        onClose={() => { setPickerOpen(false); setPickerTarget(null); }}
+        onChoose={handleChoosePlace}
+      />
+
+      {/* 🔧 오른쪽: 비슷한 사용자는 여길 선호했어요! */}
+      <LgnSuggestPanel
+        loading={lgnLoading}
+        items={lgnList}
+        msg={lgnMsg}
+        onChoose={handleChoosePlace}
+      />
+    </div>
+  </div>
+)}
+
 
                     </div>
                 )}
@@ -1451,30 +1509,6 @@ useEffect(() => {
   />
   
 )}
-{/* 🔵 LightGCN 추천: 화면 고정(FAB) */}
-<button
-  type="button"
-  onClick={() => setLgnOpen(true)}
-  title="유사 사용자 추천 (LightGCN)"
-  aria-label="유사 사용자 추천 열기"
-  style={{
-    position: "fixed",
-    right: 20,
-    bottom: 25,
-    padding: "10px 20px",
-    borderRadius: 12,
-    border: "1px solid rgba(0,0,0,.12)",
-    background: "#111827",
-    color: "#fff",
-    cursor: "pointer",
-    boxShadow: "0 2px 8px rgba(0,0,0,.2)",
-    fontWeight:"bold",
-    fontSize:15,
-    zIndex: 1100
-  }}
->
-  유사 사용자 추천
-</button>
       </>
   );
 }
@@ -2015,7 +2049,73 @@ const trackHeight = Math.max(
   );
 }
 
+function LgnSuggestPanel({ loading, items, msg, onChoose }) {
+  return (
+    <aside
+      style={{
+        width: 360,
+        maxHeight: "70vh",
+        overflow: "auto",
+        background: "#fff",
+        border: "1px solid rgba(0,0,0,.12)",
+        borderRadius: 12,
+        boxShadow: "0 8px 24px rgba(0,0,0,.2)",
+        padding: 12,
+      }}
+    >
+      <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8}}>
+        <div style={{fontWeight:700}}>비슷한 사용자는 여길 선호했어요!</div>
+      </div>
 
+      {loading ? (
+        <div className="placeholder">불러오는 중…</div>
+      ) : (items?.length || 0) === 0 ? (
+        <div className="placeholder">{msg || "데이터 부족"}</div>
+      ) : (
+        <div className="panel-list">
+          {msg && msg !== "데이터 부족" && (
+            <div className="panel-note" style={{marginBottom:8, color:"#b45309"}}>{msg}</div>
+          )}
+          {items.map(p => (
+            <div
+              key={p.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => onChoose?.(p)}          // 🔑 클릭 시 빈 슬롯에 곧장 적용
+              onKeyDown={(e) => { if (e.key === "Enter") onChoose?.(p); }}
+              className="panel-item"
+              title={`${p.name} · LGN ${p.lgn_score != null ? p.lgn_score.toFixed(2) : "N/A"}`}
+            >
+              <button
+                type="button"
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  window.open(mapsSearchUrl(p.name, p.vicinity), "_blank", "noopener");
+                }}
+                className="panel-detail-btn"
+                title="Google 지도에서 보기"
+                aria-label="Google 지도에서 보기"
+              >
+                상세
+              </button>
+              <div className="panel-item-top">
+                <div className="panel-item-name">{p.name}</div>
+              </div>
+              <div className="panel-item-mid">
+                <StarRating value={p.rating} />
+                <div className="panel-text-sm">{p.rating ? p.rating.toFixed(1) : "N/A"}</div>
+                <div className="panel-text-sm">· 리뷰 {p.user_ratings_total ?? 0}</div>
+              </div>
+              <div className="panel-scores">
+                LightGCN {p.lgn_score != null ? p.lgn_score.toFixed(2) : "N/A"}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </aside>
+  );
+}
 function DayHeader({ date, weekday, dayNum }) {
   return (
       <div className="day-header">
