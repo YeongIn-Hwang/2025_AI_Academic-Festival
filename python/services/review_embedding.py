@@ -35,7 +35,7 @@ def get_sbert_embedding(text: str, model: SentenceTransformer):
     dim = model.get_sentence_embedding_dimension()
     if not isinstance(text, str) or not text.strip():
         return _zeros(dim)
-    return model.encode(text, convert_to_numpy=True)
+    return model.encode(text, convert_to_numpy=True, show_progress_bar=False)
 
 def get_sbert_review_vector(reviews: List[str], model: SentenceTransformer):
     """
@@ -48,7 +48,7 @@ def get_sbert_review_vector(reviews: List[str], model: SentenceTransformer):
     texts = [r for r in reviews if isinstance(r, str) and r.strip()]
     if not texts:
         return _zeros(dim)
-    embs = model.encode(texts, convert_to_numpy=True)  # (n, dim)
+    embs = model.encode(texts, convert_to_numpy=True, show_progress_bar=False)  # (n, dim)
     if embs.size == 0:
         return _zeros(dim)
     return embs.mean(axis=0)
@@ -86,7 +86,7 @@ def add_name_vectors(all_places: List[Dict[str, Any]],
     if not names:
         return all_places
 
-    embs = model.encode(names, convert_to_numpy=True)  # (n, dim)
+    embs = model.encode(names, convert_to_numpy=True, show_progress_bar=False)  # (n, dim)
     for i, emb in zip(idx_map, embs):
         all_places[i]["name_vector"] = emb
     return all_places
