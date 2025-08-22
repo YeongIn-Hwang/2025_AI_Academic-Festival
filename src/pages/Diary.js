@@ -303,15 +303,14 @@ export default function Diary() {
     return (
         <div className="diary-page">
             <header className="diary-header">
-                <h2>📍 {region}</h2>
-                <p>📅 {startDate} ~ {endDate}</p>
+                <h2>{region}</h2>
+                <p> {startDate} ~ {endDate}</p>
             </header>
 
             <main className="diary-content">
                 {/* 이미지 업로드 */}
                 <div className="row">
                     <label className="btn btn-primary upload-btn" role="button">
-                        <span className="btn-icon">📷</span>
                         <span className="btn-text">이미지 선택</span>
                         <input
                             type="file"
@@ -332,6 +331,7 @@ export default function Diary() {
                 {/* 여행지 입력 + 자동완성 */}
                 <div className="field">
                     <input
+                        className="jr-input"
                         ref={inputRef}
                         type="text"
                         value={searchTerm}
@@ -349,16 +349,22 @@ export default function Diary() {
                     )}
                 </div>
 
+
+
                 {selectedPlace && (
-                    <p className="selected">✅ 선택된 장소: <strong>📍 {selectedPlace.name}</strong></p>
+                    <p className="selected">✅ 선택된 장소: <strong> {selectedPlace.name}</strong></p>
                 )}
 
                 {/* 여행 메모 */}
-                <textarea
-                    placeholder="여행을 간단히 기록해보세요!"
-                    value={review}
-                    onChange={(e) => setReview(e.target.value)}
-                />
+                <div className="field">            {/* ← 동일한 field 래퍼로 감싸기 */}
+                    <textarea
+                        className="jr-input"
+                        placeholder="여행을 간단히 기록해보세요!"
+                        value={review}
+                        onChange={(e) => setReview(e.target.value)}
+                    />
+                </div>
+
 
                 {/* ⭐ 메모 바로 아래 별점 */}
                 <div className="field rating-field">
@@ -383,7 +389,7 @@ export default function Diary() {
 
                             {/* 제목 + 하트 버튼 */}
                             <div className="place-header">
-                                <h4 className="place-name">📍 {p.name}</h4>
+                                <h4 className="place-name">📷 {p.name}</h4>
                                 <button
                                     className={`heart-icon ${p.liked ? "is-active" : ""}`}
                                     onClick={() => toggleLike(p)}

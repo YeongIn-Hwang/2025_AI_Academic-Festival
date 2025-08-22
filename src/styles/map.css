@@ -50,14 +50,7 @@
     padding: 40px 80px;
     gap: 40px;
 
-    /* ✅ 배경 이미지 추가 */
-    background-image: url("../assets/background_beach.jpg");
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
 
-    /* ✅ 살짝 반투명한 흰색 오버레이 효과 */
-    position: relative;
 }
 
 .map-container::before {
@@ -75,6 +68,10 @@
 .map-left,
 .map-right {
     position: relative;
+    margin-left: 50px;
+    margin-top: 30px;
+    width: 100%;
+    height: 200%;
     z-index: 1;
 }
 .svg-map path {
@@ -87,6 +84,7 @@
 
 .popup-animated {
     opacity: 1;
+    padding-bottom: 10px;
     transform: translateY(0) scale(1); }
 .popup-closing  {
     opacity: 0;
@@ -105,6 +103,7 @@
     border-radius: 14px;
     padding: 4px 10px;
     font-size: 15px;
+    font-weight: 500;
     margin-top: 4px;
     cursor: pointer; }
 
@@ -125,7 +124,7 @@
     font-size: 48px;
     font-weight: 800;
     color: #1f2023;
-    padding-top: 100px;
+    padding-top: 70px;
     padding-left: 50px;
 
 }
@@ -200,19 +199,33 @@
     border: 2px solid #2E86FF;
     border-radius: 30px;
     margin-left: 50px;
-    margin-top: 250px;
+    margin-top: 400px;
 }
 
 /* ✅ 오른쪽 지도 영역 */
 .map-right {
     flex: 1.8;
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: center;
 }
 
 .visited-box p {
     font-size: 20px;
     font-weight: 600;
+}
+
+/* 지역 검색 인풋 스타일 */
+.region-search-box input {
+    border: 1px solid #d1d5db;   /* 연한 회색 얇은 실선 */
+    border-radius: 8px;          /* (옵션) 둥근 모서리 */
+    padding: 10px 20px;          /* (옵션) 안쪽 여백 */
+    outline: none;               /* 기본 파란 테두리 제거 */
+    box-sizing: border-box;
+}
+
+/* 포커스 시 살짝 진하게 (옵션) */
+.region-search-box input:focus {
+    border-color: #9ca3af;
 }
 

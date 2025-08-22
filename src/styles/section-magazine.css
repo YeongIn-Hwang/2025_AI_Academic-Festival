@@ -55,7 +55,7 @@
     cursor: pointer;
     transition: background-color 0.3s ease;
     width: 100%;
-    margin-top: 100px;
+    margin-top: 150px;
 }
 
 .magazine-section-button:hover {
@@ -68,3 +68,60 @@
     border-radius: 15px;  /* ✅ 살짝 둥근 모서리 */
     margin-left: 200px;
 }
+
+/* 이미 있다면 중복 정의하지 말고 기존 걸 사용하세요 */
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(40px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* (선택) 이미지에 살짝 떠오르는 느낌 */
+@keyframes fadeUpSoft {
+    from { opacity: 0; transform: translateY(30px) scale(0.98); }
+    70%  { opacity: 1; transform: translateY(0)    scale(1.01); }
+    to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+/* 공통 초기 상태 */
+.reveal {
+    opacity: 0;
+    transform: translateY(40px);
+    will-change: transform, opacity;
+}
+
+/* 섹션이 뷰에 들어왔을 때 애니 시작 */
+.section-magazine-container.in-view .reveal {
+    animation-name: fadeUp;
+    animation-duration: 800ms;
+    animation-timing-function: cubic-bezier(.22,.61,.36,1);
+    animation-fill-mode: forwards;
+}
+
+/* 순차 등장 (label → title → sub → desc → btn → image) */
+.section-magazine-container.in-view .reveal.label { animation-delay: 100ms; }
+.section-magazine-container.in-view .reveal.title { animation-delay: 260ms; }
+.section-magazine-container.in-view .reveal.sub   { animation-delay: 420ms; }
+.section-magazine-container.in-view .reveal.desc  { animation-delay: 600ms; }
+/* ✅ 버튼이 가장 늦게 */
+.section-magazine-container.in-view .magazine-section-button.reveal{
+    animation-delay: 900ms;
+}
+
+/* 이미지도 마지막 즈음에 부드럽게 */
+.section-magazine-container.in-view .reveal.image {
+    animation-name: fadeUpSoft;
+    animation-duration: 900ms;
+    animation-delay: 820ms; /* 버튼보다 살짝 먼저/같이로 조정 가능 */
+    animation-fill-mode: forwards;
+}
+
+/* 접근성: 모션 최소화 설정 존중 */
+@media (prefers-reduced-motion: reduce) {
+    .reveal,
+    .section-magazine-container.in-view .reveal {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
+}
+

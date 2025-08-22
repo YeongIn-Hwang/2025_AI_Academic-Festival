@@ -6,9 +6,6 @@ import { auth } from "../firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { IoMdArrowDropright } from "react-icons/io";
 
-/* 배경 이미지를 JS에서 지정하려면 import 유지 (원치 않으면 CSS에서 처리) */
-import bg from "../assets/profile-background.png";
-
 export default function Profile() {
   const navigate = useNavigate();
   const [displayName, setDisplayName] = useState("");
@@ -22,57 +19,61 @@ export default function Profile() {
   }, []);
 
   return (
-    <div
-      className="profile-container"
+      <div className="profile-container">
+        {/* 히어로 영역 */}
+        <header className="profile-header">
+          <h2 className="profile-logo" onClick={() => navigate("/home")}>
+            Boyage
+          </h2>
+          <h1 className="welcome-text">{displayName} 님, 환영합니다!</h1>
+        </header>
 
-    >
-      <header className="profile-header">
-        <h2 className="profile-logo">Boyage</h2>
-        <h1 className="welcome-text">{displayName} 님, 환영합니다!</h1>
-      </header>
+        {/* 카드 타일 3개 */}
+        <main className="profile-content">
+          <div className="profile-tiles" role="list">
+            <button
+                type="button"
+                className="profile-tile"
+                role="listitem"
+                onClick={() => navigate("/map")}
+                aria-label="나의 일기장 바로가기"
+            >
+              <div className="tile-text">
+                <div className="tile-title">나의 일기장</div>
+                <div className="tile-sub">바로가기</div>
+              </div>
+              <IoMdArrowDropright className="tile-icon" aria-hidden="true" />
+            </button>
 
-      <main className="profile-content">
-        <div className="profile-menu">
-          <div
-            className="menu-item"
-            onClick={() => navigate("/map")}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => e.key === "Enter" && navigate("/map")}
-          >
-            <span className="menu-item-icon">
-              <IoMdArrowDropright />
-            </span>
-            <span className="menu-item-text">나의 일기장 바로가기</span>
+            <button
+                type="button"
+                className="profile-tile"
+                role="listitem"
+                onClick={() => navigate("/journey")}
+                aria-label="나의 경로 바로가기"
+            >
+              <div className="tile-text">
+                <div className="tile-title">나의 경로</div>
+                <div className="tile-sub">바로가기</div>
+              </div>
+              <IoMdArrowDropright className="tile-icon" aria-hidden="true" />
+            </button>
+
+            <button
+                type="button"
+                className="profile-tile"
+                role="listitem"
+                onClick={() => navigate("/hearts")}
+                aria-label="좋아요 누른 장소 보기"
+            >
+              <div className="tile-text">
+                <div className="tile-title">좋아요 누른 장소</div>
+                <div className="tile-sub">바로가기</div>
+              </div>
+              <IoMdArrowDropright className="tile-icon" aria-hidden="true" />
+            </button>
           </div>
-
-          <div
-            className="menu-item"
-            onClick={() => navigate("/journey")}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => e.key === "Enter" && navigate("/journey")}
-          >
-            <span className="menu-item-icon">
-              <IoMdArrowDropright />
-            </span>
-            <span className="menu-item-text">나의 경로 바로가기</span>
-          </div>
-
-          <div
-            className="menu-item"
-            onClick={() => navigate("/hearts")}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => e.key === "Enter" && navigate("/hearts")}
-          >
-            <span className="menu-item-icon">
-              <IoMdArrowDropright />
-            </span>
-            <span className="menu-item-text">좋아요 누른 장소 보기</span>
-          </div>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
   );
 }

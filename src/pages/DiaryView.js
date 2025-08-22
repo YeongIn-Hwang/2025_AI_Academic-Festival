@@ -149,10 +149,10 @@ export default function DiaryView() {
         </h1>
       </div>
 
-      <h2>📍 {region} 여행 기록</h2>
+      <h2> {region} 여행 기록</h2>
       {tripDates && (
         <p className="dv-dates">
-          📅 {tripDates.start} ~ {tripDates.end}
+          {tripDates.start} ~ {tripDates.end}
         </p>
       )}
 

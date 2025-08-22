@@ -40,7 +40,7 @@
 
 .jr-select-icon{
     position: absolute;
-    top: 15px;
+    top: 150px;
     right: 15px;
     transform: translateY(-20%);
     pointer-events: none; /* 클릭 막기 */
@@ -199,14 +199,10 @@
     cursor: pointer;
     padding-left: 10px;
     position: relative;
+    text-decoration: underline;
+    text-underline-offset: 6px;   /* ← 글자-밑줄 간격 */
+    text-decoration-thickness: 2px;
+    text-decoration-color: currentColor; /* 파란색 유지 */
 }
 
-.linklike::after {
-    content: "";
-    display: block;
-    width: 100%;
-    height: 2px;             /* 밑줄 두께 */
-    background-color: #3884FF;
-    margin-top: 2px;
-}
 

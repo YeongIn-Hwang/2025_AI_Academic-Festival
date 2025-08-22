@@ -23,11 +23,11 @@
 .ai-icon-2{
     width: 100%;                   /*  더 크게 확대 */
     height: auto;
-    transform: scale(1) translate(10%, -26%);;
+    transform: scale(1) translate(10%, -26%)!important;
     /*  scale(1.4) → 40% 확대
        translate(20%, 5%) → 오른쪽 20%, 아래쪽 5% 이동 */
     object-fit: cover;             /* 비율 유지 */
-    opacity: 0.5;                  /* 살짝 투명 */
+    opacity: 0.5!important;
 }
 
 .ai-icon-box-2 {
@@ -37,13 +37,13 @@
 /* ✅ 겹치는 map-description 이미지 스타일 */
 .map-description-overlay {
     position: absolute;
-    bottom: 60px;       /* ✅ ai-icon-2 하단보다 살짝 내려오게 (조절 가능) */
+    bottom: 120px;       /* ✅ ai-icon-2 하단보다 살짝 내려오게 (조절 가능) */
     left: 50%;           /* ✅ 가로 중앙 기준 */
     transform: translateX(-20%); /* ✅ 중앙 정렬 */
     width: 30%;          /* ✅ 크기 (조절 가능) */
     height: auto;
     z-index: 15;         /* ✅ ai-icon-2 위에 표시 */
-    opacity: 0.85;        /* ✅ 살짝 투명 효과 (필요 시 조절) */
+    opacity: 0.85!important;        /* ✅ 살짝 투명 효과 (필요 시 조절) */
     pointer-events: none; /* ✅ 클릭 방해 X */
     border-radius: 30px;
 }
@@ -132,9 +132,70 @@
     cursor: pointer;;
     transition: background-color 0.3s ease;
     width: 70%;
-    margin-top: 100px;
+    margin-top: 150px;
 }
 
 .dairy-section-button:hover {
     background-color: #2a6edb;
+}
+
+/* ===== 키프레임(중복 정의 금지) ===== */
+@keyframes mapFadeUp {
+    from { opacity: 0; transform: translateY(40px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes mapFadeUpSoft {
+    from { opacity: 0; transform: translateY(30px) scale(0.98); }
+    70%  { opacity: 1; transform: translateY(0)    scale(1.01); }
+    to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+/* ===== 초기 상태 (레이아웃 영향 X) ===== */
+.reveal-map {
+    opacity: 0;
+    transform: translateY(40px);
+    will-change: transform, opacity;
+}
+
+/* ===== 상단 섹션 in-view 시 실행 ===== */
+.map-section-wrapper.in-view .reveal-map {
+    animation-name: mapFadeUp;
+    animation-duration: 800ms;
+    animation-timing-function: cubic-bezier(.22,.61,.36,1);
+    animation-fill-mode: forwards;
+}
+
+/* 순차 등장: label → title → sub → desc → btn → image/overlay */
+.map-section-wrapper.in-view .reveal-map.label  { animation-delay: 100ms; }
+.map-section-wrapper.in-view .reveal-map.title  { animation-delay: 260ms; }
+.map-section-wrapper.in-view .reveal-map.sub    { animation-delay: 420ms; }
+.map-section-wrapper.in-view .reveal-map.desc   { animation-delay: 600ms; }
+/* 버튼은 가장 늦게 */
+.map-section-wrapper.in-view .dairy-section-button.reveal-map {
+    animation-delay: 900ms;
+}
+
+/* 오른쪽 이미지/오버레이는 부드럽게 */
+.map-section-wrapper.in-view .reveal-map.image {
+    animation-name: mapFadeUpSoft;
+    animation-duration: 900ms;
+    animation-delay: 780ms;
+    animation-fill-mode: forwards;
+}
+.map-section-wrapper.in-view .reveal-map.overlay {
+    animation-name: mapFadeUpSoft;
+    animation-duration: 900ms;
+    animation-delay: 860ms;
+    animation-fill-mode: forwards;
+}
+
+/* 접근성: 모션 최소화 */
+@media (prefers-reduced-motion: reduce) {
+    .reveal-map,
+    .map-section-wrapper.in-view .reveal-map {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
 }

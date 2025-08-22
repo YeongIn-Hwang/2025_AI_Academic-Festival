@@ -57,26 +57,45 @@
     transition: background-color 0.2s ease;
     margin-top: 20%;
 }
-.btn-delete{
-    font-size:11px;
+.ev-card .btn-delete {
+    position: absolute;
+    right: 20px;
+    height: 22px;
+    bottom:42px;
+    line-height: 22px;
+    padding: 0 8px;               /* 세로 패딩 제거 → 얇게 */
     border:1px solid #ef4444!important;
     background:none;
     color:#991b1b;
-    border-radius:6px;
-    padding:4px 7px;
-    cursor:pointer;
-    margin-right: 10px;
+
+    border-radius: 999px;
+    font-size: 11px;
+    cursor: pointer;
+    z-index: 15;
+    margin: 0 !important;
 }
-.btn-split{
-    font-size:11px;
-    border:1px solid #7c3aed!important;
-    background:none;
-    color:#5b21b6;
-    border-radius:6px;
-    padding:4px 7px;
-    cursor:pointer;
-    margin-right: 10px;
+
+/* 카드 안 분할 버튼 위치/두께 조정 - 기존 .btn-split 덮어쓰기 */
+.ev-card .btn-split {
+    position: absolute;
+    right: 20px;
+    bottom:42px;         /* ⬆ 숫자 키우면 더 위로 올라감 (예: 18px) */
+
+    /* 세로 두께(얇게) */
+    height: 22px;         /* 버튼 높이 고정 */
+    line-height: 22px;    /* 글자 세로 중앙정렬 */
+    padding: 0 8px;       /* 좌우만 패딩, 세로 패딩 제거 */
+
+    /* 기존 스타일 유지 + 필요시 살짝 보라 느낌 */
+    border: 1px solid #7c3aed;
+    background: #fff;
+    color: #5b21b6;
+    border-radius: 999px;
+    font-size: 11px;
+    cursor: pointer;
+    z-index: 15;
 }
+
 
 .trip-summary{
     display:flex;
@@ -113,7 +132,12 @@
     background:#fff;
     border:none;
     padding:10px;
-    overflow: hidden;
+    height: 100vh;               /* 화면 전체 높이 */
+    overflow-y: auto;            /* 내용 길면 세로 스크롤 */
+    overflow-x: hidden;          /* 가로 스크롤 방지 */
+    min-height: 0;               /* flex 자식 스크롤 막힘 방지 */
+    min-width: 0;                /* (옵션) 내용 가로 넘침 방지 */
+    margin-right: -12px;
 }
 
 /* 오른쪽 비어있는 컬럼 */
@@ -192,7 +216,7 @@
     margin-bottom:8px;
 }
 .panel-close{
-    border:1px solid #e5e7eb; background:#f9fafb; border-radius:8px; padding:6px 10px; cursor:pointer; color:#111;
+    border:1px solid #e5e7eb; background:#f9fafb; border-radius:30px; padding:5px 15px; cursor:pointer; color: rgba(117, 116, 116, 0.4);
 }
 .panel-label{
     display:block;
@@ -231,11 +255,11 @@
     top:13px;
     right:14px;
     font-size:11px;
-    border:1px solid #2563eb;
+    border:none;
     background:#3b82f6;
     color:#fff;
     border-radius:999px;
-    padding:2px 10px;
+    padding:4px 13px;
     cursor:pointer;
     line-height:1.6;
     z-index:10;
@@ -253,9 +277,9 @@
 /* 커스텀 아이콘 */
 .jr-select-icon-2 {
     position: absolute;
-    top: 55px;
+    top: 155px;
     right: 25px;
-    transform: translateY(-20%);
+    transform: translateY(90%);
     pointer-events: none; /* 클릭 막기 */
     font-size: 24px;
     color: #555; /* 색상은 필요에 맞게 */
@@ -322,7 +346,6 @@
     width: 4px;
     background: #d1d5db;
     border-radius: 2px;
-    /* z-index: auto (기본) */
     cursor: ns-resize;
 }
 
@@ -381,7 +404,7 @@ body.dragging, body.dragging *{
   right: 0;
   background:#fff;
   border: none;
-  display:flex;
+  display: block;
   align-items:stretch;
   gap: 10px;
   padding: 4px 4px;
@@ -398,8 +421,8 @@ body.dragging, body.dragging *{
 .ev-left{
   flex: 0 0 96px;          /* ← 필요하면 90~120 사이로 조절 */
   display:flex;
-  align-items:center;
-  justify-content:center;
+  align-items: flex-start;
+  justify-content: flex-start;
   border-right: 1px solid #eee;
   padding-right: 8px;
 }
@@ -412,6 +435,7 @@ body.dragging, body.dragging *{
   flex-direction:column;
   justify-content:center;
   gap: 4px;
+    margin-top: 10px;
   overflow:hidden;          /* 긴 제목 말줄임 */
 }
 
@@ -446,7 +470,8 @@ body.dragging, body.dragging *{
 
 .ev-type{
   font-weight: 700;
-  line-height: 1.15;
+    padding-left: 10px;
+    margin-top: 2px;
   font-size: clamp(12px, calc(var(--card-h, 100px) / 6), 15px);
 }
 
@@ -456,6 +481,7 @@ body.dragging, body.dragging *{
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+    margin-top: 2px;
   font-size: clamp(13px, calc(var(--card-h, 100px) / 4.3), 17px);
 }
 
@@ -613,6 +639,89 @@ body.dragging, body.dragging *{
 /* 반응형: 폭 작아지면 사이드 숨김 */
 @media (max-width: 1000px){
     .jr-mini-sidenav{ display: none; }
+}
+
+/* 오른쪽 지도 패널: 세로 100vh 고정 */
+.jr-right-map {
+    position: relative !important; /* 혹시 inline style이 있어도 보완 */
+    height: 100vh;                 /* 뷰포트 높이 꽉 채우기 */
+    min-height: 100vh;
+}
+
+/* 지도 DOM: 상하 여백 없이 꽉 채우기 (inline height: calc(...) 무력화) */
+#mapMain {
+    height: 100vh !important;  /* 헤더 높이만큼 빼던 inline 스타일을 덮어씀 */
+    width: 100% !important;
+    filter: brightness(0.80); /* 0.90~0.98 사이로 조절 */
+}
+
+/* 상단 헤더(“지도 미리보기” + 일차 버튼)를 지도 위로 겹치기 */
+.jr-right-map > div:first-child {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    z-index: 1;
+
+}
+
+/* 필요 시 버튼 그룹이 너무 붙어 보이면 여유 간격 */
+.jr-right-map > div:first-child .jr-chip {
+    /* 프로젝트 기본 스타일과 충돌 없으면 유지, 불필요하면 삭제 가능 */
+}
+
+/* ===== 모달(전체화면 팝업) ===== */
+.modal-overlay{
+    position: fixed;
+    inset: 0;                          /* top/right/bottom/left: 0 */
+    background: rgba(0,0,0,0.45);      /* 뒤 화면 어둡게 */
+    z-index: 2000;                     /* 지도/FAB(1100)보다 높게 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;                     /* 가장자리 여백 */
+}
+
+/* 바디 스크롤 잠금 */
+body.modal-open{
+    overflow: hidden;
+}
+
+/* 패널을 팝업 카드로 오버라이드 */
+.panel--modal{
+    position: relative;  /* sticky 해제 */
+    padding: 16px !important;
+    top: auto;
+    margin: 0;
+    width: min(860px, 92vw);
+    max-height: min(80vh, 900px);
+    overflow: auto;      /* 내부 스크롤 */
+    box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    border: 1px solid rgba(0,0,0,.08);
+    background: #fff !important;   /* ← 이 줄 추가/수정 */
+}
+
+/* 팝업 안 닫기 버튼(선택 사항) */
+.panel--modal .panel-close{
+    position: absolute;
+    top: 10px;
+    right: 12px;
+}
+
+/* 기본: 전체 일정 보기일 때(지도 고정 폭) */
+.jr-right-map {
+    flex: 0 0 720px;   /* ← 기존 720px 역할 */
+    min-width: 420px;
+}
+
+/* 단일 일차 보기일 때: 타임라인 좁게, 지도 넓게 */
+.jr-stage-flex.is-singleday .jr-stage-card {
+    flex: 0 0 470px;   /* 타임라인 폭(원하는 값으로 조절: 480~600 추천) */
+    max-width: 470px;
+}
+.jr-stage-flex.is-singleday .jr-right-map {
+    flex: 1 1 auto;    /* 나머지 가로 공간을 전부 차지 */
+    min-width: 560px;  /* 너무 좁아지지 않도록 안전망 */
 }
 
 

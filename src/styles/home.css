@@ -162,3 +162,43 @@
 .main-content {
     border-radius: 10px;
 }
+
+.hero {
+    /* 한 번에 타이밍 조절하고 싶을 때 활용할 변수 */
+    --hero-duration: 1500ms;
+    --hero-ease: cubic-bezier(.22,.61,.36,1); /* 자연스러운 ease-out */
+}
+
+/* 공통 초기 상태: 아래에서 위로, 투명 */
+.sub-title,
+.main-title {
+    opacity: 0;
+    transform: translateY(40px);
+    will-change: transform, opacity;
+    /* 여기서 바로 실행: 페이지 진입 시 자동 재생 */
+    animation-name: fadeUp;
+    animation-duration: var(--hero-duration);
+    animation-timing-function: var(--hero-ease);
+    animation-fill-mode: forwards;  /* 끝난 상태 유지 */
+}
+
+/* ⏱ 살짝 더 먼저 올라오도록(조금 빠른 딜레이) */
+.sub-title {
+    animation-delay: 120ms;  /* 먼저 시작 */
+}
+
+/* ⏱ 메인 타이틀은 조금 늦게 */
+.main-title {
+    animation-delay: 400ms;  /* 나중에 시작 (subtitle보다 느리게) */
+}
+
+/* 접근성: 모션 최소화 설정 사용 시 애니메이션 제거 */
+@media (prefers-reduced-motion: reduce) {
+    .sub-title,
+    .main-title {
+        animation: none;
+        opacity: 1;
+        transform: none;
+    }
+}
+

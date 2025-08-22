@@ -1,4 +1,3 @@
-// src/pages/Save_Travel.js
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { auth, db, storage } from "../firebase";
@@ -15,49 +14,10 @@ import {
 import { ref as sRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { FiArrowLeft, FiDownload, FiCalendar, FiClock, FiMapPin } from "react-icons/fi";
 
-/* ---------- 스타일 ---------- */
-const INLINE_CSS = `
-.st-wrap { max-width: 1080px; margin: 0 auto; padding: 24px; color:#0f172a; }
-.st-head { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
-.st-title { font-size:22px; font-weight:800; margin:0; }
-.st-actions { display:flex; gap:8px; }
-.st-btn { display:inline-flex; align-items:center; gap:8px; padding:10px 12px; border-radius:10px; border:1px solid #e5e7eb; background:#f8fafc; cursor:pointer; font-weight:700; }
-.st-btn:hover { background:#e2e8f0; }
-.st-primary { background:#2563eb; color:#fff; border-color:#2563eb; }
-.st-primary:hover { filter:brightness(0.95); }
-.st-info { color:#475569; margin-top:-8px; margin-bottom:12px; }
-.st-grid { display:grid; grid-template-columns: 1fr; gap:14px; }
-.st-card { border:1px solid #e5e7eb; border-radius:14px; background:linear-gradient(180deg,#fff,#fbfbfd); padding:16px; }
-.st-card h2 { margin:0 0 10px; font-size:16px; font-weight:800; display:flex; align-items:center; gap:8px; color:#0f172a; }
-.st-table { width:100%; border-collapse: collapse; }
-.st-table th, .st-table td { border-top:1px solid #e5e7eb; padding:10px 8px; text-align:left; font-size:14px; vertical-align:top; }
-.st-table thead th { border-top:none; color:#475569; font-weight:700; }
-.st-tag { display:inline-block; padding:2px 8px; font-size:12px; border:1px solid #e5e7eb; border-radius:999px; background:#f8fafc; color:#111827; }
-.st-muted { color:#64748b; }
-.st-empty { border:1px dashed #cbd5e1; background:#f8fafc; color:#64748b; padding:24px; border-radius:12px; text-align:center; }
-.st-skeleton { height:120px; border-radius:12px; background:linear-gradient(90deg,#f3f4f6,#eef2f7,#f3f4f6); background-size:200% 100%; animation: st-shimmer 1.2s ease-in-out infinite; border:1px solid #e5e7eb; }
-@keyframes st-shimmer { 0% { background-position: 0% 0; } 100% { background-position: -200% 0; } }
-.st-rate-btn { padding:6px 10px; font-size:12px; border-radius:999px; border:1px solid #e5e7eb; background:#000; color:#fff; cursor:pointer; }
-.st-rate-btn:hover { background:#333; }
-.st-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display:flex; align-items:center; justify-content:center; padding: 16px; z-index: 50; }
-.st-modal { width: 100%; max-width: 620px; background: #fff; border-radius: 14px; border:1px solid #e5e7eb; box-shadow: 0 20px 40px rgba(0,0,0,0.12); }
-.st-modal-head { display:flex; align-items:center; justify-content:space-between; padding: 14px 16px; border-bottom:1px solid #e5e7eb; }
-.st-modal-title { margin:0; font-size:16px; font-weight:800; }
-.st-modal-body { padding: 14px 16px; display:grid; gap:12px; }
-.st-modal-foot { display:flex; justify-content:flex-end; gap:8px; padding: 12px 16px; border-top:1px solid #e5e7eb; }
-.st-stars { display:flex; gap:6px; }
-.st-star { font-size: 22px; cursor:pointer; user-select:none; transition: transform .08s ease;display:inline-block; width:24px; line-height:1;}
-.st-star:hover { transform: translateY(-1px); }
-.st-textarea { width:100%; min-height:96px; padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px; outline:none; }
-.st-textarea:focus { border-color:#cbd5e1; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
-.st-previews { display:flex; gap:8px; flex-wrap:wrap; }
-.st-thumb { width:84px; height:84px; border-radius:10px; border:1px solid #e5e7eb; object-fit:cover; }
-.st-hint { color:#64748b; font-size:12px; }
-.st-black {background:#000 !important;color:#fff !important;border-color:#000 !important;}
-.st-black:hover {background:#333 !important;}
-`;
+/* 🔹 분리된 CSS 파일 */
+import "../styles/save_travel.css";
 
-// ===== API BASE & 공용 헬퍼 =====
+/* ===== API BASE & 공용 헬퍼 ===== */
 const API_BASE = import.meta.env?.VITE_API_BASE || "http://localhost:8000";
 
 async function getDistrict(q) {
@@ -144,9 +104,9 @@ async function applyRatingsToTripsLog({ uid, loadTitle, days, reviews }) {
 
           // 매칭 우선순위: place_id → (title+start+end) → title
           const t = targets.find((x) =>
-            (x.place_id && itPid && x.place_id === itPid) ||
-            (!!x.title && !!itTitle && x.title === itTitle && x.start === itStart && x.end === itEnd) ||
-            (!!x.title && !!itTitle && x.title === itTitle)
+              (x.place_id && itPid && x.place_id === itPid) ||
+              (!!x.title && !!itTitle && x.title === itTitle && x.start === itStart && x.end === itEnd) ||
+              (!!x.title && !!itTitle && x.title === itTitle)
           );
 
           if (t?.rating) {
@@ -164,14 +124,14 @@ async function applyRatingsToTripsLog({ uid, loadTitle, days, reviews }) {
     // 2) schedule "서브컬렉션" 구조라면 타이틀로 반영
     try {
       const schedCol = collection(
-        db,
-        "user_trips",
-        uid,
-        "trips_log",
-        loadTitle,
-        "days",
-        d._id || d.date,
-        "schedule"
+          db,
+          "user_trips",
+          uid,
+          "trips_log",
+          loadTitle,
+          "days",
+          d._id || d.date,
+          "schedule"
       );
       const schedSnaps = await getDocs(schedCol);
       if (!schedSnaps.empty) {
@@ -202,7 +162,7 @@ async function applyRatingsToTripsLog({ uid, loadTitle, days, reviews }) {
   }
 }
 
-// ===== 유틸 =====
+/* ===== 유틸 ===== */
 function toMinutes(hhmm = "") {
   if (!hhmm.includes(":")) return NaN;
   const [h, m] = hhmm.split(":").map(Number);
@@ -236,15 +196,15 @@ function exportCSV(days) {
       const em = toMinutes(s.end);
       const durMin = !isNaN(sm) && !isNaN(em) && em >= sm ? em - sm : "";
       rows.push(
-        [
-          d.date || "",
-          s.start || "",
-          s.end || "",
-          durMin,
-          (s.title || "").replaceAll(",", " "),
-          (s.placeType || "").replaceAll(",", " "),
-          (s.address || "").replaceAll(",", " "),
-        ].join(",")
+          [
+            d.date || "",
+            s.start || "",
+            s.end || "",
+            durMin,
+            (s.title || "").replaceAll(",", " "),
+            (s.placeType || "").replaceAll(",", " "),
+            (s.address || "").replaceAll(",", " "),
+          ].join(",")
       );
     });
   });
@@ -259,6 +219,7 @@ function exportCSV(days) {
   URL.revokeObjectURL(url);
 }
 
+/* ===== 컴포넌트 ===== */
 export default function Save_Travel() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -279,16 +240,6 @@ export default function Save_Travel() {
   const [reviews, setReviews] = useState({});
 
   useEffect(() => {
-    const id = "st-inline-style";
-    if (!document.getElementById(id)) {
-      const tag = document.createElement("style");
-      tag.id = id;
-      tag.textContent = INLINE_CSS;
-      document.head.appendChild(tag);
-    }
-  }, []);
-
-  useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
       if (!user) {
         navigate("/login");
@@ -299,7 +250,7 @@ export default function Save_Travel() {
     return () => unsub();
   }, [navigate]);
 
-  // 데이터 로드 + query → 구/군/시 변환
+  // 데이터 로드 + query → 구/군/시 변환 (query는 저장 시에 district 추출용으로 다시 사용)
   useEffect(() => {
     if (!uid || !loadTitle) return;
     (async () => {
@@ -320,14 +271,14 @@ export default function Save_Travel() {
           if (!slots) {
             try {
               const schedCol = collection(
-                db,
-                "user_trips",
-                uid,
-                "trips_log",
-                loadTitle,
-                "days",
-                dayDoc.id,
-                "schedule"
+                  db,
+                  "user_trips",
+                  uid,
+                  "trips_log",
+                  loadTitle,
+                  "days",
+                  dayDoc.id,
+                  "schedule"
               );
               const schedSnaps = await getDocs(schedCol);
               if (!schedSnaps.empty) slots = schedSnaps.docs.map((s) => s.data());
@@ -374,19 +325,19 @@ export default function Save_Travel() {
     const fill = Math.max(0, Math.min(1, rating - (i - 1)));
     const pct = Math.round(fill * 100);
     return (
-      <span
-        key={i}
-        className="st-star"
-        role="button"
-        aria-label={`${i}번째 별`}
-        onClick={(e) => onClickStar(e, i)}
-        style={{
-          backgroundImage: `linear-gradient(90deg, #000 ${pct}%, #e5e7eb ${pct}%)`,
-          WebkitBackgroundClip: "text",
-          backgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-        }}
-      >
+        <span
+            key={i}
+            className="st-star"
+            role="button"
+            aria-label={`${i}번째 별`}
+            onClick={(e) => onClickStar(e, i)}
+            style={{
+              backgroundImage: `linear-gradient(90deg, #000 ${pct}%, #e5e7eb ${pct}%)`,
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+        >
         ★
       </span>
     );
@@ -568,7 +519,7 @@ export default function Save_Travel() {
             const mergedEnd = [ex.endDate, endDate].filter(Boolean).sort().slice(-1)[0] || endDate;
 
             const keyFor = (p) =>
-              `${(p.name || "").trim()}__${(p.startDate || "").trim()}__${(p.mapsUrl || "").trim()}`;
+                `${(p.name || "").trim()}__${(p.startDate || "").trim()}__${(p.mapsUrl || "").trim()}`;
             const mp = new Map();
             (ex.places || []).forEach((p) => mp.set(keyFor(p), p));
             (places || []).forEach((p) => mp.set(keyFor(p), p));
@@ -580,7 +531,7 @@ export default function Save_Travel() {
           }
         } else {
           const idx = nextTrips.findIndex(
-            (t) => t.startDate === startDate && t.endDate === endDate && t.city === city
+              (t) => t.startDate === startDate && t.endDate === endDate && t.city === city
           );
           if (idx >= 0) nextTrips[idx] = newTrip;
           else nextTrips.push(newTrip);
@@ -606,16 +557,16 @@ export default function Save_Travel() {
           console.log("[user_params] 업데이트 완료");
         }
         // LightGCN 상호작용 문서 생성
-       const gcn = await fetch(`${API_BASE}/api/lightgcn/build_from_log`, {
-         method: "POST",
-         headers: { "Content-Type": "application/json" },
-         body: JSON.stringify({ user_id: uid, title: loadTitle }),
-       });
-       if (!gcn.ok) {
-         console.warn("[lightgcn] 빌드 실패", await gcn.text());
-       } else {
-         console.log("[lightgcn] 빌드 완료");
-       }
+        const gcn = await fetch(`${API_BASE}/api/lightgcn/build_from_log`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: uid, title: loadTitle }),
+        });
+        if (!gcn.ok) {
+          console.warn("[lightgcn] 빌드 실패", await gcn.text());
+        } else {
+          console.log("[lightgcn] 빌드 완료");
+        }
       } catch (e) {
         console.warn("[user_params] 호출 에러", e);
       }
@@ -629,163 +580,171 @@ export default function Save_Travel() {
 
   if (!loadTitle) {
     return (
-      <div className="st-wrap">
-        <div className="st-empty">로드할 여행 제목(loadTitle)이 없습니다.</div>
-        <div className="st-actions" style={{ marginTop: 12 }}>
-          <button className="st-btn st-black" onClick={() => navigate(-1)}>
-            <FiArrowLeft /> 뒤로
-          </button>
+        <div className="st-wrap">
+          <div className="st-empty">로드할 여행 제목(loadTitle)이 없습니다.</div>
+          <div className="st-actions" style={{ marginTop: 12 }}>
+            <button className="st-btn st-black" onClick={() => navigate(-1)}>
+              <FiArrowLeft /> 뒤로
+            </button>
+          </div>
         </div>
-      </div>
     );
   }
 
   return (
-    <div className="st-wrap">
-      <div className="st-head">
-        <h1 className="st-title">여행 기록: {loadTitle}</h1>
-        <div className="st-actions">
-          <button className="st-btn st-black" onClick={() => navigate(-1)}>
-            <FiArrowLeft /> 뒤로
-          </button>
-          <button className="st-btn st-black" onClick={() => exportCSV(days)}>
-            <FiDownload /> CSV
-          </button>
-          <button
-            className="st-btn st-primary"
-            onClick={() => {
-              console.log("[UI] SAVE CLICK");
-              saveToUserTrips();
-            }}
-          >
-            저장
-          </button>
-        </div>
-      </div>
-      <div className="st-info">
-        총 <b>{totalDays}</b>일 / 슬롯 <b>{totalSlots}</b>개
-      </div>
-
-      {loading ? (
-        <div className="st-skeleton" />
-      ) : error ? (
-        <div className="st-empty">{error}</div>
-      ) : days.length === 0 ? (
-        <div className="st-empty">표시할 기록이 없습니다.</div>
-      ) : (
-        <div className="st-grid">
-          {days.map((day, dayIdx) => (
-            <div key={day.date} className="st-card">
-              <h2><FiCalendar /> {day.date}</h2>
-              {day.slots.length === 0 ? (
-                <div className="st-muted">이 날에는 등록된 슬롯이 없습니다.</div>
-              ) : (
-                <table className="st-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: 100 }}>시간</th>
-                      <th>제목</th>
-                      <th style={{ width: 140 }}>타입</th>
-                      <th>위치</th>
-                      <th style={{ width: 110 }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {day.slots.map((s, slotIdx) => {
-                      if (slotIdx === 0 || slotIdx === day.slots.length - 1) return null;
-                      const key = `${dayIdx}-${slotIdx}`;
-                      const prevCount = reviews[key]?.files?.length || 0;
-
-                      return (
-                        <tr key={`${day.date}-${slotIdx}`}>
-                          <td>
-                            <div><FiClock style={{ marginRight: 6 }} />{s.start} ~ {s.end}</div>
-                            <div className="st-muted" style={{ marginTop: 4 }}>{s.duration || ""}</div>
-                          </td>
-                          <td>
-                            <div style={{ fontWeight: 700 }}>
-                              {s.title || <span className="st-muted">제목 없음</span>}
-                            </div>
-                          </td>
-                          <td>
-                            {s.placeType ? <span className="st-tag">{s.placeType}</span> : <span className="st-muted">-</span>}
-                          </td>
-                          <td>
-                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                              <FiMapPin /><span>{s.address || <span className="st-muted">정보 없음</span>}</span>
-                            </div>
-                          </td>
-                          <td>
-                            <button className="st-rate-btn" onClick={() => openReview(dayIdx, slotIdx)}>
-                              평가{prevCount ? ` · 이미지 ${prevCount}` : ""}
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {reviewOpen && reviewTarget && (
-        <div className="st-modal-backdrop" onClick={closeReview}>
-          <div className="st-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="st-modal-head">
-              <h3 className="st-modal-title">
-                {reviewTarget.slot.title || "제목 없음"} · {reviewTarget.slot.start}~{reviewTarget.slot.end}
-              </h3>
-            </div>
-            <div className="st-modal-body">
-              <div>
-                <div style={{ fontWeight: 700, marginBottom: 6 }}>별점 (저장 눌러야 반영)</div>
-                <div className="st-stars">
-                  {[1,2,3,4,5].map(renderStar)}
-                  <div className="st-muted" style={{ marginLeft: 8 }}>
-                    {rating ? `${rating.toFixed(rating % 1 ? 1 : 0)}점` : "선택 안 함"}
-                  </div>
-                </div>
-              </div>
-              <div>
-                <div style={{ fontWeight: 700, marginBottom: 6 }}>메모</div>
-                <textarea
-                  className="st-textarea"
-                  placeholder="이 일정에 대한 소감, 팁 등을 적어주세요."
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                />
-              </div>
-              <div>
-                <div style={{ fontWeight: 700, marginBottom: 6 }}>이미지</div>
-                <input type="file" accept="image/*" multiple onChange={onPickImages} />
-                {previews.length > 0 ? (
-                  <div className="st-previews" style={{ marginTop: 8 }}>
-                    {previews.map((src, i) => (<img key={i} src={src} alt={`preview-${i}`} className="st-thumb" />))}
-                  </div>
-                ) : (
-                  <div className="st-hint" style={{ marginTop: 6 }}>이미지를 선택하면 미리보기가 표시됩니다.</div>
-                )}
-                {(() => {
-                  const key = `${reviewTarget.dayIdx}-${reviewTarget.slotIdx}`;
-                  const prevCount = reviews[key]?.files?.length || 0;
-                  return prevCount ? (
-                    <div className="st-hint" style={{ marginTop: 6 }}>
-                      이전에 저장한 이미지 {prevCount}개가 있습니다. 새로 선택하지 않으면 그대로 유지돼요.
-                    </div>
-                  ) : null;
-                })()}
-              </div>
-            </div>
-            <div className="st-modal-foot">
-              <button className="st-btn" onClick={closeReview}>닫기</button>
-              <button className="st-btn st-primary" onClick={saveLocalReview}>저장</button>
-            </div>
+      <div className="st-wrap">
+        <div className="st-head">
+          <h1 className="st-title">여행 기록: {loadTitle}</h1>
+          <div className="st-actions">
+            <button className="st-btn st-black" onClick={() => navigate(-1)}>
+              <FiArrowLeft /> 뒤로
+            </button>
+            <button className="st-btn st-black" onClick={() => exportCSV(days)}>
+              <FiDownload /> CSV
+            </button>
+            <button
+                className="st-btn st-primary"
+                onClick={() => {
+                  console.log("[UI] SAVE CLICK");
+                  saveToUserTrips();
+                }}
+            >
+              저장
+            </button>
           </div>
         </div>
-      )}
-    </div>
+        <div className="st-info">
+          총 <b>{totalDays}</b>일 / 슬롯 <b>{totalSlots}</b>개
+        </div>
+
+        {loading ? (
+            <div className="st-skeleton" />
+        ) : error ? (
+            <div className="st-empty">{error}</div>
+        ) : days.length === 0 ? (
+            <div className="st-empty">표시할 기록이 없습니다.</div>
+        ) : (
+            <div className="st-grid">
+              {days.map((day, dayIdx) => (
+                  <div key={day.date} className="st-card">
+                    <h2><FiCalendar /> {day.date}</h2>
+                    {day.slots.length === 0 ? (
+                        <div className="st-muted">이 날에는 등록된 슬롯이 없습니다.</div>
+                    ) : (
+                        <table className="st-table">
+                          <thead>
+                          <tr>
+                            <th style={{ width: 100 }}>시간</th>
+                            <th>제목</th>
+                            <th style={{ width: 140 }}>타입</th>
+                            <th>위치</th>
+                            <th style={{ width: 110 }}></th>
+                          </tr>
+                          </thead>
+                          <tbody>
+                          {day.slots.map((s, slotIdx) => {
+                            if (slotIdx === 0 || slotIdx === day.slots.length - 1) return null;
+                            const key = `${dayIdx}-${slotIdx}`;
+                            const prevCount = reviews[key]?.files?.length || 0;
+
+                            return (
+                                <tr key={`${day.date}-${slotIdx}`}>
+                                  <td>
+                                    <div className="st-time">
+                                      <div className="st-time-range">
+                                        <FiClock style={{ marginRight: 6 }} />
+                                        {s.start} ~ {s.end}
+                                      </div>
+                                      <div className="st-time-duration st-muted">
+                                        {s.duration || ""}
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                  <td>
+                                    <div style={{ fontWeight: 700 }}>
+                                      {s.title || <span className="st-muted">제목 없음</span>}
+                                    </div>
+                                  </td>
+                                  <td>
+                                    {s.placeType ? <span className="st-tag">{s.placeType}</span> : <span className="st-muted">-</span>}
+                                  </td>
+                                  <td>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                      <FiMapPin /><span>{s.address || <span className="st-muted">정보 없음</span>}</span>
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <button className="st-rate-btn" onClick={() => openReview(dayIdx, slotIdx)}>
+                                      평가하기{prevCount ? ` · 이미지 ${prevCount}` : ""}
+                                    </button>
+                                  </td>
+                                </tr>
+                            );
+                          })}
+                          </tbody>
+                        </table>
+                    )}
+                  </div>
+              ))}
+            </div>
+        )}
+
+        {reviewOpen && reviewTarget && (
+            <div className="st-modal-backdrop" onClick={closeReview}>
+              <div className="st-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="st-modal-head">
+                  <h3 className="st-modal-title">
+                    {reviewTarget.slot.title || "제목 없음"} · {reviewTarget.slot.start}~{reviewTarget.slot.end}
+                  </h3>
+                </div>
+                <div className="st-modal-body">
+                  <div>
+                    <div style={{ fontWeight: 700, marginBottom: 6 }}>별점 (저장 눌러야 반영)</div>
+                    <div className="st-stars">
+                      {[1,2,3,4,5].map(renderStar)}
+                      <div className="st-muted" style={{ marginLeft: 8 }}>
+                        {rating ? `${rating.toFixed(rating % 1 ? 1 : 0)}점` : "선택 안 함"}
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, marginBottom: 6 }}>메모</div>
+                    <textarea
+                        className="st-textarea"
+                        placeholder="이 일정에 대한 소감, 팁 등을 적어주세요."
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, marginBottom: 6 }}>이미지</div>
+                    <input type="file" accept="image/*" multiple onChange={onPickImages} />
+                    {previews.length > 0 ? (
+                        <div className="st-previews" style={{ marginTop: 8 }}>
+                          {previews.map((src, i) => (<img key={i} src={src} alt={`preview-${i}`} className="st-thumb" />))}
+                        </div>
+                    ) : (
+                        <div className="st-hint" style={{ marginTop: 6 }}>이미지를 선택하면 미리보기가 표시됩니다.</div>
+                    )}
+                    {(() => {
+                      const key = `${reviewTarget.dayIdx}-${reviewTarget.slotIdx}`;
+                      const prevCount = reviews[key]?.files?.length || 0;
+                      return prevCount ? (
+                          <div className="st-hint" style={{ marginTop: 6 }}>
+                            이전에 저장한 이미지 {prevCount}개가 있습니다. 새로 선택하지 않으면 그대로 유지돼요.
+                          </div>
+                      ) : null;
+                    })()}
+                  </div>
+                </div>
+                <div className="st-modal-foot">
+                  <button className="st-btn" onClick={closeReview}>닫기</button>
+                  <button className="st-btn st-primary" onClick={saveLocalReview}>저장</button>
+                </div>
+              </div>
+            </div>
+        )}
+      </div>
   );
 }

@@ -365,7 +365,7 @@ export default function JourneyList() {
     <div className="jl-wrap">
       {/* 상단 헤더(로고/새경로 버튼) — 클래스는 dayoung CSS 기준 */}
       <div className="jl-topbar">
-        <h1 className="jl-logo" onClick={() => navigate("/")}>
+        <h1 className="jl-logo" onClick={() => navigate("/home")}>
           Boyage
         </h1>
         <button

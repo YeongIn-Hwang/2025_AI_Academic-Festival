@@ -1,10 +1,10 @@
 /* === 레이아웃 === */
 .login-container {
-  min-height: 100vh;
+  height:100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center; /* ⬅️ 수직 중앙 정렬 */
+  justify-content: center;
 }
 
 /* 상단(제목/입력/회원가입 안내) */
@@ -56,7 +56,7 @@
   gap: 30px;           /* dayoung 값 유지 */
   white-space: nowrap; /* HEAD에서 가져와 줄바꿈 방지 */
   justify-content: center;
-  margin-top: 10px;    /* dayoung 값 유지 */
+  margin-top: 90px;    /* dayoung 값 유지 */
 }
 
 /* 텍스트 블록(필요 시 약간 상단 여백) */
@@ -74,8 +74,9 @@
   text-underline-offset: 4px;
   text-decoration-thickness: 1px;
   font-size: 14px;
+  margin-top: 10px;
 }
 
 /* 제목/로고 */
-.login-title { font-size: 30px; font-weight: bold; margin-bottom: 50px; }
+.login-title { font-size: 30px; font-weight: bold; margin-bottom: 50px; margin-top: 20px; }
 .login-logo  { font-size: 60px; margin-bottom: 10px; }

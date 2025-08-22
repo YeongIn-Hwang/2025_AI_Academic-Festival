@@ -92,9 +92,64 @@
     cursor: pointer;
     transition: background-color 0.3s ease;
     width: 70%;
-    margin-top: 50px;
+    margin-top: 150px;
 }
 
 .ai-section-button:hover {
     background-color: #2a6edb;
+}
+
+/* 이미 있는 fadeUp 키프레임을 사용하거나, 없으면 추가 */
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(40px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* 공통 초기 상태 */
+.reveal {
+    opacity: 0;
+    transform: translateY(40px);
+    will-change: transform, opacity;
+}
+
+/* 섹션이 뷰에 들어왔을 때 애니 시작 */
+.ai-section-wrapper.in-view .reveal {
+    animation-name: fadeUp;
+    animation-duration: 800ms;
+    animation-timing-function: cubic-bezier(.22,.61,.36,1);
+    animation-fill-mode: forwards;
+}
+
+/* 딜레이로 순차 등장 (label → heading → sub → desc → btn) */
+.ai-section-wrapper.in-view .reveal.label   { animation-delay: 100ms; }
+.ai-section-wrapper.in-view .reveal.heading { animation-delay: 260ms; }
+.ai-section-wrapper.in-view .reveal.sub     { animation-delay: 420ms; }
+.ai-section-wrapper.in-view .reveal.desc    { animation-delay: 600ms; }
+/* ✅ 버튼이 가장 늦게 */
+.ai-section-wrapper.in-view .ai-section-button.reveal{
+    animation-delay: 900ms;
+}
+
+/* (선택) 버튼 강조: 살짝 커졌다가 원래 크기로 */
+.ai-section-wrapper.in-view .reveal.btn {
+    animation-name: fadeUp, btnPop;
+    animation-duration: 800ms, 420ms;
+    animation-delay: 900ms, 900ms; /* 같은 시점에 시작 */
+    animation-fill-mode: forwards, forwards;
+}
+
+@keyframes btnPop {
+    0%   { transform: translateY(40px) scale(0.98); }
+    60%  { transform: translateY(0)    scale(1.04); }
+    100% { transform: translateY(0)    scale(1); }
+}
+
+/* 접근성: 모션 최소화 */
+@media (prefers-reduced-motion: reduce) {
+    .reveal,
+    .ai-section-wrapper.in-view .reveal {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
 }

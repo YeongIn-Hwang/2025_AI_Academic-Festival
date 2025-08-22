@@ -19,21 +19,17 @@
     text-align: center;
 }
 
-
-
 /* ===== 상단 고정 헤더 ===== */
 .dv-topbar{
-    position: fixed; top:0; left:0; width:100%; height:56px;
+    position: relative; top:0px; left:0; width:100%; height:80px!important; margin-left: 17px!important;
     display:flex; align-items:flex-start;   /* ← center → flex-start */
-    padding: 10px 20px 0;                    /* ← 위로 6px 여유(값 조절) */
+    padding: 10px 20px 0 0;
     background: transparent;
     border-bottom: none;
     backdrop-filter: none;
     z-index:1000;
 }
-.dv-logo{ margin:0; line-height:1; }      /* 기본 마진/라인하이트 정리 */
-
-
+.dv-logo{  position: relative; margin-top: 20px!important;}      /* 기본 마진/라인하이트 정리 */
 /* ===== 제목 / 날짜 (왼쪽 정렬 + 오프셋 적용) ===== */
 .diaryview-container h2 {
     font-size: 33px;

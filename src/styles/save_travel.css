@@ -1,0 +1,76 @@
+.st-wrap { max-width: 1080px; margin: 0 auto; padding: 24px; color:#0f172a; }
+.st-head { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
+.st-title { font-size:22px; font-weight:800; margin:0; }
+.st-actions { display:flex; gap:8px; }
+.st-btn { display:inline-flex; align-items:center; gap:8px; padding:10px 12px; border-radius:10px; border:1px solid #e5e7eb; background:#f8fafc; cursor:pointer; font-weight:700; }
+.st-btn:hover { background:#e2e8f0; }
+.st-primary { background:#3884FF; color:#fff; border-color:#3884FF; }
+.st-primary:hover { filter:brightness(0.95); }
+.st-info { color:#475569; margin-top:-8px; margin-bottom:16px; }
+
+.st-grid { display:grid; grid-template-columns: 1fr; gap:14px; }
+.st-card { border:1px solid #e5e7eb; border-radius:14px; background:linear-gradient(180deg,#fff,#fbfbfd); padding:16px 16px 3px 16px; }
+.st-card h2 { margin:0 0 10px; font-size:16px; font-weight:800; display:flex; align-items:center; gap:8px; color:#0f172a; }
+
+.st-table { width:100%; border-collapse: collapse; }
+.st-table th{ border-top:1px solid #e5e7eb; padding:10px 8px; text-align:left; font-size:14px; vertical-align:top; }
+.st-table td{
+    border-top:1px solid #e5e7eb;
+    padding:15px 8px;
+    text-align:left;
+    font-size:14px;
+    vertical-align:top;
+    width: 15% !important;
+}
+.st-table thead th { border-top:none; color:#475569; font-weight:700; }
+
+.st-tag { display:inline-block; padding:2px 8px; font-size:12px; border:1px solid #e5e7eb; border-radius:999px; background:#f8fafc; color:#111827; }
+.st-muted { color:#64748b; }
+.st-empty { border:1px dashed #cbd5e1; background:#f8fafc; color:#64748b; padding:24px; border-radius:12px; text-align:center; }
+
+.st-skeleton { height:120px; border-radius:12px; background:linear-gradient(90deg,#f3f4f6,#eef2f7,#f3f4f6); background-size:200% 100%; animation: st-shimmer 1.2s ease-in-out infinite; border:1px solid #e5e7eb; }
+@keyframes st-shimmer { 0% { background-position: 0% 0; } 100% { background-position: -200% 0; } }
+
+.st-rate-btn { padding:6px 10px; font-size:12px; border-radius:999px; border:1px solid #e5e7eb; background: #a3a2a2; color:#fff; cursor:pointer; width: 50%;
+    display: block; margin: 0 auto;  }
+.st-rate-btn:hover { background:#333; }
+
+.st-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display:flex; align-items:center; justify-content:center; padding: 16px; z-index: 50; }
+.st-modal { width: 100%; max-width: 620px; background: #fff; border-radius: 14px; border:1px solid #e5e7eb; box-shadow: 0 20px 40px rgba(0,0,0,0.12); }
+.st-modal-head { display:flex; align-items:center; justify-content:space-between; padding: 14px 16px; border-bottom:1px solid #e5e7eb; }
+.st-modal-title { margin:0; font-size:16px; font-weight:800; }
+.st-modal-body { padding: 14px 16px; display:grid; gap:12px; }
+.st-modal-foot { display:flex; justify-content:flex-end; gap:8px; padding: 12px 16px; border-top:1px solid #e5e7eb; }
+
+.st-stars { display:flex; gap:6px; }
+.st-star { font-size: 22px; cursor:pointer; user-select:none; transition: transform .08s ease; display:inline-block; width:24px; line-height:1; }
+.st-star:hover { transform: translateY(-1px); }
+
+.st-textarea { width:100%; min-height:96px; padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px; outline:none; }
+.st-textarea:focus { border-color:#cbd5e1; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+
+.st-previews { display:flex; gap:8px; flex-wrap:wrap; }
+.st-thumb { width:84px; height:84px; border-radius:10px; border:1px solid #e5e7eb; object-fit:cover; }
+.st-hint { color:#64748b; font-size:12px; }
+
+.st-black { background: #a3a2a2 !important; color:#fff !important; border-color: #a3a2a2 !important; }
+.st-black:hover { background:#333 !important; }
+
+/* 시간/소요 두 블록을 가로 배치 */
+.st-time {
+    display: flex;
+    align-items: center;
+    gap: 8px;          /* 두 요소 간 간격 */
+}
+
+/* 혹시 남아있는 margin-top이 있으면 무력화 */
+.st-time-duration {
+    margin-top: 0 !important;
+}
+
+/* 아이콘/텍스트 수평 정렬 깔끔하게 */
+.st-time-range {
+    display: inline-flex;
+    align-items: center;
+}
+

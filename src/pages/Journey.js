@@ -9,7 +9,7 @@ import { throttle } from "lodash";
 import "../styles/Journey.css";
 import {RiArrowDropDownLine} from "react-icons/ri";
 
-const TRACK_HEIGHT = 1600;   // 세로 트랙 높이(px)
+const TRACK_HEIGHT = 1900;   // 세로 트랙 높이(px)
 const DAY_COL_WIDTH = 360;
 const AXIS_COL_WIDTH = 72;  // 세로 타임라인 축 너비(px)
 
@@ -85,7 +85,7 @@ export default function Journey() {
 
   // 일차 보기
   const [dayView, setDayView] = useState("all");
-
+  const isSingleDay = dayView !== "all";
   const mapDivRef = useRef(null);    // <div> 참조
   const mapRef = useRef(null);       // naver.maps.Map 인스턴스
   const mapOverlaysRef = useRef([]); // 마커/폴리라인 등 오버레이 목록
@@ -157,6 +157,25 @@ export default function Journey() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadTitle, loading]);
+  useEffect(() => {
+    // 바디 스크롤 잠금
+    if (pickerOpen) document.body.classList.add("modal-open");
+    else document.body.classList.remove("modal-open");
+
+    // ESC로 닫기
+    const onKey = (e) => {
+      if (e.key === "Escape" && pickerOpen) {
+        setPickerOpen(false);
+        setPickerTarget(null);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.classList.remove("modal-open");
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [pickerOpen]);
+
 // 네이버 지도 초기화 (1회) — SDK + 컨테이너 크기 준비 상태까지 대기
 useEffect(() => {
   let poll;
@@ -336,8 +355,8 @@ useEffect(() => {
             <div style="
               transform:translate(-50%,-50%);
               display:flex;align-items:center;gap:6px;
-              background:${color};color:#fff;padding:4px 8px;border-radius:12px;
-              box-shadow:0 1px 4px rgba(0,0,0,.25);font-size:12px;white-space:nowrap;
+              background:${color};color:#fff;padding:6px 10px;border-radius:12px;
+              box-shadow:0 1px 4px rgba(0,0,0,.25);font-size:12px;white-space:nowrap;font-weight: bold;
               cursor:pointer;" title="구글 지도로 열기">
               ${String(i+1)}. ${p.title}
             </div>
@@ -1156,8 +1175,8 @@ useEffect(() => {
       <>
         <div className="jr-wrap two-col">
           <main className="jr-main">
-            <div className="jr-stage-flex has-mini">
-              {/* 왼쪽: 일차 네비 + 하단 액션들 */}
+            <div className={`jr-stage-flex has-mini ${isSingleDay ? "is-singleday" : ""}`}>
+            {/* 왼쪽: 일차 네비 + 하단 액션들 */}
               <nav className="jr-mini-sidenav" aria-label="일정 보기 선택">
                 <button
                     type="button"
@@ -1334,28 +1353,35 @@ useEffect(() => {
                       />
 
                       {pickerOpen && (
-    <AddPlacePanel
-      placeTypeFilter={placeTypeFilter}
-      setPlaceTypeFilter={setPlaceTypeFilter}
-      search={placeSearch}
-      setSearch={setPlaceSearch}
-      loading={loadingPlaces}
-      places={placeOptions}
-      onClose={() => { setPickerOpen(false); setPickerTarget(null); }}
-      onChoose={handleChoosePlace}
-    />
-  )}
+                          <div
+                              className="modal-overlay"
+                              onClick={() => { setPickerOpen(false); setPickerTarget(null); }}
+                          >
+                            <AddPlacePanel
+                                modal                                        // ⬅️ 모달 모드
+                                placeTypeFilter={placeTypeFilter}
+                                setPlaceTypeFilter={setPlaceTypeFilter}
+                                search={placeSearch}
+                                setSearch={setPlaceSearch}
+                                loading={loadingPlaces}
+                                places={placeOptions}
+                                onClose={() => { setPickerOpen(false); setPickerTarget(null); }}
+                                onChoose={handleChoosePlace}
+                                /* 패널 자체 클릭 시 닫힘 방지 */
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                      )}
+
                     </div>
                 )}
               </section>
 
 {/* 오른쪽: 지도 패널 */}
-<aside className="jr-right-map" style={{ width: 720, minWidth: 420, position: "relative" }}>
-  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 12px" }}>
-    <div style={{ fontWeight: 700 }}>지도 미리보기</div>
-
+              <aside className="jr-right-map" style={{ minWidth: 420, position: "relative" }}>
+  <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", padding:"8px 12px"}}>
     {/* ✅ 클릭 가능한 레전드: 전체 / 일차 선택 */}
-    <div style={{ display:"flex", gap:6, flexWrap:"wrap", maxWidth:320 }}>
+    <div style={{ display:"flex", gap:6, flexWrap:"wrap", maxWidth:320}}>
       {/* 전체 보기 버튼 */}
       <button
         type="button"
@@ -1367,7 +1393,7 @@ useEffect(() => {
           border:"1px solid rgba(0,0,0,0.15)",
           background: dayView === "all" ? "#111827" : "#fff",
           color: dayView === "all" ? "#fff" : "#111827",
-          borderRadius:12, padding:"2px 10px", fontSize:12, lineHeight:1.6, cursor:"pointer"
+          borderRadius:12, padding:"2px 10px", fontSize:12, lineHeight:1.6, cursor:"pointer", fontWeight:"bold"
         }}
       >
         전체
@@ -1391,10 +1417,11 @@ useEffect(() => {
               opacity: isActive || dayView === "all" ? 1 : 0.35,
               border: "none",
               borderRadius: 12,
-              padding: "2px 10px",
+              padding: "4px 13px",
               fontSize: 12,
               lineHeight: 1.6,
               cursor: "pointer",
+              fontWeight:"bold",
               boxShadow: isActive ? "0 0 0 2px rgba(0,0,0,0.15) inset" : "none"
             }}
           >
@@ -1408,7 +1435,7 @@ useEffect(() => {
   <div
     id="mapMain"
     ref={mapDivRef}
-    style={{ width:"100%", height:"calc(100vh - 140px)", borderRadius:12, boxShadow:"0 1px 6px rgba(0,0,0,.12)" }}
+    style={{ width:"100%", height:"calc(100vh - 140px)", boxShadow:"0 1px 6px rgba(0,0,0,.12)" }}
   />
 </aside>
             </div>
@@ -1432,15 +1459,17 @@ useEffect(() => {
   aria-label="유사 사용자 추천 열기"
   style={{
     position: "fixed",
-    right: 16,
-    bottom: 16,
-    padding: "10px 14px",
+    right: 20,
+    bottom: 25,
+    padding: "10px 20px",
     borderRadius: 12,
     border: "1px solid rgba(0,0,0,.12)",
     background: "#111827",
     color: "#fff",
     cursor: "pointer",
     boxShadow: "0 2px 8px rgba(0,0,0,.2)",
+    fontWeight:"bold",
+    fontSize:15,
     zIndex: 1100
   }}
 >
@@ -1512,9 +1541,19 @@ function LgnPanel({ loading, items, msg, onClose, onChoose }) {
 }
 
 /* ---------- 우측 후보 패널 ---------- */
-function AddPlacePanel({ placeTypeFilter, setPlaceTypeFilter, search, setSearch, loading, places, onClose, onChoose }) {
+function AddPlacePanel({ placeTypeFilter, setPlaceTypeFilter, search, setSearch, loading, places, onClose, onChoose,  modal = false,
+                         ...rest}) {
   return (
-      <aside className="panel">
+      <aside
+          className={`panel ${modal ? "panel--modal" : ""}`}
+          role={modal ? "dialog" : undefined}
+          aria-modal={modal ? "true" : undefined}
+          onClick={rest.onClick}                 // overlay 닫힘 방지용 전달
+      >
+        <div className="panel-header">
+          <div className="fw-700">일정 추가</div>
+          <button className="panel-close" onClick={onClose}>닫기</button>
+        </div>
       {/* 🔍 검색 */}
     <div className="mb-8">
       <label className="panel-label">검색</label>
@@ -1928,18 +1967,10 @@ const trackHeight = Math.max(
                             {/* 왼쪽: 시간 / 오른쪽: 타입 + 이름 */}
 <div className="ev-left">
   <div className="ev-time">{start} ~ {end}</div>
-</div>
-
-<div className="ev-right">
   <div className="ev-type" style={{ color: typeColor(e.type) }}>
     {typeLabel(e.type)}
   </div>
-  <div className="ev-title">
-    {e.title || "빈 슬롯 (클릭하여 추가)"}
-  </div>
 </div>
-
-
                             {!lockType && splitable && (
                                 <button
                                     onClick={(ev) => {
@@ -1964,6 +1995,14 @@ const trackHeight = Math.max(
                                   삭제
                                 </button>
                             )}
+
+<div className="ev-right">
+  <div className="ev-title">
+    {e.title || "빈 슬롯 (클릭하여 추가)"}
+  </div>
+
+</div>
+
                           </div>
                       );
                     })}
