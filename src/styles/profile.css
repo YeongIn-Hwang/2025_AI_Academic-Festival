@@ -65,7 +65,8 @@
 /* 버튼을 카드처럼 보이게 */
 .profile-tile{
     border: none;
-    background: #e3e2e2;
+    background: #eaeaea;
+    opacity: 0.9;
     border-radius: 18px;
     min-height: 250px;
     padding: 24px 28px;
@@ -101,7 +102,7 @@
 .tile-icon{
     font-size: 40px;
     line-height: 1;
-    color:darkgray;
+    color: #1f2023;
     flex: 0 0 auto;
 }
 
