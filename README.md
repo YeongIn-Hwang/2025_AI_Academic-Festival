@@ -1,0 +1,1 @@
+Boyage 서버 : https://2025-ai-academic-festival.vercel.app/home
