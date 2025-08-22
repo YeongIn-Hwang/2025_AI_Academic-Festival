@@ -33,7 +33,7 @@ function dayColor(dayNum) {
   return colors[idx];
 }
 // 지도에 표시에서 제외할 타입
-const MAP_EXCLUDE_TYPES = new Set(["start","end"]); // 필요하면 ["accommodation"]도 추가
+const MAP_EXCLUDE_TYPES = new Set([]); // 필요하면 ["accommodation"]도 추가
 
 export default function Journey() {
   const navigate = useNavigate();
@@ -89,6 +89,13 @@ export default function Journey() {
   const mapDivRef = useRef(null);    // <div> 참조
   const mapRef = useRef(null);       // naver.maps.Map 인스턴스
   const mapOverlaysRef = useRef([]); // 마커/폴리라인 등 오버레이 목록
+
+  const displayTitle = useMemo(() => {
+  const t  = (title || "").trim();       // 상태에 있는 제목
+  const q  = (query || "").trim();       // 검색/설정에서 온 질의
+  const lt = (loadTitle || "").trim();   // 라우팅 state로 넘어온 저장된 제목
+  return t || q || lt || "여행 제목 미정";
+}, [title, query, loadTitle]);
 
   // ⬇ “일차 번호”를 day 객체에 주입 (사이드바 i를 재활용)
   const displayedDays = useMemo(() => {
@@ -1302,9 +1309,9 @@ useEffect(() => {
               <section className="jr-stage-card">
                 {/* 여행 요약 헤더 */}
                 <div className="trip-summary">
-                  <div className="trip-place">{query || "여행지 미정"}</div>
-                  {dateRangeLabel && <div className="trip-dates">{dateRangeLabel}</div>}
-                </div>
+  <div className="trip-place">{displayTitle}</div>
+  {dateRangeLabel && <div className="trip-dates">{dateRangeLabel}</div>}
+</div>
 
                 {preparing && <div className="jr-note">기초 테이블 생성 중...</div>}
                 {optimizing && <div className="jr-note">DQN 최적화 중...</div>}
