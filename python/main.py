@@ -65,7 +65,7 @@ from routes import user, prefs, places, prepare, travel_log, geocode, update_use
 # =========================
 SBERT_NAME = os.getenv(
     "SBERT_NAME",
-    "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    "snunlp/KR-SBERT-V40K-klueNLI-augSTS"
 )
 
 def load_sbert():
