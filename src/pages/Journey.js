@@ -1500,6 +1500,58 @@ useEffect(() => {
             </div>
           </main>
         </div>
+
+        {generating && (
+      <div
+        role="alert"
+        aria-live="polite"
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(255,255,255,0.6)",
+          backdropFilter: "blur(2px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 4000
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            background: "#111827",
+            color: "#fff",
+            padding: "12px 16px",
+            borderRadius: 12,
+            boxShadow: "0 6px 20px rgba(0,0,0,.25)",
+            fontWeight: 700
+          }}
+        >
+          <span
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: "50%",
+              background: "#fff",
+              opacity: 0.9,
+              animation: "pulse 1s infinite ease-in-out"
+            }}
+          />
+          <span>경로 생성 중…</span>
+        </div>
+        <style>{`
+          @keyframes pulse {
+            0% { transform: scale(1); opacity: .6; }
+            50% { transform: scale(1.4); opacity: 1; }
+            100% { transform: scale(1); opacity: .6; }
+          }
+        `}</style>
+      </div>
+    )}
+
+
         {lgnOpen && (
   <LgnPanel
     loading={lgnLoading}
@@ -1512,6 +1564,8 @@ useEffect(() => {
 )}
       </>
   );
+
+  
 }
 
 function LgnPanel({ loading, items, msg, onClose, onChoose }) {
@@ -2049,56 +2103,7 @@ const trackHeight = Math.max(
       </div>
   );
 }
-{generating && (
-  <div
-    role="alert"
-    aria-live="polite"
-    style={{
-      position: "fixed",
-      inset: 0,
-      background: "rgba(255,255,255,0.6)",
-      backdropFilter: "blur(2px)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      zIndex: 4000
-    }}
-  >
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        background: "#111827",
-        color: "#fff",
-        padding: "12px 16px",
-        borderRadius: 12,
-        boxShadow: "0 6px 20px rgba(0,0,0,.25)",
-        fontWeight: 700
-      }}
-    >
-      <span
-        style={{
-          width: 10,
-          height: 10,
-          borderRadius: "50%",
-          background: "#fff",
-          opacity: 0.9,
-          animation: "pulse 1s infinite ease-in-out"
-        }}
-      />
-      <span>경로 생성 중…</span>
-    </div>
-    {/* 간단한 키프레임을 inline <style>로 주입 */}
-    <style>{`
-      @keyframes pulse {
-        0% { transform: scale(1); opacity: .6; }
-        50% { transform: scale(1.4); opacity: 1; }
-        100% { transform: scale(1); opacity: .6; }
-      }
-    `}</style>
-  </div>
-)}
+
 function LgnSuggestPanel({ loading, items, msg, onChoose }) {
   return (
     <aside
