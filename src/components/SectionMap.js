@@ -56,7 +56,7 @@ function SectionMap() {
                     <img
                         src="/images/section-image2.png"
                         alt="아이콘"
-                        className="ai-icon-2 reveal-map image"
+                        className="ai-icon-2 image"
                     />
                     <img
                         src="/images/map-description.png"
