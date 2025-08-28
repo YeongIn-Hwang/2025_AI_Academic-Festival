@@ -1,126 +1,211 @@
 /* =========================
-   위치 변수 (컨테이너에서 바로 사용)
+   전체 레이아웃
    ========================= */
-.profile-container{
-    --hero-top: 18vh;   /* 헤더를 더 아래로: 값 ↑ */
-    --hero-left: 96px;  /* 왼쪽 여백 더 넓게: 값 ↑ */
-}
-
-/* =========================
-   레이아웃 + 히어로 배경
-   ========================= */
-.profile-container{
-    min-height: 100vh;
-    display: grid;
-    grid-template-rows: 60vh 1fr;
-    background: url("../assets/profile-background.png") no-repeat center top;
-    background-size: 100% 60vh;     /* 상단 60vh에만 꽉 채움 */
-}
-
-/* 히어로(상단 텍스트) */
-.profile-header{
+.profile-container {
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
-    align-items: flex-start;
-    padding: var(--hero-top) 0 24px;
-    gap: 10px;
-    color: #fff;
-    background: transparent;
-    box-sizing: border-box;
-}
-
-.profile-logo{
-    font-size: 65px;
-    font-weight: 800;
-    margin: 0 0 12px var(--hero-left);
-    cursor: pointer;
-}
-
-.welcome-text{
-    font-size: 38px;
-    font-weight: 600;
-    margin: 0 0 0 var(--hero-left);
-}
-
-/* 본문 컨텐츠 영역 */
-.profile-content{
-    display: flex;
-    align-items: flex-start;
-    padding: 24px var(--hero-left) 48px var(--hero-left); /* 좌/우 동일 여백 */
-    box-sizing: border-box;
-    background: #fff; /* 배경 아래쪽은 흰색 */
+    min-height: 100vh;
+    background: #fff;
 }
 
 /* =========================
-   가로 타일 3개
+   상단 배경 (가로 전체) + 좌측 상단 로고
    ========================= */
-.profile-tiles{
-    width: 100%;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(240px, 1fr));
-    gap: 28px;
+.profile-hero {
+    position: relative;
+    height: 40vh;              /* 필요 시 조절 */
+    min-height: 240px;
+    background: url("../assets/profile-background.png") no-repeat center center;
+    background-size: cover;
+    z-index: 1;                 /* 배경 레이어 */
 }
 
-/* 버튼을 카드처럼 보이게 */
-.profile-tile{
-    border: none;
-    background: #eaeaea;
-    opacity: 0.9;
-    border-radius: 18px;
-    min-height: 250px;
-    padding: 24px 28px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    text-align: left;
+/* 좌상단 Boyage 로고(클릭 → /home) */
+.hero-logo {
+    position: absolute;
+    top: 33px;
+    left: 48px;
+    margin: 0;
+    padding: 6px 10px;
+    font-size: 28px;
+    font-weight: 800;
+    color: #fff;
     cursor: pointer;
-    margin-top: 40px;
-    box-shadow: 0 10px 24px rgba(0,0,0,0.06);
-    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    user-select: none;
+    letter-spacing: 0.2px;
+    outline: none;
+}
+.hero-logo:focus-visible {
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.6);
 }
 
-.profile-tile:hover{
+/* =========================
+   프로필 아이덴티티 (배경 위로 겹치기)
+   ========================= */
+.profile-identity {
+    position: relative;
+    z-index: 2;               /* 배경보다 위 */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: -55px;        /* 배경과 겹치도록 끌어올림 */
+    margin-bottom: 16px;
+}
+
+.profile-avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #e9e9e9;
+    border: 3px solid #fff;   /* 배경과 경계 */
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    position: relative;
+    z-index: 3;               /* 확실히 위 */
+}
+
+.profile-name {
+    margin-top: 15px;
+    font-size: 23px;
+    font-weight: 700;
+    color: #111;              /* 검은색 */
+    text-align: center;
+    position: relative;
+    z-index: 3;
+}
+
+/* =========================
+   탭 카드 영역 (가로 폭 제한: 중앙 고정 + 약간 더 넓힘)
+   ========================= */
+.profile-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;      /* 내부 요소 중앙 정렬 */
+    padding: 16px 16px 40px;
+    background: #fff;
+
+    width: 100%;
+    max-width: 1040px;        /* ⬅️ 전체 컨테이너 폭 살짝 넓힘 */
+    margin: 0 auto;           /* 중앙 고정 */
+}
+
+/* 탭 버튼 줄: 각 버튼 260px 고정 폭 */
+.tab-header {
+    display: flex;
+    justify-content: center;  /* 가운데 정렬 */
+    gap: 0;
+    margin: 0px 0 20px;
+    width: 100%;
+    max-width: 700px;         /* ⬅️ 기존보다 넓게 */
+}
+
+.tab-btn {
+    width: 350px;             /* 각 버튼 폭 고정 */
+    text-align: center;
+    background: none;
+    border: none;
+    font-size: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 18px 0 14px;     /* 여백 */
+    border-bottom: 2px solid transparent;
+    color: #333;
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+.tab-btn:hover {
+    color: #111;
+}
+.tab-btn.active {
+    border-color: #2e86ff;
+    color: #2e86ff;
+}
+
+/* 탭 컨텐츠(가로 제한) */
+.tab-content {
+    width: 100%;
+    max-width: 700px;         /* ⬅️ 기존보다 넓게 */
+    margin-top: 10px;
+}
+
+/* 버튼 리스트 */
+.tile-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* 버튼 카드 */
+.profile-tile {
+    width: 100%;
+    border: none;
+    border-radius: 14px;
+    background: #f8f8f8;
+    padding: 18px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    margin-bottom: 20px;
+    transition: background 0.2s ease, transform 0.15s ease;
+}
+.profile-tile:hover {
+    background: #ebebeb;
     transform: translateY(-2px);
-    box-shadow: 0 16px 32px rgba(0,0,0,0.10);
-    border-color: rgba(0,0,0,0.12);
-
 }
 
-.profile-tile:focus{
-    outline: 1px solid #cac8c8;
-    outline-offset: 2px;
-    background: #cac8c8;
+.tile-text {
+    font-size: 21px;
+    font-weight: 500;
+    color: #333;
 }
 
-/* 카드 내부 텍스트 */
-.tile-text{ display: flex; flex-direction: column; gap: 6px; }
-.tile-title{ font-size: 26px; font-weight: 800; color: #525252; }
-.tile-sub{ font-size: 16px; font-weight: 600; color: #6b7280; }
-
-/* 오른쪽 화살표 아이콘 */
-.tile-icon{
-    font-size: 40px;
-    line-height: 1;
-    color: #1f2023;
-    flex: 0 0 auto;
+.tile-icon {
+    font-size: 28px;
+    color: #333;
 }
 
 /* =========================
    반응형
    ========================= */
-@media (max-width: 1200px){
-    .profile-tiles{ grid-template-columns: repeat(2, 1fr); }
-}
-@media (max-width: 768px){
-    .profile-container{ grid-template-rows: 52vh 1fr; }
-    .profile-header{ padding-top: 20vh; }
-    .profile-logo{ font-size: 36px; margin-left: 40px; }
-    .welcome-text{ font-size: 18px; margin-left: 40px; }
+@media (max-width: 1000px) {
+    .profile-hero {
+        height: 32vh;
+        min-height: 200px;
+    }
 
-    .profile-content{ padding: 24px 40px 40px 40px; }
-    .profile-tiles{ grid-template-columns: 1fr; }
-    .profile-tile{ min-height: 120px; }
-    .tile-title{ font-size: 22px; }
-    .tile-sub{ font-size: 14px; }
+    .hero-logo {
+        font-size: 22px;
+        top: 12px;
+        left: 12px;
+    }
+
+    .profile-avatar {
+        width: 96px;
+        height: 96px;
+    }
+
+    .profile-name {
+        font-size: 18px;
+    }
+
+    .profile-main {
+        max-width: 100%;
+    }
+
+    .tab-header {
+        max-width: 100%;
+        gap: 0;
+    }
+
+    .tab-btn {
+        width: 50%;              /* 모바일에선 2등분 */
+        font-size: 16px;
+        padding: 16px 0 12px;
+    }
+
+    .tab-content {
+        max-width: 100%;
+        padding: 0 12px;
+    }
 }

@@ -1,9 +1,12 @@
 // src/pages/SetPreferences.jsx
 import React, { useState } from "react";
 import { auth } from "../firebase";
+// Firestore에 온보딩 완료 플래그를 기록하려면 아래 주석 해제:
+// import { db } from "../firebase";
+// import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import "../styles/SetPreferences.css";
-import island from "../assets/island.png"; // ← 카메라 아이콘 자리에 쓸 이미지
+import island from "../assets/island.png";
 
 function SetPreferences() {
     const navigate = useNavigate();
@@ -22,7 +25,9 @@ function SetPreferences() {
     const [selectedNonHope, setSelectedNonHope] = useState([]);
     const [loading, setLoading] = useState(false);
 
-    const API_BASE = import.meta?.env?.VITE_API_URL || "http://localhost:8000";
+    // Vite 환경변수 기반 API 주소 (끝 슬래시 제거)
+    const RAW_API_BASE = import.meta?.env?.VITE_API_URL || "http://localhost:8000";
+    const API_BASE = (RAW_API_BASE || "").replace(/\/+$/, ""); // '.../' -> '...'
 
     const toggleTag = (type, tag) => {
         const [selected, setSelected] =
@@ -35,31 +40,72 @@ function SetPreferences() {
     };
 
     const save = async () => {
+        if (loading) return; // 중복 클릭 방지
+
         const user = auth.currentUser;
         if (!user) return alert("로그인이 필요합니다.");
 
         const hope = selectedHope.slice(0, MAX);
         const nonhope = selectedNonHope.slice(0, MAX);
-        if (hope.length === 0 && nonhope.length === 0) return alert("최소 1개 이상 선택해 주세요.");
+        if (hope.length === 0 && nonhope.length === 0) {
+            return alert("최소 1개 이상 선택해 주세요.");
+        }
+
+        // 혼합콘텐츠(https 페이지에서 http API 호출) 차단 사전 감지
+        if (window.location.protocol === "https:" && API_BASE.startsWith("http://")) {
+            console.warn("[SetPreferences] Mixed content detected:", { API_BASE, page: window.location.href });
+            alert("보안 정책 때문에 저장할 수 없어요. 서버 주소를 https로 바꿔주세요.");
+            return;
+        }
+
+        setLoading(true);
+
+        // 10초 타임아웃으로 fetch 보호
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 10000);
 
         try {
-            setLoading(true);
+            console.log("[SetPreferences] POST", `${API_BASE}/user_keywords_embed`, { uid: user.uid, hope, nonhope });
+
             const res = await fetch(`${API_BASE}/user_keywords_embed`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ uid: user.uid, hope, nonhope }),
+                signal: controller.signal,
             });
+
+            const text = await res.text(); // 본문 확보(성공/실패 모두)
+            console.log("[SetPreferences] Response", res.status, text);
+
             if (!res.ok) {
-                const msg = await res.text();
-                console.error("저장 실패:", msg);
-                return alert("서버 오류: " + msg);
+                // CORS 문제일 때는 브라우저가 preflight에서 막아서 여기까지 안 올 수도 있음(콘솔 Network 확인)
+                const msg = text || "서버 오류가 발생했어요.";
+                alert(`저장 실패(${res.status}). ${msg}`);
+                return;
             }
+
+            // (선택) Firestore에 온보딩 완료 플래그 기록하려면 주석 해제
+            // try {
+            //   await updateDoc(doc(db, "users", user.uid), {
+            //     onboardingDone: true,
+            //     updatedAt: serverTimestamp(),
+            //   });
+            // } catch (e) {
+            //   console.warn("onboardingDone 업데이트 실패(무시 가능):", e);
+            // }
+
             alert("저장 완료!");
-            navigate("/home");
+            navigate("/home", { replace: true });
         } catch (e) {
-            console.error(e);
-            alert("저장 실패: " + (e?.message || String(e)));
+            // AbortError 등 네트워크 예외
+            console.error("[SetPreferences] 저장 요청 예외:", e?.name, e?.message || e);
+            if (e?.name === "AbortError") {
+                alert("요청이 시간 초과되었습니다. 네트워크 상태를 확인해 주세요.");
+            } else {
+                alert("네트워크 오류로 저장에 실패했어요. 잠시 후 다시 시도해 주세요.");
+            }
         } finally {
+            clearTimeout(timer);
             setLoading(false);
         }
     };
@@ -71,9 +117,9 @@ function SetPreferences() {
             aria-pressed={active}
             className={[
                 "tag",
-                "tag-neutral",        // 기본은 중립(연회색)
+                "tag-neutral", // 기본 중립(연회색)
                 type === "hope" ? "tag-hope" : "tag-nonhope",
-                active ? "is-active" : ""
+                active ? "is-active" : "",
             ].join(" ")}
         >
             {children}
@@ -99,7 +145,6 @@ function SetPreferences() {
         <div className="pref-page">
             <div className="pref-container">
                 <header className="pref-header">
-                    {/* 카메라 아이콘 자리에 섬 이미지 */}
                     <img src={island} alt="" aria-hidden="true" className="header-icon" />
                     <h1>내가 선호하는 여행 스타일은?</h1>
                     <p className="hint">다중 선택이 가능해요.</p>
@@ -109,7 +154,9 @@ function SetPreferences() {
                 <section className="panel">
                     <div className="panel-head">
                         <h3>선호 스타일 선택</h3>
-                        <span className="count">{selectedHope.length}/{MAX}</span>
+                        <span className="count">
+              {selectedHope.length}/{MAX}
+            </span>
                     </div>
                     <TagGrid type="hope" selected={selectedHope} />
                 </section>
@@ -118,7 +165,9 @@ function SetPreferences() {
                 <section className="panel">
                     <div className="panel-head">
                         <h3>비선호 스타일 선택</h3>
-                        <span className="count">{selectedNonHope.length}/{MAX}</span>
+                        <span className="count">
+              {selectedNonHope.length}/{MAX}
+            </span>
                     </div>
                     <TagGrid type="nonhope" selected={selectedNonHope} />
                 </section>
