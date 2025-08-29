@@ -303,7 +303,7 @@
     }
  {
         .jl-btn_newpath {
-            margin-right: 12px;   /* or 0 */
+            margin-right: 6px;   /* or 0 */
             padding-left: 20px;   /* 버튼 안쪽 여백도 줄이기 */
             width: auto;          /* 고정폭(160px) 해제 → 글자 길이에 맞게 */
             min-width: 42vw;      /* 화면 절반 이상은 차지하도록 */
