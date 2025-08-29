@@ -192,3 +192,73 @@
         transform: none !important;
     }
 }
+
+/* ===========================
+   Mobile (≤768px) : Section Map
+   =========================== */
+@media (max-width: 768px) {
+    .map-section-wrapper {
+        min-height: auto;
+        display: flex;
+        flex-direction: column;    /* 가로 → 세로 */
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        text-align: center;
+    }
+
+    .map-section-container {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    /* 타이포 반응형 */
+    .map-section-label { font-size: clamp(12px, 3.5vw, 14px); margin-bottom: 10px; }
+    .map-section-title { font-size: clamp(20px, 5vw, 28px); line-height: 1.45; margin-bottom: 14px; }
+    .map-section-subheading { font-size: clamp(15px, 4vw, 20px); margin-bottom: 12px; }
+    .map-section-description { font-size: clamp(13px, 3.5vw, 15px); margin-bottom: 16px; line-height: 1.6; }
+
+    /* 버튼 */
+    .dairy-section-button {
+        width: 100%;
+        margin-top: 24px;
+        padding: 14px 20px;
+        font-size: 15px;
+    }
+
+    /* 우측 이미지 + 오버레이 */
+    .ai-icon-box-2 { width: 100%; position: relative; display: flex; justify-content: center; margin-top: 12px; }
+    .ai-icon-2 {
+        width: 82%;
+        height: auto;
+        transform: none !important;  /* scale/translate 제거 */
+        opacity: 0.55 !important;
+        object-fit: contain;
+    }
+
+    /* 오버레이는 중앙 위쪽에 작게 배치 */
+    .map-description-overlay {
+        position: absolute;
+        bottom: auto;
+        top: 8%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60%;
+        max-width: 340px;
+        border-radius: 16px;
+        opacity: 0.9 !important;
+    }
+
+    /* 하단 예시 이미지: 너무 크지 않게 */
+    .map-example-img {
+        width: 100%;
+        height: auto;
+        object-fit: contain;
+        margin-top: 20px;
+        background: #fff;
+    }
+
+    /* 애니메이션 이동량 축소(선택) */
+    .reveal-map { transform: translateY(24px); }
+}
+

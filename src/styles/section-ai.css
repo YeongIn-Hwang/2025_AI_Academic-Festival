@@ -153,3 +153,65 @@
         transform: none !important;
     }
 }
+
+/* ===========================
+   Mobile (≤768px) : Section AI
+   =========================== */
+@media (max-width: 768px) {
+    .ai-section-wrapper {
+        min-height: auto;
+        display: flex;
+        flex-direction: column;     /* 가로 → 세로 */
+        justify-content: center;
+        align-items: center;
+        padding: 20px;              /* 좌우 패딩 축소 */
+        border-top-left-radius: 24px;
+        border-top-right-radius: 24px;
+        text-align: center;         /* 텍스트 중앙 */
+    }
+
+    .ai-section-container {
+        width: 100%;
+        max-width: 100%;
+        display: block;
+    }
+
+    .ai-text {
+        padding: 16px 0;
+        max-width: 640px;
+        margin: 0 auto;
+    }
+
+    /* 타이포 반응형 */
+    .ai-section-label { font-size: clamp(12px, 3.5vw, 14px); margin-bottom: 12px; }
+    .ai-section-heading { font-size: clamp(20px, 5vw, 28px); line-height: 1.4; margin-bottom: 16px; }
+    .ai-section-subheading { font-size: clamp(15px, 4vw, 20px); margin-bottom: 14px; }
+    .ai-section-description { font-size: clamp(13px, 3.5vw, 15px); margin-bottom: 24px; line-height: 1.6; }
+
+    /* 버튼 */
+    .ai-section-button {
+        width: 100%;
+        margin-top: 24px;
+        padding: 14px 20px;
+        font-size: 15px;
+    }
+
+    /* 이미지(오른쪽) 크기/위치 보정 */
+    .ai-icon-box { width: 100%; display: flex; justify-content: center; }
+    .ai-icon {
+        width: 82%;
+        height: auto;
+        transform: none !important;   /* scale/translate 제거 */
+        margin: 8px auto 0;
+        opacity: 0.55;
+        object-fit: contain;
+
+        /* 마스크는 모바일에서 과감히 제거(브라우저 호환) */
+        -webkit-mask-image: none;
+        mask-image: none;
+    }
+
+    /* 애니메이션은 유지되지만 지나친 이동감 축소(선택) */
+    .reveal { transform: translateY(24px); }
+}
+

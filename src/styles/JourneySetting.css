@@ -205,4 +205,114 @@
     text-decoration-color: currentColor; /* 파란색 유지 */
 }
 
+/* =====================================================
+   📱 JourneySetting 모바일 최적화 (≤ 768px)
+   데스크톱 레이아웃에는 전혀 영향 없음
+   ===================================================== */
+@media (max-width: 768px) {
+
+    /* 페이지 패딩/안전영역 */
+    .jr-setting {
+        min-height: 100svh;
+        padding: max(16px, env(safe-area-inset-top)) 16px
+        max(20px, env(safe-area-inset-bottom));
+        justify-content: flex-start;   /* 위에서부터 스크롤 */
+    }
+
+    .jr-setting-inner {
+        max-width: 100%;
+        padding: 0;                    /* 좌우 여백은 바깥에서 */
+    }
+
+    /* 제목 크기 축소 */
+    .jr-step-title {
+        font-size: clamp(22px, 6vw, 28px);
+        margin: 8px 0 18px;
+    }
+
+    /* 폼 간격 축소 */
+    .jr-form-grid {
+        gap: 14px;
+    }
+
+    /* 2열 → 1열 (날짜/시간 등) */
+    .jr-grid-2 {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    /* 라벨/인풋 터치 크기 & 가독성 */
+    .jr-label {
+        padding-bottom: 6px;
+        font-size: clamp(13px, 3.8vw, 14px);
+    }
+
+    .jr-input {
+        padding: 12px 14px;
+        font-size: 15px;
+        min-height: 44px;              /* 터치 타겟 */
+    }
+
+    /* 날짜 인풋: 과한 자간 축소 */
+    .jr-input[type="date"] {
+        letter-spacing: 1px;
+    }
+
+    /* 셀렉트: 내장 화살표 제거 유지 + 아이콘을 인풋 중앙에 정렬 */
+    .jr-select-wrapper {
+        width: 100%;
+    }
+    .jr-select {
+        padding-right: 40px;           /* 아이콘 자리 */
+    }
+    .jr-select-icon {
+        position: absolute;
+        top: 50%;
+        right: 12px;
+        transform: translateY(-50%);   /* ✅ 고정 px(top:150px) 제거 */
+        font-size: 22px;
+        color: #555;
+    }
+
+    /* 여행 성향 라디오: 2열 타일 형태로 (아주 작은 화면에선 1열) */
+    .jr-grid-2.gap-8 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;  /* 모바일에서도 2열 유지 */
+        gap: 10px;
+    }
+    .jr-radio-set {
+        width: 100%;
+        justify-content: center;
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+
+    /* 힌트/링크 여백 조정 */
+    .jr-hint {
+        margin-top: 20px;
+        font-size: 14px;
+    }
+    .linklike {
+        font-size: 14px;
+        display: inline-block;
+        margin-left: 6px;
+    }
+
+    /* 제출 버튼 */
+    .btn-primary_main {
+        margin-top: 8px;
+        padding: 14px 16px;
+        font-size: 16px;
+        border-radius: 14px;
+    }
+}
+
+/* 초소형 보정 (≤ 420px): 라디오 1열로 변경 */
+@media (max-width: 420px) {
+    .jr-grid-2.gap-8 {
+        grid-template-columns: 1fr;
+    }
+}
+
+
 

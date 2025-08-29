@@ -249,3 +249,142 @@
     border-color: #9ca3af;
 }
 
+/* =========================================
+   📱 Map 페이지 모바일 최적화 (≤ 768px)
+   데스크톱 레이아웃엔 영향 없음
+   ========================================= */
+@media (max-width: 768px) {
+
+    /* 전체 래퍼: 좌우 2분할 → 세로 스택, 패딩 축소 */
+    .map-container {
+        flex-direction: column;
+        align-items: stretch;    /* 양쪽 꽉 차게 */
+        padding: 16px 16px 24px; /* 좌우 16px */
+        gap: 16px;
+        min-height: 100svh;      /* iOS 주소창 대응 */
+    }
+
+    /* 상단 로고 안전영역 */
+    .map-topbar {
+        position: fixed;
+        top: max(8px, env(safe-area-inset-top));
+        left: max(8px, env(safe-area-inset-left));
+        z-index: 1000;
+    }
+    .map-logo {
+        font-size: 22px;
+        padding-top: 0;
+        padding-left: 0;
+    }
+
+    /* 좌/우 공통: 데스크톱 고정 여백/사이즈 제거 */
+    .map-left,
+    .map-right {
+        position: relative;
+        margin: 0;         /* ❌ margin-left:50px 제거 */
+        width: 100%;
+        height: auto;      /* ❌ height:200% 제거 */
+        z-index: 1;
+    }
+
+    /* 배경 오버레이가 주 컨텐츠를 가리지 않도록 */
+    .map-container::before {
+        display: none;
+    }
+
+    /* 타이포 축소 + 줄간격 보정 */
+    .map-left h1 {
+        font-size: clamp(24px, 7vw, 32px);
+        line-height: 1.25;
+        padding: 0;                /* ❌ 좌측 패딩 제거 */
+        margin-top: 56px;          /* 상단 로고 아래 살짝 띄우기 */
+    }
+    .map-left h3 {
+        font-size: clamp(16px, 4.5vw, 18px);
+        font-weight: 700;
+        padding: 0;
+    }
+    .map-left-p {
+        padding: 0;
+        font-size: clamp(14px, 4vw, 16px);
+        line-height: 1.6;
+    }
+
+    /* 방문 지역 카운트 박스: 가로폭에 맞추기 */
+    .visited-box {
+        width: 100%;
+        max-width: 520px;
+        margin: 12px 0 0 0;     /* ❌ margin-left, ❌ margin-top:400px 제거 */
+        padding: 12px 16px;
+        border-radius: 16px;
+    }
+    .visited-box p {
+        font-size: clamp(14px, 4.2vw, 16px);
+    }
+
+    /* 검색 영역: 한 줄 → 모바일 폭에 맞게 */
+    .region-search-box {
+        width: 100%;
+        max-width: 520px;
+        margin: 12px 0 0 0;    /* ❌ margin-left 제거 */
+        gap: 10px;
+    }
+    .region-search-box input {
+        height: 46px;
+        font-size: 15px;
+        padding: 10px 14px;
+    }
+    .region-search-box button {
+        height: 46px;
+        font-size: 15px;
+        padding: 0 14px;
+    }
+
+    /* 지도: 화면에 꽉 차되 과대확대 방지 */
+    .map-right {
+        justify-content: center;
+        align-items: center;
+    }
+    .svg-map {
+        width: 100%;
+        max-width: 720px;     /* 너무 커지지 않게 상한선 */
+        height: auto;
+        margin: 8px auto 0;
+        transform: none;      /* ❌ scale(0.9) 제거 */
+        opacity: 0.9;
+    }
+    .svg-map path {
+        stroke-width: 0.8;    /* 작은 화면에서 선 보정(옵션) */
+    }
+
+    /* 지역 팝업: 모바일에선 하단 중앙 고정(터치로 가려지는 것 방지) */
+    .region-popup {
+        left: 50% !important;
+        bottom: 16px !important;
+        top: auto !important;
+        transform: translate(-50%, 0) scale(1);
+        max-width: calc(100vw - 32px);
+        white-space: normal;          /* 줄바꿈 허용 */
+        text-align: center;
+        padding: 8px 12px;
+    }
+    .region-popup h3 {
+        font-size: 14px;
+    }
+    .view-diary-btn {
+        font-size: 14px;
+        padding: 6px 12px;
+        border-radius: 12px;
+    }
+}
+
+/* =========================
+   📱 초소형 (≤ 480px) 보정
+   ========================= */
+@media (max-width: 480px) {
+    .map-left h1 { font-size: clamp(22px, 8vw, 28px); }
+    .map-left h3 { font-size: clamp(15px, 4.8vw, 17px); }
+    .map-left-p  { font-size: clamp(13px, 4.5vw, 15px); }
+}
+
+

@@ -202,3 +202,99 @@
     }
 }
 
+/* =========================
+   📱 Mobile only (≤ 768px)
+   ========================= */
+@media (max-width: 768px) {
+
+    /* iOS 사파리 고정배경 버벅임 방지 */
+    .home-page {
+        background-attachment: scroll;
+        background-position: center center;
+    }
+
+    /* 히어로 전체 높이: 모바일 주소창 대응 */
+    .hero {
+        min-height: 100svh;
+        justify-content: center; /* 가운데 정렬 유지 */
+        text-shadow: 0 2px 12px rgba(0,0,0,.35);
+    }
+
+    /* 상단 로고/메뉴 크기만 살짝 축소 */
+    .logo {
+        top: 20px;
+        left: 16px;
+        font-size: 22px;
+    }
+    .menu-button {
+        top: 18px;
+        right: 16px;
+        font-size: 28px;
+        padding: 6px;
+    }
+
+    /* 데스크톱에서 absolute로 찍어둔 타이틀 위치값을 모바일에서만 해제 */
+    .sub-title,
+    .main-title {
+        position: static !important;     /* top/right 해제 */
+        right: auto !important;
+        top: auto !important;
+
+        display: block;
+        width: min(92vw, 680px);         /* 화면에 맞는 너비 */
+        margin: 0 auto;                  /* 가운데 정렬 */
+        text-align: center;              /* 가운데 정렬 */
+        transform: translateY(40px);     /* 기존 애니메이션과 일치 */
+    }
+
+    /* 가독성/줄바꿈을 위한 폰트 크기 다운스케일 */
+    .sub-title {
+        font-size: clamp(13px, 3.8vw, 16px);
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+    .main-title {
+        font-size: clamp(26px, 9vw, 34px); /* 과대확대 방지 */
+        line-height: 1.18;
+        font-weight: 800;
+    }
+
+    /* 아래 여백(히어로 하단) 조금 확보 */
+    .hero {
+        padding: 0 20px 64px;
+    }
+
+    /* 사이드 탭: 화면 비율에 맞게 */
+    .side-tab {
+        right: -86vw;
+        width: 86vw;
+    }
+    .side-tab.open { right: 0; }
+
+    .user-info {
+        font-size: 20px;
+        margin: 0 0 28px 20px;
+    }
+    .description-sidebar {
+        font-size: 14px;
+    }
+    .logout-button button {
+        width: calc(100% - 40px);
+        margin-left: 20px;
+        padding: 14px;
+    }
+}
+
+/* =========================
+   📱 Extra small (≤ 480px)
+   ========================= */
+@media (max-width: 480px) {
+    .logo { font-size: 20px; }
+    .menu-button { font-size: 26px; }
+
+    .sub-title { font-size: clamp(12px, 4vw, 15px); }
+    .main-title { font-size: clamp(24px, 9.5vw, 32px); }
+
+    .hero { padding-bottom: 56px; }
+}
+
