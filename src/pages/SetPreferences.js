@@ -34,12 +34,14 @@ function SetPreferences() {
   // =========================
   const isLocalhost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
 
-  let RAW_API_BASE = (import.meta?.env?.VITE_API_URL || "").replace(/\/+$/, "");
-  if (!RAW_API_BASE) {
-    RAW_API_BASE = isLocalhost ? "http://localhost:8000" : window.location.origin;
-  }
+  //let RAW_API_BASE = (import.meta?.env?.VITE_API_URL || "").replace(/\/+$/, "");
+  //if (!RAW_API_BASE) {
+    //RAW_API_BASE = isLocalhost ? "http://localhost:8000" : window.location.origin;
+  //}
 
-  let API_BASE = (RAW_API_BASE || "").replace(/\/+$/, "");
+  //let API_BASE = (RAW_API_BASE || "").replace(/\/+$/, "");
+
+  const API_BASE = "https://voyage-ovqt.onrender.com";
 
   if (window.location.protocol === "https:" && API_BASE.startsWith("http://")) {
     try {
