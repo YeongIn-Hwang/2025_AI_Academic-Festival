@@ -25,9 +25,12 @@ function SetPreferences() {
     const [selectedNonHope, setSelectedNonHope] = useState([]);
     const [loading, setLoading] = useState(false);
 
-    // Vite 환경변수 기반 API 주소 (끝 슬래시 제거)
-    const RAW_API_BASE = import.meta?.env?.VITE_API_URL || "http://localhost:8000";
-    const API_BASE = (RAW_API_BASE || "").replace(/\/+$/, ""); // '.../' -> '...'
+    // ✅ Vite 환경변수 기반 + 로컬/배포 자동 분기 (끝 슬래시 제거)
+    const isLocalhost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+    const RAW_API_BASE =
+        import.meta?.env?.VITE_API_URL ||
+        (isLocalhost ? "http://localhost:8000" : `${window.location.origin}`);
+    const API_BASE = (RAW_API_BASE || "").replace(/\/+$/, "");
 
     const toggleTag = (type, tag) => {
         const [selected, setSelected] =
@@ -51,7 +54,7 @@ function SetPreferences() {
             return alert("최소 1개 이상 선택해 주세요.");
         }
 
-        // 혼합콘텐츠(https 페이지에서 http API 호출) 차단 사전 감지
+        // ✅ 혼합콘텐츠(https 페이지에서 http API 호출) 차단 사전 감지
         if (window.location.protocol === "https:" && API_BASE.startsWith("http://")) {
             console.warn("[SetPreferences] Mixed content detected:", { API_BASE, page: window.location.href });
             alert("보안 정책 때문에 저장할 수 없어요. 서버 주소를 https로 바꿔주세요.");
@@ -65,7 +68,11 @@ function SetPreferences() {
         const timer = setTimeout(() => controller.abort(), 10000);
 
         try {
-            console.log("[SetPreferences] POST", `${API_BASE}/user_keywords_embed`, { uid: user.uid, hope, nonhope });
+            console.log("[SetPreferences] POST", `${API_BASE}/user_keywords_embed`, {
+                uid: user.uid,
+                hope,
+                nonhope,
+            });
 
             const res = await fetch(`${API_BASE}/user_keywords_embed`, {
                 method: "POST",
@@ -84,7 +91,7 @@ function SetPreferences() {
                 return;
             }
 
-            // (선택) Firestore에 온보딩 완료 플래그 기록하려면 주석 해제
+            // (선택) Firestore에 온보딩 완료 플래그 기록
             // try {
             //   await updateDoc(doc(db, "users", user.uid), {
             //     onboardingDone: true,
