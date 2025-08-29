@@ -959,4 +959,67 @@ body.modal-open{
     #mapMain         { height: calc(100vh - 120px) !important; }
 }
 
+/* =========================================
+   📱 모바일(≤768px) — 액션 버튼 텍스트 안 잘리게
+   ========================================= */
+@media (max-width: 768px) {
+    /* 버튼 그리드는 유지하되, 각 버튼 내부 레이아웃을 세로로 바꿔 공간 확보 */
+    .mini-actions {
+        /* 필요시 3열로 좁혀 더 여유 주고 싶으면 주석 해제
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        */
+        gap: 8px;
+    }
+
+    .mini-act {
+        /* 가독성 확보 */
+        padding: 10px 8px;
+        min-height: 56px;
+
+        /* 줄바꿈/세로 쌓기 */
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+
+        /* 텍스트 크기/행간 */
+        font-size: 12px;
+        line-height: 1.25;
+        gap: 2px; /* "설정 / 페이지" 같은 2줄 간격 */
+    }
+
+    /* 활성/특수 상태도 동일한 패딩/레이아웃 유지 */
+    .mini-act.active,
+    .mini-act.active-outline,
+    .mini-act.is-red,
+    .mini-act.is-purple,
+    .mini-act.is-yellow,
+    .mini-act.ghost {
+        padding: 10px 8px !important;
+    }
+
+    /* 버튼 안의 각 단어 span이 줄바꿈 가능하도록 */
+    .mini-act span {
+        white-space: normal;   /* ✅ 줄바꿈 허용 */
+        word-break: keep-all;  /* 한국어 단어 중간 분해 방지 */
+        line-height: 1.2;
+        padding: 0;
+    }
+
+    /* 일차 전환 버튼도 살짝 컴팩트하게 */
+    .mini-btn {
+        padding: 9px 12px;
+        font-size: 12px;
+    }
+}
+
+/* 초소형 기기(≤360px)에서 한 번 더 압축 */
+@media (max-width: 360px) {
+    .mini-act {
+        font-size: 11px;
+        min-height: 52px;
+        padding: 8px 6px;
+    }
+}
+
 

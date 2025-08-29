@@ -24,6 +24,7 @@
     display: flex;
     align-items: flex-start;
     padding: clamp(24px, 6vw, 48px) 20px;
+    overflow-x: hidden; /* 모바일 진동 스크롤 방지 */
 }
 
 .pref-container{
@@ -32,6 +33,7 @@
     margin: 0 auto;
     background: var(--panel);
     border: 0;
+    padding-bottom: 100px; /* 고정 버튼과 겹침 방지 */
 }
 
 .pref-header{
@@ -60,12 +62,14 @@
     font-size: 14px;
 }
 
+/* 섹션 패널 */
 .panel{
     background: transparent;
     border: 0;
     padding: 0 8px;
     margin-bottom: 90px;
 }
+.panel + .panel { margin-top: 0; } /* 섹션 간 간극 일관 */
 .panel-head{
     display: flex;
     justify-content: space-between;
@@ -125,13 +129,13 @@
     box-shadow: 0 10px 26px rgba(186, 46, 59, .28);
 }
 
-/* ✅ 버튼: 항상 화면 하단 중앙 */
+/* ✅ 화면 하단 고정 저장 버튼 */
 .primary-btn {
     position: fixed;
     bottom: 24px;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 1000; /* 다른 요소 위로 */
+    z-index: 1000;
 
     width: calc(100% - 40px);
     max-width: 400px;
@@ -146,7 +150,6 @@
     transition: transform .08s ease, box-shadow .15s ease, opacity .15s ease, background .2s ease;
     box-shadow: 0 10px 22px rgba(0,0,0,.12);
 }
-
 .primary-btn:hover{ transform: translate(-50%, -1px); }
 .primary-btn:active{ transform: translate(-50%, 0); }
 .primary-btn:disabled{ opacity: .7; cursor: not-allowed; }
@@ -154,10 +157,10 @@
 /* ========== 모바일 전용(<= 768px) ========== */
 @media (max-width: 768px){
 
-    /* 전체 여백/타이포 축소 & 한 손 조작 최적화 */
+    /* iOS 홈 인디케이터 고려 + 스크롤 레이어 안정화 */
     .pref-page{
         align-items: stretch;
-        padding: 20px 16px calc(24px + env(safe-area-inset-bottom)); /* iOS 홈 인디케이터 여유 */
+        padding: 20px 16px calc(24px + env(safe-area-inset-bottom));
         background: #fff;
     }
 
@@ -165,40 +168,39 @@
         max-width: none;
         margin: 0;
         background: #fff;
+        isolation: isolate;      /* ✅ 자식들의 z-index 간섭 차단 */
     }
 
     .pref-header{
         margin-bottom: 20px;
     }
-    .header-icon{
-        width: 44px; height: 44px; margin-bottom: 10px;
-    }
+    .header-icon{ width: 44px; height: 44px; margin-bottom: 10px; }
     .pref-header h1{
         font-size: clamp(20px, 5.5vw, 24px);
         line-height: 1.25;
         letter-spacing: -.2px;
     }
-    .pref-header .hint{
-        font-size: 13px;
+    .pref-header .hint{ font-size: 13px; }
+
+    /* 🔒 각 섹션을 독립 페인팅 레이어로 만들어 겹침 방지 */
+    .panel{
+        padding: 10px 10px 12px;
+        margin: 0 0 56px;      /* 다음 섹션과 간격 확보 */
+        background: #fff;      /* 투명 → 흰색으로 시각적 겹침 방지 */
+        border-radius: 12px;
+        box-shadow: 0 1px 0 rgba(0,0,0,.02);
+        position: relative;
+        z-index: 0;            /* 부모 컨텍스트에서 기본 레벨 */
+        contain: paint;        /* 스크롤시 페인트 분리 → 겹침 이슈 완화 */
     }
 
-    /* 패널 간 간격 축소, 좌우 여백 줄이기 */
-    .panel{
-        padding: 0 4px;
-        margin-bottom: 56px; /* 버튼에 가려지지 않게 하되 너무 넓지 않게 */
-    }
     .panel-head{
-        margin: 4px 2px 8px;
+        margin: 2px 4px 8px;
         gap: 8px;
     }
-    .panel-head h3{
-        font-size: 14px;
-    }
-    .count{
-        font-size: 11px;
-    }
+    .panel-head h3{ font-size: 14px; }
+    .count{ font-size: 11px; }
 
-    /* 태그 그리드: 태블릿은 2칸, 작은폰은 1칸 */
     .tag-grid{
         grid-template-columns: repeat(2, minmax(0,1fr));
         gap: 10px 12px;
@@ -207,48 +209,37 @@
         .tag-grid{ grid-template-columns: 1fr; }
     }
 
-    /* 태그 칩: 터치 영역 넓히고 대비 강화 */
     .tag{
-        padding: 14px 16px;              /* 손가락 탭 크기 확보 */
-        font-size: 15px;                  /* 읽기 쉬운 크기 */
+        padding: 14px 16px;
+        font-size: 15px;
         border-radius: 14px;
         line-height: 1.2;
         box-shadow: 0 6px 16px rgba(0,0,0,.06);
         -webkit-tap-highlight-color: transparent;
+        transform: none;           /* 🔧 스크롤 시 레이어 승격 방지 */
+        will-change: auto;
     }
-    .tag:hover{ background: var(--chip-bg); } /* 모바일에선 hover 효과 미미하니 톤 다운 */
-    .tag:active{ transform: translateY(0); }   /* 눌림 과도한 이동 제거 */
-    .tag:focus-visible{ box-shadow: 0 0 0 3px rgba(17, 100, 255, .18); }
+    .tag:hover{ background: var(--chip-bg); }
+    .tag:active{ transform: none; } /* 모바일에서 translateY 제거 */
 
-    /* 선택 상태 가독성 살짝 상향 */
-    .tag-hope.is-active{
-        box-shadow: 0 8px 18px rgba(11, 99, 196, .26);
-    }
-    .tag-nonhope.is-active{
-        box-shadow: 0 8px 18px rgba(186, 46, 59, .26);
-    }
+    .tag-hope.is-active{ box-shadow: 0 8px 18px rgba(11, 99, 196, .26); }
+    .tag-nonhope.is-active{ box-shadow: 0 8px 18px rgba(186, 46, 59, .26); }
 
-    /* 하단 고정 버튼: 안전 영역 고려, 터치 영역 확대 */
     .primary-btn{
         bottom: calc(16px + env(safe-area-inset-bottom));
         width: calc(100% - 24px);
-        max-width: 520px;                /* 큰 폰에서도 너무 길지 않게 */
+        max-width: 520px;
         padding: 14px 16px;
         font-size: 16px;
         border-radius: 12px;
         box-shadow: 0 10px 22px rgba(0,0,0,.12);
+        transform: translateX(-50%); /* hover 변형 제거 */
     }
-    .primary-btn:hover{ transform: translate(-50%, 0); } /* 모바일 hover 제거 */
 }
 
-/* ========== 초소형(아이폰 SE 등 <= 360px) 추가 보정 ========== */
+/* ========== 초소형(<= 360px) 추가 보정 ========== */
 @media (max-width: 360px){
     .pref-header h1{ font-size: 18px; }
     .tag{ font-size: 14px; padding: 12px 14px; }
     .panel{ margin-bottom: 48px; }
-}
-
-/* ========== 콘텐츠가 버튼에 가려지지 않도록 페이지 하단 여백 ========== */
-.pref-container{
-    padding-bottom: 100px; /* 데스크톱 영향 미미, 모바일에서 효과적 */
 }
