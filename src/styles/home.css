@@ -94,9 +94,7 @@
     flex-direction: column;
 }
 
-.side-tab.open {
-    right: 0;
-}
+.side-tab.open { right: 0; }
 
 .close-button {
     background: none;
@@ -111,7 +109,7 @@
 .side-tab ul {
     list-style: none;
     padding: 0;
-    flex: 1 1 auto;          /* ✅ 리스트가 남는 공간 차지 */
+    flex: 1 1 auto;          /* ✅ 데스크톱: 리스트가 남는 공간 차지 */
     overflow-y: auto;        /* ✅ 긴 경우 스크롤 */
 }
 
@@ -122,14 +120,8 @@
     cursor: pointer;
     transition: color 0.2s;
 }
-
-.side-tab li:first-child {
-    border-top: 1px solid #ccc;
-}
-
-.side-tab li:hover {
-    color: #3884FF;
-}
+.side-tab li:first-child { border-top: 1px solid #ccc; }
+.side-tab li:hover { color: #3884FF; }
 
 .user-info {
     margin: 0 0 40px 30px;
@@ -142,7 +134,7 @@
 }
 
 .logout-button {
-    margin-top: auto;        /* ✅ 사이드탭 맨 아래로 */
+    margin-top: auto;        /* ✅ 데스크톱: 사이드탭 맨 아래로 */
     width: 100%;
     padding: 20px;
     align-self: stretch;
@@ -161,14 +153,9 @@
     transition: all 0.3s ease;
 }
 
-.main-content {
-    border-radius: 10px;
-}
+.main-content { border-radius: 10px; }
 
-.hero {
-    --hero-duration: 1500ms;
-    --hero-ease: cubic-bezier(.22,.61,.36,1);
-}
+.hero { --hero-duration: 1500ms; --hero-ease: cubic-bezier(.22,.61,.36,1); }
 
 .sub-title,
 .main-title {
@@ -180,22 +167,11 @@
     animation-timing-function: var(--hero-ease);
     animation-fill-mode: forwards;
 }
-
-.sub-title {
-    animation-delay: 120ms;
-}
-
-.main-title {
-    animation-delay: 400ms;
-}
+.sub-title { animation-delay: 120ms; }
+.main-title { animation-delay: 400ms; }
 
 @media (prefers-reduced-motion: reduce) {
-    .sub-title,
-    .main-title {
-        animation: none;
-        opacity: 1;
-        transform: none;
-    }
+    .sub-title, .main-title { animation: none; opacity: 1; transform: none; }
 }
 
 /* =========================
@@ -211,19 +187,11 @@
         min-height: 100svh;
         justify-content: center;
         text-shadow: 0 2px 12px rgba(0,0,0,.35);
+        padding: 0 20px 64px;
     }
 
-    .logo {
-        top: 20px;
-        left: 16px;
-        font-size: 22px;
-    }
-    .menu-button {
-        top: 18px;
-        right: 16px;
-        font-size: 28px;
-        padding: 6px;
-    }
+    .logo { top: 20px; left: 16px; font-size: 22px; }
+    .menu-button { top: 18px; right: 16px; font-size: 28px; padding: 6px; }
 
     .sub-title,
     .main-title {
@@ -237,39 +205,26 @@
         text-align: center;
         transform: translateY(40px);
     }
+    .sub-title { font-size: clamp(13px, 3.8vw, 16px); font-weight: 700; margin-bottom: 8px; }
+    .main-title { font-size: clamp(26px, 9vw, 34px); line-height: 1.18; font-weight: 800; }
 
-    .sub-title {
-        font-size: clamp(13px, 3.8vw, 16px);
-        font-weight: 700;
-        margin-bottom: 8px;
-    }
-    .main-title {
-        font-size: clamp(26px, 9vw, 34px);
-        line-height: 1.18;
-        font-weight: 800;
-    }
-
-    .hero {
-        padding: 0 20px 64px;
-    }
-
-    .side-tab {
-        right: -86vw;
-        width: 86vw;
-    }
+    .side-tab { right: -86vw; width: 86vw; }
     .side-tab.open { right: 0; }
 
-    .user-info {
-        font-size: 20px;
-        margin: 0 0 28px 20px;
-    }
-    .description-sidebar {
-        font-size: 14px;
-    }
+    .user-info { font-size: 20px; margin: 0 0 28px 20px; }
+    .description-sidebar { font-size: 14px; }
 
-    /* ✅ 모바일에서도 데스크톱 같은 로그아웃 버튼 */
+    /* ✅ 모바일에서 로그아웃 버튼을 '메뉴 바로 아래'로 올리기 */
+    .side-tab ul {
+        flex: 0 0 auto;          /* 남는 공간 차지 X → 다음 요소(로그아웃)가 바로 이어짐 */
+        max-height: 50vh;        /* 메뉴 길면 자체 스크롤 */
+        overflow-y: auto;
+    }
     .logout-button {
-        padding: 16px 20px;
+        position: static;        /* 어떤 하단 고정도 제거 */
+        margin-top: 12px;        /* 메뉴와 버튼 사이 여백 */
+        padding: 16px 20px;      /* 좌우 여백 유지 */
+        align-self: stretch;
     }
     .logout-button button {
         width: 100%;
@@ -293,4 +248,3 @@
 
     .hero { padding-bottom: 56px; }
 }
-
