@@ -69,7 +69,6 @@
     .map-section-wrapper{
         min-height:auto; flex-direction:column; justify-content:center; align-items:center;
         padding:20px; text-align:center;
-        margin-top: 40px;
     }
     .map-section-container{ width:100%; max-width:100%; order:0; }
 

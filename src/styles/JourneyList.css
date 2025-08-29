@@ -281,3 +281,103 @@
     100% { background-position: -200% 0; }
 }
 
+/* ===============================
+   📱 JourneyList 모바일 최적화 (≤768px)
+   데스크톱 레이아웃에는 영향 없음
+   =============================== */
+@media (max-width: 768px) {
+    /* 전체 컨테이너: 좌우 여백 확보 */
+    .jl-wrap {
+        padding: 0 clamp(14px, 4vw, 22px);
+    }
+
+    /* 상단바: 높이/폰트/버튼 크기 ↓ + 안전영역 패딩 */
+    .jl-topbar {
+        padding: max(10px, env(safe-area-inset-top))
+        clamp(12px, 4vw, 20px);
+        gap: 12px;
+    }
+    .jl-logo {
+        font-size: clamp(22px, 7vw, 26px);
+        padding-left: 0;
+    }
+    .jl-btn_newpath {
+        height: 44px;
+        font-size: 15px;
+        padding: 0 clamp(14px, 4vw, 20px);
+        width: auto;               /* 고정폭 해제 */
+        min-width: 42vw;           /* 너무 작지 않게 */
+        margin-right: 0;
+    }
+
+    /* 구분선: 화면 전체로 자연스럽게 */
+    .jl-divider {
+        margin: 10px calc(-50vw + 50%) 24px;
+        width: 100vw;
+        padding-top: 0;
+    }
+
+    /* 헤더(제목/검색/정렬) : 세로 스택 & 여백 */
+    .jl-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+    .jl-header h1 {
+        font-size: clamp(22px, 6vw, 26px);
+    }
+    .jl-actions {
+        width: 100%;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    /* 검색창: 가로 꽉 차게 */
+    .jl-search { width: 100%; }
+    .jl-search input {
+        width: 100%;
+        height: 44px;
+        font-size: 15px;
+    }
+
+    /* 정렬: select + 버튼 크기 ↓ */
+    .jl-sort {
+        width: 100%;
+        justify-content: space-between;
+    }
+    .jl-sort .jl-select { flex: 1; }
+    .jl-sort select {
+        width: 100%;
+        height: 44px;
+        font-size: 14px;
+        padding: 10px 40px 10px 12px;
+    }
+    .jl-select-icon { right: 12px; font-size: 22px; }
+    .jl-sort .jl-btn {
+        height: 44px;
+        padding: 0 12px;
+        font-size: 16px;
+        margin-left: 8px;
+        flex: 0 0 auto;
+    }
+
+    /* 카드 그리드: 1열 또는 2열(넓은 모바일) */
+    .jl-grid {
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 12px;
+    }
+
+    /* 카드 내부 타이포/여백 살짝 축소 */
+    .jl-card { padding: 16px; }
+    .jl-title { font-size: 15px; }
+    .jl-card-meta { font-size: 12.5px; gap: 6px; }
+    .jl-card-foot { font-size: 12.5px; }
+
+    /* 스켈레톤도 한 줄 너비에 맞게 */
+    .jl-skeleton-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+}
+

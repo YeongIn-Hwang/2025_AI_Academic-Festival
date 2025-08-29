@@ -41,7 +41,7 @@
 @media (max-width: 768px){
     .section-magazine-container{
         min-height:auto; flex-direction:column; justify-content:center; align-items:center;
-        padding:20px; padding-bottom:40px; text-align:center;  margin-top: 40px;
+        padding:20px; padding-bottom:40px; text-align:center;
     }
     .section-magazine-content{ width:100%; max-width:100%; }
 
