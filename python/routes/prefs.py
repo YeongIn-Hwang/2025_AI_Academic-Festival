@@ -1,3 +1,4 @@
+# routes/prefs.py
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -19,13 +20,12 @@ def mean_embed(model, texts: List[str]) -> np.ndarray:
     cleaned = [t for t in cleaned if t]  # None 제거
     dim = model.get_sentence_embedding_dimension()
     if not cleaned:
-        return np.zeros(dim, dtype=np.float32)
+      return np.zeros(dim, dtype=np.float32)
     # 배치 임베딩 (속도↑)
     vecs = model.encode(cleaned, convert_to_numpy=True)
     return vecs.mean(axis=0).astype(np.float32)
 
 @router.post("/user_keywords_embed")
-@router.post("/user_keywords_embed/")
 def user_keywords_embed(payload: KeywordsIn, request: Request):
     uid = (payload.uid or "").strip()
     if not uid:
