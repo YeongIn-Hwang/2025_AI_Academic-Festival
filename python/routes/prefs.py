@@ -26,6 +26,7 @@ def mean_embed(model, texts: List[str]) -> np.ndarray:
     return vecs.mean(axis=0).astype(np.float32)
 
 @router.post("/user_keywords_embed")
+@router.post("/user_keywords_embed/")
 def user_keywords_embed(payload: KeywordsIn, request: Request):
     uid = (payload.uid or "").strip()
     if not uid:
