@@ -262,3 +262,55 @@
     .reveal-map { transform: translateY(24px); }
 }
 
+/* ============ Section: Map (모바일 전용 재배치) ============ */
+@media (max-width: 768px) {
+
+    /* 섹션 컨테이너(부모)에만 적용: 세로 스택으로 전환 */
+    .map-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 18px;                 /* 이미지-텍스트 간 간격 */
+    }
+
+    /* 이미지 박스를 텍스트보다 먼저(위) 배치 */
+    .ai-icon-box-2 {
+        order: -1;                 /* ← 핵심: 위로 올리기 */
+        position: relative;        /* 오버레이 정렬용 */
+        width: min(640px, 92vw);
+        margin: 0 auto 8px;
+    }
+
+    /* 기본 이미지 크기 */
+    .ai-icon-box-2 .ai-icon-2.image {
+        width: 100%;
+        height: auto;
+        display: block;
+    }
+
+    /* 설명 오버레이가 있다면 중앙 정렬 */
+    .ai-icon-box-2 .map-description-overlay.overlay {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: -6%;               /* 필요시 조절 */
+        max-width: 86%;
+        height: auto;
+        pointer-events: none;
+    }
+
+    /* 텍스트 블록은 아래쪽에 */
+    .map-section-container {
+        order: 0;
+        width: min(720px, 92vw);
+        text-align: center;        /* 모바일 가독성 ↑ */
+        margin: 0 auto;
+    }
+
+    /* 내부 타이포 살짝 줄여서 두 줄 말김 방지 (선택) */
+    .map-section-title.title { font-size: clamp(22px, 5.6vw, 28px); line-height: 1.25; }
+    .map-section-subheading.sub { font-size: clamp(16px, 4.3vw, 18px); }
+    .map-section-description.desc { font-size: clamp(14px, 4vw, 16px); }
+    .dairy-section-button { width: 100%; max-width: 520px; height: 56px; font-weight: 700; }
+}
+
