@@ -1,199 +1,184 @@
-// src/pages/SetPreferences.jsx
 import React, { useState } from "react";
 import { auth } from "../firebase";
+// import { db } from "../firebase";
+// import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
+import "../styles/SetPreferences.css";
+import island from "../assets/island.png";
 
 function SetPreferences() {
-  const [hopeInputs, setHopeInputs] = useState([""]);
-  const [nonHopeInputs, setNonHopeInputs] = useState([""]);
-  const [isComposing, setIsComposing] = useState(false);
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const MAX = 5;
 
-  const API_BASE = import.meta?.env?.VITE_API_URL || "http://localhost:8000";
+  const TAGS = [
+    "인생샷은 필수",
+    "북적임을 피해 자연으로",
+    "랜드마크는 못 참지",
+    "오감만족 액티비티",
+    "쇼핑에 진심인 편",
+    "현지 맛집 탐방",
+  ];
 
-  const handleAddInput = (type) => {
-    if (type === "hope" && hopeInputs.length < MAX) {
-      setHopeInputs([...hopeInputs, ""]);
-    }
-    if (type === "nonhope" && nonHopeInputs.length < MAX) {
-      setNonHopeInputs([...nonHopeInputs, ""]);
-    }
+  const [selectedHope, setSelectedHope] = useState([]);
+  const [selectedNonHope, setSelectedNonHope] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // ✅ API_BASE: Vite env 우선, 없으면 백엔드 고정 도메인 사용
+  const API_BASE = (import.meta?.env?.VITE_API_URL || "https://voyage-ovqt.onrender.com").replace(/\/+$/, "");
+  console.log("[DEBUG] API_BASE(final)", API_BASE);
+
+  const toggleTag = (type, tag) => {
+    const [selected, setSelected] =
+      type === "hope" ? [selectedHope, setSelectedHope] : [selectedNonHope, setSelectedNonHope];
+    const exists = selected.includes(tag);
+    if (exists) return setSelected(selected.filter((t) => t !== tag));
+    if (selected.length >= MAX) return alert(`최대 ${MAX}개까지 선택할 수 있어요.`);
+    setSelected([...selected, tag]);
   };
 
-  const handleRemoveInput = (type, index) => {
-    if (type === "hope") {
-      setHopeInputs(hopeInputs.filter((_, i) => i !== index));
-    }
-    if (type === "nonhope") {
-      setNonHopeInputs(nonHopeInputs.filter((_, i) => i !== index));
-    }
-  };
+  const save = async () => {
+    if (loading) return;
 
-  const handleChange = (type, index, value) => {
-    if (type === "hope") {
-      const updated = [...hopeInputs];
-      updated[index] = value;
-      setHopeInputs(updated);
-    }
-    if (type === "nonhope") {
-      const updated = [...nonHopeInputs];
-      updated[index] = value;
-      setNonHopeInputs(updated);
-    }
-  };
-
-    const save = async () => {
     const user = auth.currentUser;
     if (!user) return alert("로그인이 필요합니다.");
 
-    // 공백 제거 + 빈 값 제외
-    const hope = hopeInputs.map(v => v.trim()).filter(Boolean).slice(0, MAX);
-    const nonhope = nonHopeInputs.map(v => v.trim()).filter(Boolean).slice(0, MAX);
-
+    const hope = selectedHope.slice(0, MAX);
+    const nonhope = selectedNonHope.slice(0, MAX);
     if (hope.length === 0 && nonhope.length === 0) {
-      return alert("최소 1개 이상 입력해 주세요.");
+      return alert("최소 1개 이상 선택해 주세요.");
     }
 
+    // 혼합콘텐츠 사전 감지
+    if (window.location.protocol === "https:" && API_BASE.startsWith("http://")) {
+      console.warn("[SetPreferences] Mixed content detected:", { API_BASE, page: window.location.href });
+      alert("보안 정책 때문에 저장할 수 없어요. 서버 주소를 https로 바꿔주세요.");
+      return;
+    }
+
+    setLoading(true);
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
+
     try {
-      setLoading(true);
+      console.log("[SetPreferences] POST", `${API_BASE}/user_keywords_embed`, { uid: user.uid, hope, nonhope });
+
       const res = await fetch(`${API_BASE}/user_keywords_embed`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          uid: user.uid,
-          hope,
-          nonhope,
-        }),
+        body: JSON.stringify({ uid: user.uid, hope, nonhope }),
+        signal: controller.signal,
       });
+
+      const text = await res.text();
+      console.log("[SetPreferences] Response", res.status, text);
+
       if (!res.ok) {
-        const msg = await res.text();
-        console.error("임베딩 저장 실패:", msg);
-        return alert("서버 오류: " + msg);
+        // 프리플라이트/프록시 문제 힌트
+        if (res.status === 405) {
+          try {
+            const u = new URL(`${API_BASE}/user_keywords_embed`);
+            if (u.hostname === window.location.hostname) {
+              console.error("[Hint] Posting to FRONTEND host (wrong). Set VITE_API_URL to backend URL.");
+            }
+          } catch {}
+        }
+        const msg = text || "서버 오류가 발생했어요.";
+        alert(`저장 실패(${res.status}). ${msg}`);
+        return;
       }
-      alert("임베딩 저장 완료!");
-      navigate("/home");
+
+      // 선택: Firestore 온보딩 플래그
+      // try {
+      //   await updateDoc(doc(db, "users", user.uid), {
+      //     onboardingDone: true,
+      //     updatedAt: serverTimestamp(),
+      //   });
+      // } catch (e) {
+      //   console.warn("onboardingDone 업데이트 실패(무시 가능):", e);
+      // }
+
+      alert("저장 완료!");
+      navigate("/home", { replace: true });
     } catch (e) {
-      console.error(e);
-      alert("저장 실패: " + (e?.message || String(e)));
+      console.error("[SetPreferences] 저장 요청 예외:", e?.name, e?.message || e);
+      if (e?.name === "AbortError") {
+        alert("요청이 시간 초과되었습니다. 네트워크 상태를 확인해 주세요.");
+      } else {
+        alert("네트워크 오류로 저장에 실패했어요. 잠시 후 다시 시도해 주세요.");
+      }
     } finally {
+      clearTimeout(timer);
       setLoading(false);
     }
   };
 
-  const renderInputList = (type, inputs, setInputs) => (
-    <>
-      {inputs.map((value, index) => (
-        <div key={index} style={{ display: "flex", alignItems: "center", marginTop: 8 }}>
-          <input
-            type="text"
-            value={value}
-            placeholder={type === "hope" ? "예) 카페, 전시회, 야경..." : "예) 대기줄, 실내, 매운맛..."}
-            onCompositionStart={() => setIsComposing(true)}
-            onCompositionEnd={() => setIsComposing(false)}
-            onChange={(e) => handleChange(type, index, e.target.value)}
-            style={{
-              flex: 1,
-              padding: 10,
-              borderRadius: 10,
-              border: "1px solid #ddd",
-            }}
-          />
-          <button
-            onClick={() => handleRemoveInput(type, index)}
-            style={{
-              marginLeft: 6,
-              padding: "4px 8px",
-              fontSize: 12,
-              background: "#ccc",
-              border: "none",
-              borderRadius: 6,
-              cursor: "pointer",
-            }}
-          >
-            ✕
-          </button>
-        </div>
+  const Tag = ({ type, active, children, onClick }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={[
+        "tag",
+        "tag-neutral",
+        type === "hope" ? "tag-hope" : "tag-nonhope",
+        active ? "is-active" : "",
+      ].join(" ")}
+    >
+      {children}
+    </button>
+  );
+
+  const TagGrid = ({ type, selected }) => (
+    <div className="tag-grid">
+      {TAGS.map((tag) => (
+        <Tag
+          key={`${type}-${tag}`}
+          type={type}
+          active={selected.includes(tag)}
+          onClick={() => toggleTag(type, tag)}
+        >
+          {tag}
+        </Tag>
       ))}
-    </>
+    </div>
   );
 
   return (
-    <div style={{ padding: 24, maxWidth: 840, margin: "0 auto" }}>
-      <h2 style={{ marginBottom: 8 }}>희망 / 비희망 키워드 설정</h2>
-      <p style={{ color: "#666", marginBottom: 24 }}>
-        버튼을 눌러 입력칸을 추가하고, 필요 없으면 옆의 ✕ 버튼으로 삭제하세요. 각 항목은 최대{" "}
-        <b>{MAX}개</b>까지 저장됩니다.
-      </p>
+    <div className="pref-page">
+      <div className="pref-container">
+        <header className="pref-header">
+          <img src={island} alt="" aria-hidden="true" className="header-icon" />
+          <h1>내가 선호하는 여행 스타일은?</h1>
+          <p className="hint">다중 선택이 가능해요.</p>
+        </header>
 
-      {/* 희망 키워드 */}
-      <section style={{ border: "1px solid #eee", borderRadius: 12, padding: 16, marginBottom: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h3 style={{ margin: 0 }}>희망 키워드</h3>
-          <button
-            onClick={() => handleAddInput("hope")}
-            disabled={hopeInputs.length >= MAX}
-            style={{
-              padding: "8px 12px",
-              borderRadius: 10,
-              border: "1px solid #ddd",
-              background: "#000",
-              color: "#fff",
-              cursor: "pointer",
-            }}
-          >
-            키워드 추가
-          </button>
-        </div>
+        {/* 선호 섹션 */}
+        <section className="panel">
+          <div className="panel-head">
+            <h3>선호 스타일 선택</h3>
+            <span className="count">
+              {selectedHope.length}/{MAX}
+            </span>
+          </div>
+          <TagGrid type="hope" selected={selectedHope} />
+        </section>
 
-        {renderInputList("hope", hopeInputs, setHopeInputs)}
-        <div style={{ marginTop: 4, fontSize: 12, color: "#888" }}>
-          {hopeInputs.length}/{MAX}
-        </div>
-      </section>
+        {/* 비선호 섹션 */}
+        <section className="panel">
+          <div className="panel-head">
+            <h3>비선호 스타일 선택</h3>
+            <span className="count">
+              {selectedNonHope.length}/{MAX}
+            </span>
+          </div>
+          <TagGrid type="nonhope" selected={selectedNonHope} />
+        </section>
 
-      {/* 비희망 키워드 */}
-      <section style={{ border: "1px solid #eee", borderRadius: 12, padding: 16, marginBottom: 24 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h3 style={{ margin: 0 }}>비희망 키워드</h3>
-          <button
-            onClick={() => handleAddInput("nonhope")}
-            disabled={nonHopeInputs.length >= MAX}
-            style={{
-              padding: "8px 12px",
-              borderRadius: 10,
-              border: "1px solid #ddd",
-              background: "#000",
-              color: "#fff",
-              cursor: "pointer",
-            }}
-          >
-            키워드 추가
-          </button>
-        </div>
-
-        {renderInputList("nonhope", nonHopeInputs, setNonHopeInputs)}
-        <div style={{ marginTop: 4, fontSize: 12, color: "#888" }}>
-          {nonHopeInputs.length}/{MAX}
-        </div>
-      </section>
-
-      <button
-        onClick={save}
-        style={{
-          padding: "12px 16px",
-          borderRadius: 12,
-          border: "none",
-          background: "#000",
-          color: "#fff",
-          cursor: "pointer",
-          width: "100%",
-          fontWeight: 600,
-        }}
-      >
-        저장하기
-      </button>
+        <button onClick={save} disabled={loading} className="primary-btn">
+          {loading ? "저장 중..." : "저장하기"}
+        </button>
+      </div>
     </div>
   );
 }
