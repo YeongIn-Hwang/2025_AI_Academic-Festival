@@ -1,3 +1,4 @@
+/* ====== Section AI : Desktop ====== */
 .ai-section-wrapper {
     min-height: 80vh;
     display: flex;
@@ -7,11 +8,10 @@
     border-top-left-radius: 35px;
     border-top-right-radius: 35px;
     padding-left: 130px;
-
 }
 
 .ai-section-container {
-    flex:1;
+    flex: 1;
     justify-content: space-between;
     align-items: center;
     width: 150%;
@@ -19,199 +19,90 @@
 }
 
 .ai-text {
-    flex: 1;                     /* 왼쪽 영역 차지 */
+    flex: 1;
     display: flex;
-    flex-direction: column;      /* 세로 배치 */
-    justify-content: center;     /* 수직 가운데 */
-    padding: 40px 20px;          /* 여백 */
-    z-index: 2;                  /* 지도 이미지보다 위에 표시 */
-    max-width: 1000px;            /* 가독성 위해 너비 제한 */
+    flex-direction: column;
+    justify-content: center;
+    padding: 40px 20px;
+    z-index: 2;
+    max-width: 1000px;
 }
 
-/* 지도 이미지 스타일 */
 .ai-icon {
-    width: 100%;                   /*  더 크게 확대 */
+    width: 100%;
     height: auto;
     transform: scale(1) translate(10%, 0%);
-    /*  scale(1.4) → 40% 확대
-       translate(20%, 5%) → 오른쪽 20%, 아래쪽 5% 이동 */
-    object-fit: cover;             /* 비율 유지 */
-    opacity: 0.5;                  /* 살짝 투명 */
-    -webkit-mask-image: -webkit-linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 30%);
+    object-fit: cover;
+    opacity: 0.5;
+
+    /* 그라데이션 마스크 (데스크톱만) */
+    -webkit-mask-image: -webkit-linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 70%);
     -webkit-mask-repeat: no-repeat;
     -webkit-mask-size: 100% 100%;
-
-    /* ✅ 표준 속성 (지원되는 브라우저만) */
     mask-image: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 70%);
     mask-repeat: no-repeat;
     mask-size: 100% 100%;
 }
 
-/* 파란 소제목 */
-.ai-section-label {
-    color: #3884ff;
-    font-weight: 600;
-    font-size: 14px;
-    margin-bottom: 20px;
-}
+/* 타이포 */
+.ai-section-label { color:#3884ff; font-weight:600; font-size:14px; margin-bottom:20px; }
+.ai-section-heading { font-size:28px; font-weight:800; line-height:1.5; margin-bottom:24px; color:#000; }
+.ai-section-subheading { font-size:20px; font-weight:700; margin-bottom:20px; color:#000; }
+.ai-section-description { font-size:15px; color:#7F7C7C; line-height:1.6; margin-bottom:60px; }
 
-/* 메인 제목 */
-.ai-section-heading {
-    font-size: 28px;
-    font-weight: 800;
-    line-height: 1.5;
-    margin-bottom: 24px;
-    color: #000;
-}
-
-/* 중간 강조 텍스트 */
-.ai-section-subheading {
-    font-size: 20px;
-    font-weight: 700;
-    margin-bottom: 20px;
-    color: #000;
-}
-
-/* 회색 설명 문장 */
-.ai-section-description {
-    font-size: 15px;
-    color: #7F7C7C;
-    line-height: 1.6;
-    margin-bottom: 60px;
-}
-
-/* 파란 버튼 */
+/* 버튼 */
 .ai-section-button {
-    background-color: #3884ff;
-    color: white;
-    font-size: 17px;
-    font-weight: 600;
-    padding: 18px 30px;
-    border: none;
-    border-radius: 999px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-    width: 70%;
-    margin-top: 150px;
+    background:#3884ff; color:#fff; font-size:17px; font-weight:600;
+    padding:18px 30px; border:none; border-radius:999px; cursor:pointer;
+    transition:background-color .3s ease; width:70%; margin-top:150px;
 }
+.ai-section-button:hover { background:#2a6edb; }
 
-.ai-section-button:hover {
-    background-color: #2a6edb;
-}
+/* 애니메이션 */
+@keyframes fadeUp { from{opacity:0; transform:translateY(40px);} to{opacity:1; transform:translateY(0);} }
+.reveal { opacity:0; transform:translateY(40px); will-change:transform,opacity; }
 
-/* 이미 있는 fadeUp 키프레임을 사용하거나, 없으면 추가 */
-@keyframes fadeUp {
-    from { opacity: 0; transform: translateY(40px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
-
-/* 공통 초기 상태 */
-.reveal {
-    opacity: 0;
-    transform: translateY(40px);
-    will-change: transform, opacity;
-}
-
-/* 섹션이 뷰에 들어왔을 때 애니 시작 */
 .ai-section-wrapper.in-view .reveal {
     animation-name: fadeUp;
     animation-duration: 800ms;
     animation-timing-function: cubic-bezier(.22,.61,.36,1);
     animation-fill-mode: forwards;
 }
-
-/* 딜레이로 순차 등장 (label → heading → sub → desc → btn) */
 .ai-section-wrapper.in-view .reveal.label   { animation-delay: 100ms; }
 .ai-section-wrapper.in-view .reveal.heading { animation-delay: 260ms; }
 .ai-section-wrapper.in-view .reveal.sub     { animation-delay: 420ms; }
 .ai-section-wrapper.in-view .reveal.desc    { animation-delay: 600ms; }
-/* ✅ 버튼이 가장 늦게 */
-.ai-section-wrapper.in-view .ai-section-button.reveal{
-    animation-delay: 900ms;
+.ai-section-wrapper.in-view .ai-section-button.reveal{ animation-delay: 900ms; }
+
+@keyframes btnPop { 0%{transform:translateY(40px) scale(.98);} 60%{transform:translateY(0) scale(1.04);} 100%{transform:translateY(0) scale(1);} }
+.ai-section-wrapper.in-view .reveal.btn { animation-name: fadeUp, btnPop; animation-duration:800ms,420ms; animation-delay:900ms,900ms; animation-fill-mode:forwards,forwards; }
+
+@media (prefers-reduced-motion: reduce){
+    .reveal, .ai-section-wrapper.in-view .reveal { animation:none!important; opacity:1!important; transform:none!important; }
 }
 
-/* (선택) 버튼 강조: 살짝 커졌다가 원래 크기로 */
-.ai-section-wrapper.in-view .reveal.btn {
-    animation-name: fadeUp, btnPop;
-    animation-duration: 800ms, 420ms;
-    animation-delay: 900ms, 900ms; /* 같은 시점에 시작 */
-    animation-fill-mode: forwards, forwards;
+/* ====== Section AI : Mobile (≤768px) ====== */
+@media (max-width: 768px){
+    .ai-section-wrapper{
+        min-height:auto;
+        flex-direction:column;
+        justify-content:center; align-items:center;
+        padding:20px;
+        border-top-left-radius:24px; border-top-right-radius:24px;
+        text-align:center;
+    }
+    .ai-section-container{ width:100%; max-width:100%; display:block; }
+    .ai-text{ padding:16px 0; max-width:640px; margin:0 auto; }
+
+    .ai-section-label{ font-size:clamp(12px,3.5vw,14px); margin-bottom:12px; }
+    .ai-section-heading{ font-size:clamp(20px,5vw,28px); line-height:1.4; margin-bottom:16px; }
+    .ai-section-subheading{ font-size:clamp(15px,4vw,20px); margin-bottom:14px; }
+    .ai-section-description{ font-size:clamp(13px,3.5vw,15px); line-height:1.6; margin-bottom:24px; }
+
+    .ai-section-button{ width:100%; margin-top:24px; padding:14px 20px; font-size:15px; }
+
+    /* 모바일에선 이미지 과한 이동/마스크 제거 */
+    .ai-icon{ width:82%; height:auto; transform:none!important; margin:8px auto 0; opacity:.55; object-fit:contain; -webkit-mask-image:none; mask-image:none; }
+
+    .reveal{ transform:translateY(24px); }
 }
-
-@keyframes btnPop {
-    0%   { transform: translateY(40px) scale(0.98); }
-    60%  { transform: translateY(0)    scale(1.04); }
-    100% { transform: translateY(0)    scale(1); }
-}
-
-/* 접근성: 모션 최소화 */
-@media (prefers-reduced-motion: reduce) {
-    .reveal,
-    .ai-section-wrapper.in-view .reveal {
-        animation: none !important;
-        opacity: 1 !important;
-        transform: none !important;
-    }
-}
-
-/* ===========================
-   Mobile (≤768px) : Section AI
-   =========================== */
-@media (max-width: 768px) {
-    .ai-section-wrapper {
-        min-height: auto;
-        display: flex;
-        flex-direction: column;     /* 가로 → 세로 */
-        justify-content: center;
-        align-items: center;
-        padding: 20px;              /* 좌우 패딩 축소 */
-        border-top-left-radius: 24px;
-        border-top-right-radius: 24px;
-        text-align: center;         /* 텍스트 중앙 */
-    }
-
-    .ai-section-container {
-        width: 100%;
-        max-width: 100%;
-        display: block;
-    }
-
-    .ai-text {
-        padding: 16px 0;
-        max-width: 640px;
-        margin: 0 auto;
-    }
-
-    /* 타이포 반응형 */
-    .ai-section-label { font-size: clamp(12px, 3.5vw, 14px); margin-bottom: 12px; }
-    .ai-section-heading { font-size: clamp(20px, 5vw, 28px); line-height: 1.4; margin-bottom: 16px; }
-    .ai-section-subheading { font-size: clamp(15px, 4vw, 20px); margin-bottom: 14px; }
-    .ai-section-description { font-size: clamp(13px, 3.5vw, 15px); margin-bottom: 24px; line-height: 1.6; }
-
-    /* 버튼 */
-    .ai-section-button {
-        width: 100%;
-        margin-top: 24px;
-        padding: 14px 20px;
-        font-size: 15px;
-    }
-
-    /* 이미지(오른쪽) 크기/위치 보정 */
-    .ai-icon-box { width: 100%; display: flex; justify-content: center; }
-    .ai-icon {
-        width: 82%;
-        height: auto;
-        transform: none !important;   /* scale/translate 제거 */
-        margin: 8px auto 0;
-        opacity: 0.55;
-        object-fit: contain;
-
-        /* 마스크는 모바일에서 과감히 제거(브라우저 호환) */
-        -webkit-mask-image: none;
-        mask-image: none;
-    }
-
-    /* 애니메이션은 유지되지만 지나친 이동감 축소(선택) */
-    .reveal { transform: translateY(24px); }
-}
-

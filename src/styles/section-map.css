@@ -1,316 +1,115 @@
-.map-section-wrapper {
-    min-height: 100vh;
-    background-color: white;
-    display: flex;
-    justify-content: left;
-    padding-left: 130px;
-    align-items: center;
+/* ====== Section Map : Desktop ====== */
+.map-section-wrapper{
+    min-height:100vh; background:#fff; display:flex; justify-content:left; align-items:center; padding-left:130px;
 }
 
-.map-section-container {
-    position: relative;
-    flex:1;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    max-width: 600px;
+.map-section-container{
+    position:relative; flex:1; justify-content:space-between; align-items:center; width:100%; max-width:600px;
 }
+.map-blank-space{ height:5vh; }
 
-.map-blank-space {
-    height: 5vh;
-}
-
+/* 우측(지도 배경) 이미지 */
 .ai-icon-2{
-    width: 100%;                   /*  더 크게 확대 */
-    height: auto;
-    transform: scale(1) translate(10%, -26%)!important;
-    /*  scale(1.4) → 40% 확대
-       translate(20%, 5%) → 오른쪽 20%, 아래쪽 5% 이동 */
-    object-fit: cover;             /* 비율 유지 */
-    opacity: 0.5!important;
+    width:100%; height:auto;
+    transform:scale(1) translate(10%, -26%)!important;
+    object-fit:cover;
+    opacity:.5!important;
+}
+.ai-icon-box-2{ position:relative; }
+
+/* 말풍선 오버레이(경상남도 하동군) — 데스크톱 */
+.map-description-overlay{
+    position:absolute; bottom:120px; left:50%; transform:translateX(-20%);
+    width:30%; height:auto; z-index:15; opacity:.85!important; pointer-events:none; border-radius:30px;
 }
 
-.ai-icon-box-2 {
-    position: relative; /* ✅ 내부에 absolute 요소 배치 가능 */
+/* 우측 보조 이미지/텍스트 컨테이너(PC) */
+.map-description{
+    position:absolute; display:flex; z-index:10; flex-direction:column;
+    justify-content:flex-end; align-items:flex-start; padding-left:430px;
+}
+.map-description-img{ width:300px; height:auto; transition:transform .3s ease; cursor:pointer; margin-top:10px; margin-right:10px; opacity:.6; }
+
+/* 본문 타이포 */
+.map-section-label{ color:#3884ff; font-weight:600; font-size:14px; margin-bottom:20px; }
+.map-section-title{ font-size:28px; font-weight:800; line-height:1.6; margin-bottom:24px; color:#000; }
+.map-section-subheading{ font-size:20px; font-weight:700; margin-bottom:20px; color:#000; }
+.map-section-description{ font-size:15px; color:#7F7C7C; line-height:1.6; margin-bottom:20px; }
+
+/* 버튼 */
+.dairy-section-button{
+    background:#3884ff; color:#fff; font-size:17px; font-weight:600; padding:18px 30px;
+    border:none; border-radius:999px; cursor:pointer; transition:background-color .3s ease; width:70%; margin-top:150px;
+}
+.dairy-section-button:hover{ background:#2a6edb; }
+
+/* 하단 예시 이미지 (PC 기본) */
+.map-example-img{
+    width:290%; height:auto; object-fit:contain; background:#fff; display:block;
 }
 
-/* ✅ 겹치는 map-description 이미지 스타일 */
-.map-description-overlay {
-    position: absolute;
-    bottom: 120px;       /* ✅ ai-icon-2 하단보다 살짝 내려오게 (조절 가능) */
-    left: 50%;           /* ✅ 가로 중앙 기준 */
-    transform: translateX(-20%); /* ✅ 중앙 정렬 */
-    width: 30%;          /* ✅ 크기 (조절 가능) */
-    height: auto;
-    z-index: 15;         /* ✅ ai-icon-2 위에 표시 */
-    opacity: 0.85!important;        /* ✅ 살짝 투명 효과 (필요 시 조절) */
-    pointer-events: none; /* ✅ 클릭 방해 X */
-    border-radius: 30px;
+/* 애니메이션 */
+@keyframes mapFadeUp { from{opacity:0; transform:translateY(40px);} to{opacity:1; transform:translateY(0);} }
+@keyframes mapFadeUpSoft{ from{opacity:0; transform:translateY(30px) scale(.98);} 70%{opacity:1; transform:translateY(0) scale(1.01);} to{opacity:1; transform:translateY(0) scale(1);} }
+.reveal-map{ opacity:0; transform:translateY(40px); will-change:transform,opacity; }
+.map-section-wrapper.in-view .reveal-map{ animation-name:mapFadeUp; animation-duration:800ms; animation-timing-function:cubic-bezier(.22,.61,.36,1); animation-fill-mode:forwards; }
+.map-section-wrapper.in-view .reveal-map.label{ animation-delay:100ms; }
+.map-section-wrapper.in-view .reveal-map.title{ animation-delay:260ms; }
+.map-section-wrapper.in-view .reveal-map.sub{ animation-delay:420ms; }
+.map-section-wrapper.in-view .reveal-map.desc{ animation-delay:600ms; }
+.map-section-wrapper.in-view .dairy-section-button.reveal-map{ animation-delay:900ms; }
+.map-section-wrapper.in-view .reveal-map.overlay{ animation-name:mapFadeUpSoft; animation-duration:900ms; animation-delay:860ms; animation-fill-mode:forwards; }
+
+@media (prefers-reduced-motion: reduce){
+    .reveal-map, .map-section-wrapper.in-view .reveal-map{ animation:none!important; opacity:1!important; transform:none!important; }
 }
 
-
-/* 컨테이너 (오른쪽 정렬) */
-.map-description {
-    position: absolute;
-    display: flex;
-    z-index: 10;
-    flex-direction: column;
-    justify-content: flex-end;   /* ✅ 왼쪽 정렬 */
-    align-items: flex-start;       /* ✅ 위쪽 정렬 */
-    padding-left: 430px;
-}
-
-/* 이미지 자체 크기 */
-.map-description-img {
-    width: 300px;
-    height: auto;
-    transition: transform 0.3s ease;
-    cursor: pointer;
-    margin-top: 10px;
-    margin-right: 10px;
-    opacity: 0.6;
-}
-
-.map-section-container {
-    position: relative;
-    flex:1;
-    align-items: center;
-    width: 100%;
-    max-width: 600px;
-}
-
-.map-example-img {
-    width: 290%;               /* ✅ 부모 컨테이너 가로 전체 차지 */
-    height: auto;              /* ✅ 비율 유지 */
-    object-fit: contain;       /* ✅ 이미지 잘리지 않음 */
-    background-color: #fff;
-    display: block;
-}
-
-/* 파란 소제목 */
-.map-section-label {
-    color: #3884ff;
-    font-weight: 600;
-    font-size: 14px;
-    margin-bottom: 20px;
-}
-
-/* 메인 제목 */
-.map-section-title {
-    font-size: 28px;
-    font-weight: 800;
-    line-height: 1.6;
-    margin-bottom: 24px;
-    color: #000;
-}
-
-/* 중간 강조 텍스트 */
-.map-section-subheading {
-    font-size: 20px;
-    font-weight: 700;
-    margin-bottom: 20px;
-    color: #000;
-}
-
-/* 회색 설명 문장 */
-.map-section-description {
-    font-size: 15px;
-    color: #7F7C7C;
-    line-height: 1.6;
-    margin-bottom: 20px;
-}
-
-/* 파란 버튼 */
-.dairy-section-button {
-    background-color: #3884ff;
-    color: white;
-    font-size: 17px;
-    font-weight: 600;
-    padding: 18px 30px;
-    border: none;
-    border-radius: 999px;
-    cursor: pointer;;
-    transition: background-color 0.3s ease;
-    width: 70%;
-    margin-top: 150px;
-}
-
-.dairy-section-button:hover {
-    background-color: #2a6edb;
-}
-
-/* ===== 키프레임(중복 정의 금지) ===== */
-@keyframes mapFadeUp {
-    from { opacity: 0; transform: translateY(40px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes mapFadeUpSoft {
-    from { opacity: 0; transform: translateY(30px) scale(0.98); }
-    70%  { opacity: 1; transform: translateY(0)    scale(1.01); }
-    to   { opacity: 1; transform: translateY(0)    scale(1); }
-}
-
-/* ===== 초기 상태 (레이아웃 영향 X) ===== */
-.reveal-map {
-    opacity: 0;
-    transform: translateY(40px);
-    will-change: transform, opacity;
-}
-
-/* ===== 상단 섹션 in-view 시 실행 ===== */
-.map-section-wrapper.in-view .reveal-map {
-    animation-name: mapFadeUp;
-    animation-duration: 800ms;
-    animation-timing-function: cubic-bezier(.22,.61,.36,1);
-    animation-fill-mode: forwards;
-}
-
-/* 순차 등장: label → title → sub → desc → btn → image/overlay */
-.map-section-wrapper.in-view .reveal-map.label  { animation-delay: 100ms; }
-.map-section-wrapper.in-view .reveal-map.title  { animation-delay: 260ms; }
-.map-section-wrapper.in-view .reveal-map.sub    { animation-delay: 420ms; }
-.map-section-wrapper.in-view .reveal-map.desc   { animation-delay: 600ms; }
-/* 버튼은 가장 늦게 */
-.map-section-wrapper.in-view .dairy-section-button.reveal-map {
-    animation-delay: 900ms;
-}
-
-.map-section-wrapper.in-view .reveal-map.overlay {
-    animation-name: mapFadeUpSoft;
-    animation-duration: 900ms;
-    animation-delay: 860ms;
-    animation-fill-mode: forwards;
-}
-
-/* 접근성: 모션 최소화 */
-@media (prefers-reduced-motion: reduce) {
-    .reveal-map,
-    .map-section-wrapper.in-view .reveal-map {
-        animation: none !important;
-        opacity: 1 !important;
-        transform: none !important;
+/* ====== Section Map : Mobile (≤768px) ====== */
+@media (max-width: 768px){
+    .map-section-wrapper{
+        min-height:auto; flex-direction:column; justify-content:center; align-items:center;
+        padding:20px; text-align:center;
     }
-}
+    .map-section-container{ width:100%; max-width:100%; order:0; }
 
-/* ===========================
-   Mobile (≤768px) : Section Map
-   =========================== */
-@media (max-width: 768px) {
-    .map-section-wrapper {
-        min-height: auto;
-        display: flex;
-        flex-direction: column;    /* 가로 → 세로 */
-        justify-content: center;
-        align-items: center;
-        padding: 20px;
-        text-align: center;
+    /* 텍스트 크기 */
+    .map-section-label{ font-size:clamp(12px,3.5vw,14px); margin-bottom:10px; }
+    .map-section-title{ font-size:clamp(22px,5.6vw,28px); line-height:1.4; margin-bottom:14px; }
+    .map-section-subheading{ font-size:clamp(16px,4.3vw,20px); margin-bottom:12px; }
+    .map-section-description{ font-size:clamp(13px,3.5vw,15px); margin-bottom:16px; line-height:1.6; }
+    .dairy-section-button{ width:100%; margin-top:24px; padding:14px 20px; font-size:15px; }
+
+    /* 이미지 박스를 텍스트보다 위에 배치 */
+    .map-section{ display:flex; flex-direction:column; align-items:center; gap:18px; }
+    .ai-icon-box-2{
+        order:-1; position:relative; width:min(640px,92vw);
+        margin: -6vw auto 10px;      /* 위로 당겨 위 섹션과 자연스럽게 연결 */
+        display:flex; justify-content:center;
+    }
+    .ai-icon-2{ width:100%; height:auto; transform:none!important; opacity:.55!important; object-fit:contain; }
+
+    /* 오버레이(경상남도 하동군) — 크기 줄이고 조금 아래로 */
+    .ai-icon-box-2 .map-description-overlay{
+        position:absolute; left:50%; transform:translateX(-50%) scale(.90);
+        top:68%; max-width:78%; height:auto; pointer-events:none; border-radius:16px; opacity:.9!important;
     }
 
-    .map-section-container {
-        width: 100%;
-        max-width: 100%;
+    /* 하단 예시 이미지를 화면 가로에 '여백 없이' 풀블리드 */
+    .map-example-img{
+        width:100vw; max-width:none; height:auto; object-fit:cover;
+        display:block; margin:0; border-radius:0;
+        /* 부모 padding의 영향을 제거해 중앙 정렬된 풀블리드로 보이게 */
+        margin-left:calc(50% - 50vw);
     }
 
-    /* 타이포 반응형 */
-    .map-section-label { font-size: clamp(12px, 3.5vw, 14px); margin-bottom: 10px; }
-    .map-section-title { font-size: clamp(20px, 5vw, 28px); line-height: 1.45; margin-bottom: 14px; }
-    .map-section-subheading { font-size: clamp(15px, 4vw, 20px); margin-bottom: 12px; }
-    .map-section-description { font-size: clamp(13px, 3.5vw, 15px); margin-bottom: 16px; line-height: 1.6; }
-
-    /* 버튼 */
-    .dairy-section-button {
-        width: 100%;
-        margin-top: 24px;
-        padding: 14px 20px;
-        font-size: 15px;
-    }
-
-    /* 우측 이미지 + 오버레이 */
-    .ai-icon-box-2 { width: 100%; position: relative; display: flex; justify-content: center; margin-top: 12px; }
-    .ai-icon-2 {
-        width: 82%;
-        height: auto;
-        transform: none !important;  /* scale/translate 제거 */
-        opacity: 0.55 !important;
-        object-fit: contain;
-    }
-
-    /* 오버레이는 중앙 위쪽에 작게 배치 */
-    .map-description-overlay {
-        position: absolute;
-        bottom: auto;
-        top: 8%;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 60%;
-        max-width: 340px;
-        border-radius: 16px;
-        opacity: 0.9 !important;
-    }
-
-    /* 하단 예시 이미지: 너무 크지 않게 */
-    .map-example-img {
-        width: 100%;
-        height: auto;
-        object-fit: contain;
-        margin-top: 20px;
-        background: #fff;
-    }
-
-    /* 애니메이션 이동량 축소(선택) */
-    .reveal-map { transform: translateY(24px); }
+    .reveal-map{ transform:translateY(24px); }
 }
 
-/* ============ Section: Map (모바일 전용 재배치) ============ */
-@media (max-width: 768px) {
-
-    /* 섹션 컨테이너(부모)에만 적용: 세로 스택으로 전환 */
-    .map-section {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 18px;                 /* 이미지-텍스트 간 간격 */
+/* 초소형 기기(≤430px)에서 오버레이 추가 축소/하강 */
+@media (max-width: 430px){
+    .ai-icon-box-2{ margin:-8vw auto 8px; }
+    .ai-icon-box-2 .map-description-overlay{
+        transform:translateX(-50%) scale(.86);
+        top:72%; max-width:84%;
     }
-
-    /* 이미지 박스를 텍스트보다 먼저(위) 배치 */
-    .ai-icon-box-2 {
-        order: -1;                 /* ← 핵심: 위로 올리기 */
-        position: relative;        /* 오버레이 정렬용 */
-        width: min(640px, 92vw);
-        margin: 0 auto 8px;
-    }
-
-    /* 기본 이미지 크기 */
-    .ai-icon-box-2 .ai-icon-2.image {
-        width: 100%;
-        height: auto;
-        display: block;
-    }
-
-    /* 설명 오버레이가 있다면 중앙 정렬 */
-    .ai-icon-box-2 .map-description-overlay.overlay {
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
-        bottom: -6%;               /* 필요시 조절 */
-        max-width: 86%;
-        height: auto;
-        pointer-events: none;
-    }
-
-    /* 텍스트 블록은 아래쪽에 */
-    .map-section-container {
-        order: 0;
-        width: min(720px, 92vw);
-        text-align: center;        /* 모바일 가독성 ↑ */
-        margin: 0 auto;
-    }
-
-    /* 내부 타이포 살짝 줄여서 두 줄 말김 방지 (선택) */
-    .map-section-title.title { font-size: clamp(22px, 5.6vw, 28px); line-height: 1.25; }
-    .map-section-subheading.sub { font-size: clamp(16px, 4.3vw, 18px); }
-    .map-section-description.desc { font-size: clamp(14px, 4vw, 16px); }
-    .dairy-section-button { width: 100%; max-width: 520px; height: 56px; font-weight: 700; }
 }
-
