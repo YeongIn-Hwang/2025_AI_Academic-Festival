@@ -4,7 +4,7 @@
     background:
             radial-gradient(1200px 600px at -10% -10%, rgba(56,132,255,.06), transparent 60%),
             radial-gradient(800px 400px at 110% 0%, rgba(56,132,255,.05), transparent 55%),
-            #f6f8fc;   /* 전체 배경 */
+            #f6f8fc;
     display: flex;
     justify-content: center;
     padding: 56px 24px;
@@ -14,56 +14,41 @@
 /* 내부 컨테이너*/
 .jr-setting-inner {
     width: 100%;
-    max-width: 1080px;  /* 너무 넓지 않게 제한 */
-    padding: 0 24px;    /* 좌우 여백 */
-    background: transparent;  /* 카드 배경 없앰 */
-    border-radius: 0;         /* 둥근 모서리 제거 */
-    box-shadow: none;         /* 그림자 제거 */
+    max-width: 1080px;
+    padding: 0 24px;
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
 }
 
-/* 셀렉트 래퍼: 아이콘을 오른쪽에 겹치기 위해 */
+/* 셀렉트 래퍼 */
 .jr-select-wrapper{
     position: relative;
-    display: inline-block;       /* 필요 시 block 으로 */
+    display: inline-block;
     width: 100%;
 }
-
-/* 기본 셀렉트의 내장 화살표 제거 + 아이콘 자리 확보 */
 .jr-select{
-    -webkit-appearance: none;    /* Safari/Chrome */
-    -moz-appearance: none;       /* Firefox */
-    appearance: none;            /* 표준 */
-    background: transparent;     /* 배경 이미지 제거 */
-    padding-right: 2.25rem;      /* 아이콘 공간 확보(조절 가능) */
-    background-image: none;      /* 일부 브라우저 잔여 배경 제거 */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background: transparent;
+    padding-right: 2.25rem;
+    background-image: none;
 }
-
 .jr-select-icon{
     position: absolute;
     top: 150px;
     right: 15px;
     transform: translateY(-20%);
-    pointer-events: none; /* 클릭 막기 */
+    pointer-events: none;
     font-size: 24px;
-    color: #555; /* 색상은 필요에 맞게 */
+    color: #555;
 }
+.jr-select::-ms-expand{ display: none; }
+.jr-select:focus + .jr-select-icon{ color:#111827; }
+.jr-select:hover + .jr-select-icon{ color:#374151; }
 
-/* IE/Edge(레거시)의 화살표 제거 */
-.jr-select::-ms-expand{
-    display: none;
-}
-
-.jr-select:focus + .jr-select-icon{
-    color: #111827;
-}
-.jr-select:hover + .jr-select-icon{
-    color: #374151;
-}
-
-.jr-label{
-    display: block;
-    padding-bottom: 8px;
-}
+.jr-label{ display:block; padding-bottom:8px; }
 
 /* 제목 */
 .jr-step-title {
@@ -74,210 +59,109 @@
 }
 
 /* 폼 레이아웃 */
-.jr-form-grid {
-    display: grid;
-    gap: 20px;
-}
+.jr-form-grid { display:grid; gap:20px; }
+.jr-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
 
-.jr-grid-2 {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
+/* 라디오 */
+.jr-radio-set{
+    display:flex; align-items:center; gap:8px; cursor:pointer;
+    font-size:15px; font-weight:700; color:#333; user-select:none;
+    border:1.5px solid #ddd; border-radius:10px; padding:10px 14px;
+    transition:all .2s ease; background:#fff;
 }
+.jr-radio-set input[type="radio"]{ display:none; }
+.jr-radio-set span::before{
+    content:""; display:inline-block; width:18px; height:18px;
+    border:2px solid #aaa; border-radius:50%; margin-right:6px;
+    vertical-align:middle; box-sizing:border-box; transition:all .2s ease;
+}
+.jr-radio-set input[type="radio"]:checked + span::before{
+    border-color:#2563eb; background:#2563eb; box-shadow:inset 0 0 0 4px #fff;
+}
+.jr-radio-set:hover{ border-color:#2563eb; background:#f9fbff; }
+.jr-radio-set input[type="radio"]:checked + span{ color:#000; font-weight:700; }
+.jr-radio-set input[type="radio"]:checked + span::before{ border-color:#2563eb; }
 
-/* 라디오 버튼 전체 세트 */
-.jr-radio-set {
-    display: flex;
-    align-items: center;
-    gap: 8px;                          /* 원형 + 텍스트 간격 */
-    cursor: pointer;
-    font-size: 15px;
-    font-weight: 700;
-    color: #333;
-    user-select: none;
-
-    /* ✅ 칸처럼 보이도록 테두리 */
-    border: 1.5px solid #ddd;
-    border-radius: 10px;
-    padding: 10px 14px;
-    transition: all 0.2s ease;
-    background-color: #fff;
+/* 입력 */
+.jr-input[type="date"]{ letter-spacing:3px; }
+.jr-input{
+    width:100%; border:1px solid #e5e7eb; border-radius:12px;
+    padding:12px 14px; font-size:14px; background:#fff;
+    transition:border-color .15s ease, box-shadow .15s ease; margin-bottom:7px;
 }
-
-/* 실제 라디오 버튼 숨김 */
-.jr-radio-set input[type="radio"] {
-    display: none;
-}
-
-/* 커스텀 원형 표시 */
-.jr-radio-set span::before {
-    content: "";
-    display: inline-block;
-    width: 18px;
-    height: 18px;
-    border: 2px solid #aaa;
-    border-radius: 50%;
-    margin-right: 6px;
-    vertical-align: middle;
-    box-sizing: border-box;
-    transition: all 0.2s ease;
-}
-
-/* 선택된 경우 */
-.jr-radio-set input[type="radio"]:checked + span::before {
-    border-color: #2563eb;
-    background-color: #2563eb;
-    box-shadow: inset 0 0 0 4px #fff;
-}
-
-/* hover 시 효과 */
-.jr-radio-set:hover {
-    border-color: #2563eb;
-    background-color: #f9fbff;
-}
-
-/* 선택된 경우 칸 전체 강조 */
-.jr-radio-set input[type="radio"]:checked + span {
-    color: black;
-    font-weight: 700;
-}
-.jr-radio-set input[type="radio"]:checked + span::before {
-    border-color: #2563eb;
-}
-
-
-/* 날짜 입력 필드 글자 간격 조정 */
-.jr-input[type="date"] {
-    letter-spacing: 3px;
-}
-
-/* 인풋/셀렉트 기본 스타일 */
-.jr-input {
-    width: 100%;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    padding: 12px 14px;
-    font-size: 14px;
-    background: #fff;
-    transition: border-color .15s ease, box-shadow .15s ease;
-    margin-bottom: 7px;
-}
-.jr-input:focus {
-    outline: none;
-    border-color: #3884FF;
-    box-shadow: 0 0 0 3px rgba(56,132,255,.15);
-}
+.jr-input:focus{ outline:none; border-color:#3884FF; box-shadow:0 0 0 3px rgba(56,132,255,.15); }
 
 /* 버튼 */
-.btn-primary_main {
-    width: 100%;
-    border: none;
-    border-radius: 18px;
-    background: #3884FF;
-    color: #fff;
-    padding: 15px 18px;
-    font-size: 18px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background .15s ease;
-    margin-top: 5px;
+.btn-primary_main{
+    width:100%; border:none; border-radius:18px; background:#3884FF; color:#fff;
+    padding:15px 18px; font-size:18px; font-weight:700; cursor:pointer;
+    transition:background .15s ease; margin-top:5px;
 }
-.btn-primary_main:hover {
-    background: #2d6ad0;
-}
+.btn-primary_main:hover{ background:#2d6ad0; }
 
-.jr-hint{
-    margin-top: 100px;
-}
+.jr-hint{ margin-top:100px; }
 
-.linklike {
-    background: none;
-    border: none;
-    color: #3884FF;         /* 테마색 */
-    font-weight: 600;       /* 살짝 두껍게 */
-    font-size: 14px;
-    cursor: pointer;
-    padding-left: 10px;
-    position: relative;
-    text-decoration: underline;
-    text-underline-offset: 6px;   /* ← 글자-밑줄 간격 */
-    text-decoration-thickness: 2px;
-    text-decoration-color: currentColor; /* 파란색 유지 */
+.linklike{
+    background:none; border:none; color:#3884FF; font-weight:600; font-size:14px;
+    cursor:pointer; padding-left:10px; position:relative;
+    text-decoration:underline; text-underline-offset:6px; text-decoration-thickness:2px;
+    text-decoration-color:currentColor;
 }
 
 /* =====================================================
    📱 JourneySetting 모바일 최적화 (≤ 768px)
-   데스크톱 레이아웃에는 전혀 영향 없음
+   데스크톱에는 영향 없음
    ===================================================== */
 @media (max-width: 768px) {
-
-    /* 페이지 패딩/안전영역 */
+    /* 페이지 & 안전영역: 좌우 여백 확보 + 위아래 패딩 축소 */
     .jr-setting {
         min-height: 100svh;
-        padding: max(16px, env(safe-area-inset-top)) 16px
-        max(20px, env(safe-area-inset-bottom));
-        justify-content: flex-start;   /* 위에서부터 스크롤 */
+        justify-content: flex-start;
+        padding:
+                max(14px, env(safe-area-inset-top))
+                clamp(14px, 4vw, 22px)
+                max(22px, env(safe-area-inset-bottom));
     }
 
+    /* 내부 컨테이너도 좌우 여백 유지 (콘텐츠가 화면에 딱 붙지 않도록) */
     .jr-setting-inner {
         max-width: 100%;
-        padding: 0;                    /* 좌우 여백은 바깥에서 */
+        padding: 0 clamp(8px, 3.5vw, 18px);
     }
 
-    /* 제목 크기 축소 */
+    /* 제목/간격 살짝 컴팩트 */
     .jr-step-title {
         font-size: clamp(22px, 6vw, 28px);
-        margin: 8px 0 18px;
+        margin: 6px 0 16px;
     }
+    .jr-form-grid { gap: 16px; }
 
-    /* 폼 간격 축소 */
-    .jr-form-grid {
-        gap: 14px;
-    }
+    /* 2열 → 1열 전환 */
+    .jr-grid-2 { grid-template-columns: 1fr; gap: 14px; }
 
-    /* 2열 → 1열 (날짜/시간 등) */
-    .jr-grid-2 {
-        grid-template-columns: 1fr;
-        gap: 14px;
-    }
-
-    /* 라벨/인풋 터치 크기 & 가독성 */
-    .jr-label {
-        padding-bottom: 6px;
-        font-size: clamp(13px, 3.8vw, 14px);
-    }
-
+    /* 라벨/인풋 크기 */
+    .jr-label { padding-bottom: 6px; font-size: clamp(13px, 3.6vw, 14px); }
     .jr-input {
-        padding: 12px 14px;
         font-size: 15px;
-        min-height: 44px;              /* 터치 타겟 */
+        min-height: 44px;           /* 손가락 터치 영역 */
+        padding: 12px 14px;
     }
+    .jr-input[type="date"] { letter-spacing: 1px; }
 
-    /* 날짜 인풋: 과한 자간 축소 */
-    .jr-input[type="date"] {
-        letter-spacing: 1px;
-    }
-
-    /* 셀렉트: 내장 화살표 제거 유지 + 아이콘을 인풋 중앙에 정렬 */
-    .jr-select-wrapper {
-        width: 100%;
-    }
-    .jr-select {
-        padding-right: 40px;           /* 아이콘 자리 */
-    }
+    /* 셀렉트 아이콘을 인풋 세로 중앙에 고정 */
+    .jr-select { padding-right: 40px; }
     .jr-select-icon {
-        position: absolute;
         top: 50%;
         right: 12px;
-        transform: translateY(-50%);   /* ✅ 고정 px(top:150px) 제거 */
+        transform: translateY(-50%);
         font-size: 22px;
         color: #555;
     }
 
-    /* 여행 성향 라디오: 2열 타일 형태로 (아주 작은 화면에선 1열) */
+    /* 여행 성향 라디오: 2열 타일 → 아주 작은 화면에서는 아래에서 1열로 */
     .jr-grid-2.gap-8 {
         display: grid;
-        grid-template-columns: 1fr 1fr;  /* 모바일에서도 2열 유지 */
+        grid-template-columns: 1fr 1fr;
         gap: 10px;
     }
     .jr-radio-set {
@@ -287,32 +171,27 @@
         font-size: 14px;
     }
 
-    /* 힌트/링크 여백 조정 */
-    .jr-hint {
-        margin-top: 20px;
-        font-size: 14px;
-    }
-    .linklike {
-        font-size: 14px;
-        display: inline-block;
-        margin-left: 6px;
-    }
+    /* 힌트/링크 */
+    .jr-hint { margin-top: 22px; font-size: 14px; }
+    .linklike { font-size: 14px; margin-left: 6px; }
 
-    /* 제출 버튼 */
+    /* 제출 버튼: 좌우 여백 감안해 살짝 작게 보이도록 */
     .btn-primary_main {
-        margin-top: 8px;
+        width: 100%;
+        border-radius: 14px;
         padding: 14px 16px;
         font-size: 16px;
-        border-radius: 14px;
+        margin-top: 10px;
     }
+
+    /* (선택) 헤더가 있는 페이지에서 로고/액션 버튼을 조금 더 작게 & 양 끝 배치
+       이 파일엔 헤더가 없지만, 공통 클래스가 있다면 다음을 활용하세요. */
+    .jr-topbar { padding: 10px clamp(12px, 4vw, 20px); }
+    .jr-topbar .jr-logo { font-size: clamp(20px, 6vw, 24px); }
+    .jr-topbar .jr-actions button { transform: scale(.92); }
 }
 
-/* 초소형 보정 (≤ 420px): 라디오 1열로 변경 */
+/* 초소형 보정 (≤ 420px): 라디오 1열 */
 @media (max-width: 420px) {
-    .jr-grid-2.gap-8 {
-        grid-template-columns: 1fr;
-    }
+    .jr-grid-2.gap-8 { grid-template-columns: 1fr; }
 }
-
-
-

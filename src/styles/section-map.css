@@ -69,6 +69,7 @@
     .map-section-wrapper{
         min-height:auto; flex-direction:column; justify-content:center; align-items:center;
         padding:20px; text-align:center;
+        margin-top: 40px;
     }
     .map-section-container{ width:100%; max-width:100%; order:0; }
 
@@ -83,7 +84,8 @@
     .map-section{ display:flex; flex-direction:column; align-items:center; gap:18px; }
     .ai-icon-box-2{
         order:-1; position:relative; width:min(640px,92vw);
-        margin: -6vw auto 10px;      /* 위로 당겨 위 섹션과 자연스럽게 연결 */
+        margin: -10vw auto 0;   /* 위로 더 당겨서 gap 제거 */
+        padding: 0;
         display:flex; justify-content:center;
     }
     .ai-icon-2{ width:100%; height:auto; transform:none!important; opacity:.55!important; object-fit:contain; }

@@ -9,8 +9,6 @@
     height: 100%;
     overflow-x: hidden;
 
-
-
     background-size: cover;
     background-repeat: no-repeat;
     background-attachment: fixed;
@@ -91,9 +89,9 @@
     font-weight: bold;
     transition: right 0.3s ease;
     z-index: 99;
+
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
 }
 
 .side-tab.open {
@@ -113,6 +111,8 @@
 .side-tab ul {
     list-style: none;
     padding: 0;
+    flex: 1 1 auto;          /* ✅ 리스트가 남는 공간 차지 */
+    overflow-y: auto;        /* ✅ 긴 경우 스크롤 */
 }
 
 .side-tab li {
@@ -142,19 +142,21 @@
 }
 
 .logout-button {
-    margin: 20px 20px 10px auto;
+    margin-top: auto;        /* ✅ 사이드탭 맨 아래로 */
+    width: 100%;
+    padding: 20px;
+    align-self: stretch;
 }
 
 .logout-button button {
-    width: 330px;
-    margin-left: 20px;
-    padding: 15px;
+    width: 100%;
+    height: 56px;
     background-color: white;
     color: black;
-    border: 1px solid black;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: bold;
+    border: 1.5px solid #111;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
     cursor: pointer;
     transition: all 0.3s ease;
 }
@@ -164,35 +166,29 @@
 }
 
 .hero {
-    /* 한 번에 타이밍 조절하고 싶을 때 활용할 변수 */
     --hero-duration: 1500ms;
-    --hero-ease: cubic-bezier(.22,.61,.36,1); /* 자연스러운 ease-out */
+    --hero-ease: cubic-bezier(.22,.61,.36,1);
 }
 
-/* 공통 초기 상태: 아래에서 위로, 투명 */
 .sub-title,
 .main-title {
     opacity: 0;
     transform: translateY(40px);
     will-change: transform, opacity;
-    /* 여기서 바로 실행: 페이지 진입 시 자동 재생 */
     animation-name: fadeUp;
     animation-duration: var(--hero-duration);
     animation-timing-function: var(--hero-ease);
-    animation-fill-mode: forwards;  /* 끝난 상태 유지 */
+    animation-fill-mode: forwards;
 }
 
-/* ⏱ 살짝 더 먼저 올라오도록(조금 빠른 딜레이) */
 .sub-title {
-    animation-delay: 120ms;  /* 먼저 시작 */
+    animation-delay: 120ms;
 }
 
-/* ⏱ 메인 타이틀은 조금 늦게 */
 .main-title {
-    animation-delay: 400ms;  /* 나중에 시작 (subtitle보다 느리게) */
+    animation-delay: 400ms;
 }
 
-/* 접근성: 모션 최소화 설정 사용 시 애니메이션 제거 */
 @media (prefers-reduced-motion: reduce) {
     .sub-title,
     .main-title {
@@ -206,21 +202,17 @@
    📱 Mobile only (≤ 768px)
    ========================= */
 @media (max-width: 768px) {
-
-    /* iOS 사파리 고정배경 버벅임 방지 */
     .home-page {
         background-attachment: scroll;
         background-position: center center;
     }
 
-    /* 히어로 전체 높이: 모바일 주소창 대응 */
     .hero {
         min-height: 100svh;
-        justify-content: center; /* 가운데 정렬 유지 */
+        justify-content: center;
         text-shadow: 0 2px 12px rgba(0,0,0,.35);
     }
 
-    /* 상단 로고/메뉴 크기만 살짝 축소 */
     .logo {
         top: 20px;
         left: 16px;
@@ -233,38 +225,34 @@
         padding: 6px;
     }
 
-    /* 데스크톱에서 absolute로 찍어둔 타이틀 위치값을 모바일에서만 해제 */
     .sub-title,
     .main-title {
-        position: static !important;     /* top/right 해제 */
+        position: static !important;
         right: auto !important;
         top: auto !important;
 
         display: block;
-        width: min(92vw, 680px);         /* 화면에 맞는 너비 */
-        margin: 0 auto;                  /* 가운데 정렬 */
-        text-align: center;              /* 가운데 정렬 */
-        transform: translateY(40px);     /* 기존 애니메이션과 일치 */
+        width: min(92vw, 680px);
+        margin: 0 auto;
+        text-align: center;
+        transform: translateY(40px);
     }
 
-    /* 가독성/줄바꿈을 위한 폰트 크기 다운스케일 */
     .sub-title {
         font-size: clamp(13px, 3.8vw, 16px);
         font-weight: 700;
         margin-bottom: 8px;
     }
     .main-title {
-        font-size: clamp(26px, 9vw, 34px); /* 과대확대 방지 */
+        font-size: clamp(26px, 9vw, 34px);
         line-height: 1.18;
         font-weight: 800;
     }
 
-    /* 아래 여백(히어로 하단) 조금 확보 */
     .hero {
         padding: 0 20px 64px;
     }
 
-    /* 사이드 탭: 화면 비율에 맞게 */
     .side-tab {
         right: -86vw;
         width: 86vw;
@@ -278,10 +266,18 @@
     .description-sidebar {
         font-size: 14px;
     }
+
+    /* ✅ 모바일에서도 데스크톱 같은 로그아웃 버튼 */
+    .logout-button {
+        padding: 16px 20px;
+    }
     .logout-button button {
-        width: calc(100% - 40px);
-        margin-left: 20px;
-        padding: 14px;
+        width: 100%;
+        height: 52px;
+        font-size: 16px;
+        font-weight: 700;
+        border: 1.5px solid #111;
+        border-radius: 12px;
     }
 }
 
@@ -297,4 +293,3 @@
 
     .hero { padding-bottom: 56px; }
 }
-
