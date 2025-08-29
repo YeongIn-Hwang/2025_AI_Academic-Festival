@@ -80,3 +80,66 @@
 /* 제목/로고 */
 .login-title { font-size: 30px; font-weight: bold; margin-bottom: 50px; margin-top: 20px; }
 .login-logo  { font-size: 60px; margin-bottom: 10px; }
+
+/* ==================== 모바일 전용(<= 768px) ==================== */
+@media (max-width: 768px){
+
+  /* 브라우저 자동 확대 방지 & 여백 조정 */
+  html { -webkit-text-size-adjust: 100%; } /* iOS 가독성 확대 방지 */
+  .login-container{
+    min-height: 100svh;               /* 모바일 주소창 높이 변화 대응 */
+    padding: 24px 16px 32px;
+    justify-content: flex-start;       /* 상단부터 자연스레 배치 */
+    gap: 14px;
+  }
+
+  /* 로고/제목 크기 축소 */
+  .login-logo  { font-size: clamp(28px, 8vw, 36px); margin-bottom: 4px; }
+  .login-title { font-size: clamp(20px, 5.6vw, 24px); margin: 8px 0 20px; }
+
+  /* 인풋/버튼은 화면 폭에 맞추되 최대폭 제한 */
+  .login-input,
+  .login-button{
+    width: 100%;
+    max-width: 360px;                 /* 폰에서 적절한 폭 */
+  }
+
+  /* iOS 입력 시 확대 이슈 방지: 폰에선 최소 16px 이상 */
+  .login-input{
+    height: 48px;
+    font-size: 16px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+  }
+
+  .login-button{
+    height: 48px;
+    font-size: 15px;
+    border-radius: 14px;
+    margin-top: 14px;
+  }
+
+  /* 회원가입 안내 행: 간격/여백 축소, 줄바꿈 허용 */
+  .signup-link{
+    gap: 12px;
+    margin-top: 20px;
+    white-space: normal;              /* 작은 화면에서 줄바꿈 허용 */
+  }
+  .signup-link p{
+    margin: 0;                        /* 여백 제거 */
+    font-size: 14px;
+  }
+  .signup-link a,
+  .signup-button{
+    font-size: 14px;
+    margin-top: 0;
+  }
+}
+
+/* ========== 초소형 폰(<= 360px) 세부 보정 ========== */
+@media (max-width: 360px){
+  .login-logo  { font-size: 26px; }
+  .login-title { font-size: 18px; }
+  .login-input,
+  .login-button{ max-width: 320px; }
+}

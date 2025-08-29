@@ -10,7 +10,6 @@
 .signup-title {
     font-size: 30px;
     font-weight: bold;
-    margin-bottom: 50px;
     margin-top: 20px;
 }
 
@@ -49,4 +48,63 @@
 .signup-logo{
     font-size:60px;
     margin-bottom: 10px;
+}
+
+/* ==================== 모바일 전용(<= 768px) ==================== */
+@media (max-width: 768px){
+
+    /* iOS 자동 글자 확대 방지 + 안전 영역 고려 */
+    html { -webkit-text-size-adjust: 100%; }
+
+    .signup-container{
+        min-height: 100svh;                     /* 모바일 주소창 높이 변화 대응 */
+        padding: 24px 16px calc(24px + env(safe-area-inset-bottom));
+        justify-content: flex-start;            /* 상단부터 자연스레 배치 */
+        gap: 14px;
+    }
+
+    /* 로고/제목 크기 축소 */
+    .signup-logo  { font-size: clamp(28px, 8vw, 36px); margin-bottom: 4px; }
+    .signup-title { font-size: clamp(20px, 5.6vw, 24px); margin: 8px 0 20px; }
+
+    /* 입력창/버튼: 화면 폭에 맞추되 최대폭 제한 */
+    .signup-input,
+    .signup-button2{
+        width: 100%;
+        max-width: 360px;                       /* 폰에서 적절한 폭 */
+    }
+
+    /* iOS 입력 확대 방지를 위해 16px 이상 */
+    .signup-input{
+        height: 48px;
+        font-size: 16px;
+        padding: 14px 16px;
+        margin-bottom: 12px;
+    }
+
+    /* 버튼: 높이/모서리/여백 조정(모바일 간격 축소) */
+    .signup-button2{
+        height: 48px;
+        font-size: 15px;
+        border-radius: 14px;
+        margin-top: 16px;                       /* 데스크톱 80px → 모바일 16px */
+    }
+
+    /* 에러 메시지(있다면) 가독성 보정 */
+    .signup-error{
+        max-width: 360px;
+        width: 100%;
+        margin: 6px 0 0;
+        font-size: 14px;
+        line-height: 1.35;
+        color: #db3e3e;
+    }
+}
+
+/* ========== 초소형 폰(<= 360px) 세부 보정 ========== */
+@media (max-width: 360px){
+    .signup-logo  { font-size: 26px; }
+    .signup-title { font-size: 18px; }
+    .signup-input,
+    .signup-button2{ max-width: 320px; }
 }
