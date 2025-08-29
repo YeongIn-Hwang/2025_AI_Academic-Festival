@@ -1,7 +1,5 @@
-// src/pages/SetPreferences.jsx
 import React, { useState } from "react";
 import { auth } from "../firebase";
-// Firestore에 온보딩 완료 플래그를 기록하려면 아래 주석 해제:
 // import { db } from "../firebase";
 // import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
@@ -25,49 +23,13 @@ function SetPreferences() {
   const [selectedNonHope, setSelectedNonHope] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // =========================
-  // API_BASE 결정 로직
-  // - VITE_API_URL 우선
-  // - 로컬(localhost/127.0.0.1)이면 http://localhost:8000
-  // - 배포면 window.location.origin (프록시/리라이트 구성되어 있다는 가정)
-  // - 배포 https 페이지에서 http://를 가리키면, 같은 호스트일 때 https로 자동 승격 시도
-  // =========================
-  const isLocalhost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
-
-  //let RAW_API_BASE = (import.meta?.env?.VITE_API_URL || "").replace(/\/+$/, "");
-  //if (!RAW_API_BASE) {
-    //RAW_API_BASE = isLocalhost ? "http://localhost:8000" : window.location.origin;
-  //}
-
-  //let API_BASE = (RAW_API_BASE || "").replace(/\/+$/, "");
-
-  const API_BASE = "https://voyage-ovqt.onrender.com";
-
-  if (window.location.protocol === "https:" && API_BASE.startsWith("http://")) {
-    try {
-      const u = new URL(API_BASE);
-      // 같은 호스트라면 https로 올려서 호출 시도(예: https://front.com → http://front.com)
-      if (u.hostname === window.location.hostname) {
-        API_BASE = `https://${u.host}`;
-        console.warn("[SetPreferences] http→https 자동 승격:", API_BASE);
-      }
-    } catch (_) {
-      // URL 파싱 실패 시 무시
-    }
-  }
-
-  // 디버그 로그가 필요하면 VITE_DEBUG=true 로 빌드/배포
-  if (import.meta?.env?.VITE_DEBUG === "true") {
-    console.log("[DEBUG] location", window.location.protocol, window.location.hostname, window.location.origin);
-    console.log("[DEBUG] VITE_API_URL", import.meta?.env?.VITE_API_URL);
-    console.log("[DEBUG] isLocalhost", isLocalhost);
-    console.log("[DEBUG] API_BASE(final)", API_BASE);
-  }
+  // ✅ API_BASE: Vite env 우선, 없으면 백엔드 고정 도메인 사용
+  const API_BASE = (import.meta?.env?.VITE_API_URL || "https://voyage-ovqt.onrender.com").replace(/\/+$/, "");
+  console.log("[DEBUG] API_BASE(final)", API_BASE);
 
   const toggleTag = (type, tag) => {
     const [selected, setSelected] =
       type === "hope" ? [selectedHope, setSelectedHope] : [selectedNonHope, setSelectedNonHope];
-
     const exists = selected.includes(tag);
     if (exists) return setSelected(selected.filter((t) => t !== tag));
     if (selected.length >= MAX) return alert(`최대 ${MAX}개까지 선택할 수 있어요.`);
@@ -75,7 +37,7 @@ function SetPreferences() {
   };
 
   const save = async () => {
-    if (loading) return; // 중복 클릭 방지
+    if (loading) return;
 
     const user = auth.currentUser;
     if (!user) return alert("로그인이 필요합니다.");
@@ -86,7 +48,7 @@ function SetPreferences() {
       return alert("최소 1개 이상 선택해 주세요.");
     }
 
-    // 혼합콘텐츠(https 페이지에서 http API 호출) 차단 사전 감지
+    // 혼합콘텐츠 사전 감지
     if (window.location.protocol === "https:" && API_BASE.startsWith("http://")) {
       console.warn("[SetPreferences] Mixed content detected:", { API_BASE, page: window.location.href });
       alert("보안 정책 때문에 저장할 수 없어요. 서버 주소를 https로 바꿔주세요.");
@@ -95,16 +57,11 @@ function SetPreferences() {
 
     setLoading(true);
 
-    // 10초 타임아웃으로 fetch 보호
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 10000);
 
     try {
-      console.log("[SetPreferences] POST", `${API_BASE}/user_keywords_embed`, {
-        uid: user.uid,
-        hope,
-        nonhope,
-      });
+      console.log("[SetPreferences] POST", `${API_BASE}/user_keywords_embed`, { uid: user.uid, hope, nonhope });
 
       const res = await fetch(`${API_BASE}/user_keywords_embed`, {
         method: "POST",
@@ -113,17 +70,25 @@ function SetPreferences() {
         signal: controller.signal,
       });
 
-      const text = await res.text(); // 본문 확보(성공/실패 모두)
+      const text = await res.text();
       console.log("[SetPreferences] Response", res.status, text);
 
       if (!res.ok) {
-        // CORS 문제일 때는 브라우저가 preflight에서 막아서 여기까지 안 올 수도 있음(콘솔 Network 확인)
+        // 프리플라이트/프록시 문제 힌트
+        if (res.status === 405) {
+          try {
+            const u = new URL(`${API_BASE}/user_keywords_embed`);
+            if (u.hostname === window.location.hostname) {
+              console.error("[Hint] Posting to FRONTEND host (wrong). Set VITE_API_URL to backend URL.");
+            }
+          } catch {}
+        }
         const msg = text || "서버 오류가 발생했어요.";
         alert(`저장 실패(${res.status}). ${msg}`);
         return;
       }
 
-      // (선택) Firestore에 온보딩 완료 플래그 기록
+      // 선택: Firestore 온보딩 플래그
       // try {
       //   await updateDoc(doc(db, "users", user.uid), {
       //     onboardingDone: true,
@@ -136,7 +101,6 @@ function SetPreferences() {
       alert("저장 완료!");
       navigate("/home", { replace: true });
     } catch (e) {
-      // AbortError 등 네트워크 예외
       console.error("[SetPreferences] 저장 요청 예외:", e?.name, e?.message || e);
       if (e?.name === "AbortError") {
         alert("요청이 시간 초과되었습니다. 네트워크 상태를 확인해 주세요.");
@@ -156,7 +120,7 @@ function SetPreferences() {
       aria-pressed={active}
       className={[
         "tag",
-        "tag-neutral", // 기본 중립(연회색)
+        "tag-neutral",
         type === "hope" ? "tag-hope" : "tag-nonhope",
         active ? "is-active" : "",
       ].join(" ")}

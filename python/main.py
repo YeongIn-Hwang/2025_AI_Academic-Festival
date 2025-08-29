@@ -1,4 +1,3 @@
-# main.py
 import os
 import json
 import asyncio
@@ -9,6 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sentence_transformers import SentenceTransformer
+from starlette.responses import Response  # ✅ 프리플라이트(OPTIONS) 204용
 
 # =========================
 # Firebase Admin 초기화
@@ -211,5 +211,10 @@ app.include_router(travel_log.router, prefix="")
 app.include_router(geocode.router, prefix="/api")
 app.include_router(update_user_params.router, prefix="")
 app.include_router(lightgcn.router, prefix="")
+
+# ✅ 프리플라이트(OPTIONS) 모든 경로 204로 받기 — 405 방지 안전망
+@app.options("/{rest_of_path:path}")
+def any_options(rest_of_path: str):
+    return Response(status_code=204)
 
 # 실행 예) uvicorn main:app --host 0.0.0.0 --port 8000
