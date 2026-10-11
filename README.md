@@ -1,3 +1,7 @@
+
+
+https://github.com/user-attachments/assets/cbd5242f-2113-4f32-87bd-6ca608c65309
+
 # Boyage - 여행 경로 제작 및 종합 지원 서비스
 
 Boyage는 사용자의 여행 취향과 일정 조건을 바탕으로 여행 경로를 생성하고, 여행 기록과 관련 콘텐츠를 함께 관리할 수 있는 종합 여행 지원 서비스입니다.
